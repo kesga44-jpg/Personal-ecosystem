@@ -17,14 +17,22 @@ Besluitronde 1 afgerond op 7 november 2026. Elk besluit is vastgelegd als ADR in
 | B-11 | Wijzigingen bestaande apps | ✅ Akkoord | Uitsluitend afzonderlijke PR's, elk na goedkeuring | [0011](docs/adr/0011-bestaande-apps-afzonderlijke-prs.md) |
 | B-12 | Licentie | ✅ Voorlopig geen | Later opnieuw beoordelen (uiterlijk start F6) | [0012](docs/adr/0012-licentie.md) |
 
-## Nog open (besluitronde 2)
+## Besluitronde 2 (2026-11-07)
 
-| # | Vraag | Waarom nodig | Aanbeveling |
-|---|---|---|---|
-| B-13 | Bevestig het **restrisico** van gedeelde authenticatie: een gestolen token van gebruiker A werkt in alle apps van project A voor de data van A ([ADR 0001](docs/adr/0001-supabase-project-a-schema-isolatie.md#restrisico-bewust-geaccepteerd-door-gedeelde-authenticatie)) | De database kan niet afdwingen welke app een verzoek doet; dit volgt uit B-7 | Accepteren met de genoemde maatregelen, plus TOTP-MFA aanbieden in de Hub |
-| B-14 | Storage-back-up: S3-sleutel (alleen Storage, maar omzeilt RLS) of service key als fallback | Nodig voor ADR 0010; S3 op Free nog niet bevestigd | S3-sleutel; service key alleen als S3 niet beschikbaar is |
-| B-15 | Goedkeuring PR-voorstellen fase F1 | B-11 vraagt goedkeuring per PR | Zie [DEVELOPMENT_ROADMAP.md](DEVELOPMENT_ROADMAP.md#f1--veiligheid-back-ups-en-basis-bestaande-apps) |
-| B-16 | Schrijfrechten voor de AI-assistent op de repo's, of patches die jij zelf toepast | De onderzoekssessie had alleen leestoegang | Per PR een patch aanleveren; jij maakt de PR, of geef tijdelijk schrijfrecht op één repo |
+| # | Besluit | Uitkomst | Uitwerking | Status |
+|---|---|---|---|---|
+| B-13 | Gedeelde authenticatie | Voorwaardelijk akkoord. Voorkeur: afzonderlijke authenticatie per app. Als gedeeld noodzakelijk is: **TOTP verplicht**, sessies en tokens van de ene app geven geen toegang tot data, tabellen of RPC's van een andere app (expliciet getest), RLS en autorisatie per app blijven verplicht. Restrisico eerst documenteren | [ADR 0013](docs/adr/0013-app-gebonden-sessies-en-verplichte-totp.md): app-gebonden sessies + verplichte `aal2`; prototype 17/17 groen; restrisico's RR-1 t/m RR-7 | **Wacht op beoordeling** |
+| B-14 | Back-upsleutel | Geen service key. Eerst S3-sleutel onderzoeken, anders alternatief ontwerp. Encryptie, sleutelbeheer, retentie en hersteltests uitwerken | [ADR 0014](docs/adr/0014-backuptoegang-zonder-service-key.md): S3-sleutel afgeraden (lezen, schrijven en verwijderen in alle buckets; Free onbevestigd); voorstel aparte identiteiten met alleen leesrechten; keuzes K-1 t/m K-4 | **Wacht op beoordeling** |
+| B-15 | Start F1 | Akkoord PR-1 en PR-2. PR-3 pas na goedkeuring van het back-upontwerp | PR-1 en PR-2 klaar en lokaal geverifieerd; wachten op schrijftoegang | In uitvoering |
+| B-16 | Schrijfrecht | Tijdelijk, via de GitHub-koppeling van Claude, alleen op de betreffende repo's. Geen commits naar `main`, geen merges. Intrekken na afloop | — | Wacht op koppeling |
+
+## Algemene voorwaarden van de eigenaar (bindend)
+
+- Geen productieaanpassingen of live databasewijzigingen zonder afzonderlijke, expliciete toestemming.
+- Geen wijzigingen buiten de goedgekeurde scope.
+- Elke PR bevat tests, documentatie en een duidelijke risico-inschatting.
+- Samen Thuis en Coach blijven volledig gescheiden.
+- Kleine, controleerbare stappen; na elke PR wachten op beoordeling en merge vóór afhankelijk werk.
 
 ## Ontbrekende informatie (nog steeds open)
 

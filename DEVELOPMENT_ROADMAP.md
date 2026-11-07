@@ -37,9 +37,9 @@ Volgens ADR 0011: elke regel is **één afzonderlijke PR** (of één afzonderlij
 
 | PR | Wijziging | Repo | Risico | Afhankelijk van |
 |---|---|---|---|---|
-| PR-1 | CI-workflow die alleen de bestaande tests draait | Samen Thuis | Laag | — |
-| PR-2 | CI-workflow die alleen de bestaande tests draait | Coach | Laag | — |
-| PR-3 | Back-up database + opslag, versleuteld, met maandelijkse hersteltest (ADR 0010) | Nieuwe privé-repo `ecosystem-backups` | Laag (alleen lezen uit projecten) | B-14, secrets door jou ingesteld |
+| PR-1 ✅ goedgekeurd om te maken | CI-workflow die alleen de bestaande tests draait | Samen Thuis | Laag | — |
+| PR-2 ✅ goedgekeurd om te maken | CI-workflow die alleen de bestaande tests draait | Coach | Laag | — |
+| PR-3 ⏸ wacht op ontwerpgoedkeuring | Back-up database + opslag, versleuteld, met hersteltests (ADR 0010, ADR 0014) | Nieuwe privé-repo `ecosystem-backups` | Laag (alleen lezen) | Akkoord ADR 0014 (K-1 t/m K-4), onderzoek V1–V3, aparte goedkeuring databasewijzigingen |
 | — | Eerste handmatige hersteloefening | Lokaal | Laag | PR-3 |
 | PR-4 | pdf.js 3.11.174 → 4.10.38 | Coach | Laag–middel (API v3→v4) | PR-2 |
 | PR-5 | SheetJS upgraden + SRI, exact pinnen | Coach | Laag–middel | PR-2 |
@@ -64,7 +64,9 @@ Volgens ADR 0011: elke regel is **één afzonderlijke PR** (of één afzonderlij
 
 ## F3 — Hub: accounts, toegang en meldingen
 
-- CI-job `isolation` met het volledige isolatiebewijs ISO-1 t/m ISO-12 (ADR 0001), draaiend op Samen Thuis-migraties + ecosysteem-migraties.
+- CI-job `isolation` met het volledige isolatiebewijs ISO-1 t/m ISO-18 (ADR 0001 en ADR 0013), draaiend op Samen Thuis-migraties + ecosysteem-migraties.
+- App-gebonden sessies en verplichte TOTP (ADR 0013, als goedgekeurd).
+- Poort: geen nieuwe app live vóór de Samen Thuis-PR voor ISO-17 is gemerged (aparte goedkeuring).
 - Migratie schema `hub` (apps, roles, consents, notifications, audit, heartbeats) + RLS-tests. Uitvoering op project A alleen met groen isolatierapport en verse back-up.
 - Inloggen met bestaand Samen Thuis-account (project A).
 - Accountbeheer: profiel tonen, wachtwoord wijzigen, overal uitloggen, data-export, account verwijderen (met waarschuwing dat Samen Thuis-data meegaat).

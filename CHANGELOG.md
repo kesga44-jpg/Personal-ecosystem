@@ -18,6 +18,9 @@ Elke app in de monorepo krijgt een eigen sectie zodra die bestaat. Bestaande app
   - B-11: fase F1 opgesplitst in afzonderlijke PR's (PR-1 t/m PR-12, DB-1); back-ups vóór overige wijzigingen.
   - B-12: bewust geen licentie, herbeoordeling gepland.
 
+- 2026-11-07 — Besluitronde 2 verwerkt. ADR 0013 (app-gebonden sessies, verplichte TOTP, restrisico's) en ADR 0014 (back-uptoegang met alleen leesrechten, encryptie, sleutelbeheer, retentie, herstel) voorgesteld. Prototype `prototypes/session-binding` (17/17 lokaal geslaagd).
+
 ### Open
 
-- Besluitronde 2: B-13 (restrisico), B-14 (sleutel opslagback-up), B-15 (PR-voorstellen F1), B-16 (schrijfrechten of patches).
+- Beoordeling ADR 0013 en ADR 0014 (K-1 t/m K-4).
+- PR-1 en PR-2: wachten op schrijftoegang via GitHub-koppeling.
