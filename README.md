@@ -1,56 +1,60 @@
-# Personal Ecosystem
+# SIDEQUEST
 
-Centrale architectuur, documentatie en afspraken voor het persoonlijke software-ecosysteem van Kees.
+Persoonlijke doelen, quests, gewoontes, uitdagingen en gamification. Onderdeel van het persoonlijke ecosysteem van Kees.
 
-Status: **architectuur goedgekeurd (2026-11-07)**, met voorwaarden. Er is nog niets gebouwd of gemigreerd. Volgende stap: fase F1, PR voor PR na goedkeuring. Zie [DECISIONS.md](DECISIONS.md).
+Status: **ontwerp, voorgesteld (2026-11-07)**. Er is nog geen code, schema of deployment. Volgende stap: akkoord op de besluiten S-1 t/m S-14 in [het ontwerp](../../docs/sidequest/SIDEQUEST_DESIGN.md#13-besluiten-nodig-vóór-implementatie).
 
-Licentie: bewust geen (alle rechten voorbehouden), herbeoordeling gepland — [ADR 0012](docs/adr/0012-licentie.md).
+## Wat het doet
 
-## Apps
+- Doelen per dag, week, maand, jaar en lange termijn, met eigen categorieën, mijlpalen en deadlines.
+- Quests: eenmalig, terugkerend (gewoontes), meerstaps en tijdelijk; zelf gemaakt of als voorstel gegenereerd.
+- XP, levels, badges, streaks met rustdagen, schilden en pauzes, eigen beloningen met munten.
+- Uitdagingen: individueel, gezamenlijk of als competitie, privé of met uitgenodigde deelnemers.
+- Aanpasbaar dashboard; PWA voor telefoon, tablet en laptop; werkt offline.
 
-| App | Status | Waarvoor |
-|---|---|---|
-| **Samen Thuis** | Bestaand | Huishouden, financiën, beleggen, boodschappen, voorraad, woning, gezamenlijke planning |
-| **Coach** | Bestaand | Voetbalteambeheer: spelers, aanwezigheid, trainingen, wedstrijden, tactiek |
-| **Dashboard Hub** | Gepland | Startpunt: apps, meldingen, account en toegang, technische status |
-| **Sportapp** | Gepland | Persoonlijke sport, training, voeding, lichaam, herstel, groepen, lokale AI-coach |
-| **SIDEQUEST** | Gepland | Persoonlijke doelen, gewoontes, uitdagingen, quests, gamification |
+Gemiste dagen verlagen nooit je XP, level of beste streak.
 
-Volledige definitie: [APP_REGISTRY.md](APP_REGISTRY.md).
+## Plaats in het ecosysteem
 
-## In één oogopslag
+| Onderdeel | Waarde |
+|---|---|
+| App-ID | `sidequest` ([APP_REGISTRY.md](../../APP_REGISTRY.md)) |
+| Code | `apps/sidequest` in deze monorepo (ADR 0006) |
+| Database | Supabase project A, schema `quest` (ADR 0001) |
+| Auth | Gedeelde Auth project A, app-gebonden sessie + TOTP (ADR 0007, ADR 0013 — voorgesteld) |
+| Hosting | Eigen Cloudflare Pages-project `sidequest` (ADR 0005) |
+| Koppelingen | Hub (I-3, I-7), Sportapp (I-5); zie [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#koppelingen) |
 
-- Bestaande apps blijven zoals ze zijn (vanilla JS); nieuwe apps in React + TypeScript + Tailwind.
-- Twee Supabase-projecten (gratis limiet): A = Samen Thuis + nieuwe persoonlijke apps (eigen schema per app), B = Coach.
-- Eén account voor de persoonlijke apps; Coach houdt eigen accounts.
-- RLS op alle data; koppelingen alleen via contracten met toestemming.
-- Alleen gratis diensten; AI lokaal (WebLLM/Ollama).
+## Ontwikkelen (gepland)
+
+> Deze commando's werken pas na SQ-PR1. Ze staan hier zodat de structuur vastligt.
+
+```sh
+npm ci                                  # in de root van de monorepo
+npm run dev -w apps/sidequest           # lokale ontwikkelserver
+npm test -w apps/sidequest              # unit- en componenttests
+npm run test:e2e -w apps/sidequest      # Playwright op 375/768/1280 px
+npm run build -w apps/sidequest         # productiebuild naar apps/sidequest/dist
+npm run test:db                         # RLS-, RPC- en isolatietests (root)
+```
 
 ## Documentatie
 
 | Document | Inhoud |
 |---|---|
-| [REPO_ANALYSIS.md](REPO_ANALYSIS.md) | Fase 1–3: analyse bestaande repo's, risico's, hergebruik |
-| [DECISIONS.md](DECISIONS.md) | Genomen en openstaande besluiten |
-| [docs/adr/](docs/adr/) | Architecture Decision Records (0001–0019) |
-| [docs/hub/HUB_DESIGN.md](docs/hub/HUB_DESIGN.md) | Ontwerp Dashboard Hub (in principe goedgekeurd) en [plan H-PR1](docs/hub/H-PR1_PLAN.md) |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Doelarchitectuur en kernkeuzes |
-| [APP_REGISTRY.md](APP_REGISTRY.md) | Welke apps bestaan en waarvoor |
-| [DATA_OWNERSHIP.md](DATA_OWNERSHIP.md) | Wie is eigenaar van welke gegevens |
-| [DATABASE_DESIGN.md](DATABASE_DESIGN.md) | Schema's, tabellen, RLS, conventies |
-| [AUTHENTICATION.md](AUTHENTICATION.md) | Accounts, rollen, gedeelde accountlaag |
-| [SECURITY.md](SECURITY.md) | Bevindingen, maatregelen, back-ups |
-| [INTEGRATIONS.md](INTEGRATIONS.md) | Koppelingen tussen apps |
-| [API_CATALOG.md](API_CATALOG.md) | Alle externe diensten en bibliotheken |
-| [API_LIMITS.md](API_LIMITS.md) | Limieten en bewaking |
-| [TESTING.md](TESTING.md) | Teststrategie en CI |
-| [DEPLOYMENT.md](DEPLOYMENT.md) | Uitrol en databasewijzigingen |
-| [DEVELOPMENT_ROADMAP.md](DEVELOPMENT_ROADMAP.md) | Gefaseerde planning |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Werkwijze voor mensen en AI-assistenten |
-| [CLAUDE.md](CLAUDE.md) | Vaste regels voor AI-codeassistenten |
-| [CHANGELOG.md](CHANGELOG.md) | Wijzigingen |
+| [Ontwerp](../../docs/sidequest/SIDEQUEST_DESIGN.md) | Analyse, functioneel en technisch ontwerp, roadmap, besluiten |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Opbouw van de app |
+| [docs/DATABASE_DESIGN.md](docs/DATABASE_DESIGN.md) | Schema `quest`, RLS, RPC's |
+| [docs/API_CATALOG.md](docs/API_CATALOG.md) | RPC's en bibliotheken |
+| [docs/SECURITY.md](docs/SECURITY.md) | Dreigingen en maatregelen |
+| [docs/TESTING.md](docs/TESTING.md) | Teststrategie |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Uitrol en migraties |
+| [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | Gebruikershandleiding |
+| [CHANGELOG.md](CHANGELOG.md) | Wijzigingen per versie |
+| [CLAUDE.md](CLAUDE.md) | Regels voor AI-codeassistenten in deze app |
 
-## Bestaande repositories
+Ecosysteembrede afspraken staan in de root van de repo en gaan voor.
 
-- <https://github.com/kesga44-jpg/Samen-thuis>
-- <https://github.com/kesga44-jpg/Coach>
+## Licentie
+
+Geen (alle rechten voorbehouden), ADR 0012.

@@ -1,84 +1,61 @@
-# API-catalogus
+# API-catalogus SIDEQUEST
 
-Centraal overzicht van alle externe diensten, bibliotheken en lokale software. Limieten staan in [API_LIMITS.md](API_LIMITS.md).
+Externe diensten staan centraal in de root-[API_CATALOG.md](../../../API_CATALOG.md). Dit document beschrijft de interne RPC's van schema `quest` en de bibliotheken van de app.
 
-**Legenda status:** ✅ in gebruik · 🟢 gepland/aanbevolen · 🟡 in gebruik, voorwaarden onbevestigd · ⛔ uitgesloten
-**Verificatie:** ✔ gecontroleerd in officiële bron op 7-11-2026 · ✘ niet gecontroleerd of niet bereikbaar
+Status: **voorgesteld**. Niets is geïmplementeerd.
 
-Harde regel: een dienst komt alleen in deze catalogus met status ✅/🟢 als hij gratis bruikbaar is zonder verplicht abonnement of credits.
+## 1. RPC's (schema `quest`)
 
-## 1. Openbare API's (geen registratie)
+Alle RPC's vereisen een SIDEQUEST-sessie met `aal2` (ADR 0013), tenzij anders vermeld.
 
-| Dienst | Gebruikt door | Doel | Status | Licentie / voorwaarden | Verificatie | Uitvalalternatief |
-|---|---|---|---|---|---|---|
-| Open-Meteo Forecast, Air Quality, Geocoding | Samen Thuis; 🟢 Sportapp (weer bij buitentraining) | Weer, luchtkwaliteit, pollen | ✅ | Gratis alleen **niet-commercieel**; data CC BY 4.0, bronvermelding met link verplicht bij elke weergave | ✔ | Cache tonen; KNMI Open Data (registratie, ✘) |
-| RDW Open Data (Socrata) | Samen Thuis | Voertuiggegevens op kenteken | ✅ | Open data; zonder app-token gedeelde IP-pool met throttling | ✔ (Socrata-docs) | Handmatige invoer |
-| CBS Open Data (OData) | Samen Thuis | Pompprijzen | ✅ | Open data | ✘ | Handmatige invoer |
-| data.overheid.nl (CKAN) | Samen Thuis | Datasetzoekfunctie | ✅ | Open data | ✘ | — |
-| Open Food Facts API | Samen Thuis; 🟢 Sportapp (voeding) | Productinfo, voedingswaarden via barcode | ✅ | ODbL (database), DbCL (inhoud), CC BY-SA (foto's). Eigen User-Agent `AppName/Versie (contact)` verplicht | ✔ | Lokale cache van eerder gescande producten; handmatige invoer |
-| Open Prices (Open Food Facts) | Samen Thuis | Prijswaarnemingen | ✅ | Open (ODbL) | ✘ | Eigen prijswaarnemingen in Samen Thuis |
-| fuel-prices.eu | Samen Thuis (`sources.js`) | Brandstofprijzen | 🟡 | Onbekend | ✘ | CBS |
-| BrainyQuote RSS + script | Samen Thuis | Citaat van de dag | 🟡 | Gebruiksvoorwaarden niet gecontroleerd; **beveiligingsrisico R4** | ✘ | Lokale citatenlijst (`quotes-core.js`) |
-| Supabase health endpoint `/auth/v1/health` | 🟢 Hub | Status projecten A en B | 🟢 | Onderdeel Supabase | ✘ (exact gedrag testen) | Status "onbekend" tonen |
-
-## 2. API's met registratie (gratis)
-
-| Dienst | Gebruikt door | Doel | Status | Voorwaarden | Verificatie | Uitvalalternatief |
-|---|---|---|---|---|---|---|
-| Supabase (Free) | Alle apps | Postgres, Auth, Storage, Edge Functions | ✅ | 2 actieve projecten, pauze na 7 dagen inactiviteit, geen back-ups | ✔ | Apps werken offline door; restore binnen 1 jaar |
-| GitHub (Free) | Alle repo's | Code, Pages, Actions | ✅ | Pages alleen gratis op publieke repo's; Actions gratis voor publieke repo's | ✔ | Cloudflare Pages |
-| Cloudflare Pages (Free) | 🟢 Hub, Sportapp, SIDEQUEST | Hosting met eigen origin per app | 🟢 | 500 builds/maand, 20.000 bestanden, 25 MiB per bestand | ✔ | GitHub Pages |
-| Nationaal Energie Dashboard (NED) | Samen Thuis (Edge Function) | Energiedata | ✅ | Gratis na registratie; API-key als Supabase-secret | ✔ (via evcc-docs, geen officiële API-docs gelezen) | Functie uitschakelen |
-| PrijsProfeet | Samen Thuis (Edge Function) | Supermarktaanbiedingen | 🟡 | Authenticatie, limieten, tarieven en licentie **onbevestigd** (al vermeld in repo) | ✘ | Handmatige aanbiedingen; Open Prices |
-| Tankerkoenig | Samen Thuis (Edge Function) | Brandstofprijzen (Duitsland) | 🟡 | Registratie + key; licentie niet gecontroleerd | ✘ | CBS |
-| Socrata app-token (RDW) | Optioneel Samen Thuis | Eigen throttling-pool | 🟢 optioneel | Registratie in Socrata-profiel; kosten niet vermeld | ✔ | Zonder token |
-| Web Push (browser push services, VAPID) | 🟢 Hub | Pushmeldingen | 🟢 | Gratis W3C-standaard; iOS ≥ 16.4 alleen voor PWA op beginscherm, na gebruikersactie; geen Apple Developer-account nodig | ✔ | In-app meldingen |
-| SMTP voor Supabase Auth | Optioneel | Meer dan 2 auth-mails per uur | 🟢 optioneel | Alleen als gratis tier zonder creditcard bestaat; nog te kiezen | ✘ | Ingebouwde mailer (2/uur) |
-
-## 3. SDK's en bibliotheken
-
-| Bibliotheek | Gebruikt door | Licentie | Status | Opmerking |
+| RPC | Invoer | Uitvoer | Doel | Fase |
 |---|---|---|---|---|
-| `@supabase/supabase-js` | 🟢 nieuwe apps | MIT | 🟢 | Officiële client |
-| React, React Router, Vite, Tailwind CSS | 🟢 nieuwe apps | MIT | 🟢 | Versies vastzetten bij start |
-| Vitest, Testing Library, Playwright | 🟢 nieuwe apps | MIT / Apache-2.0 | 🟢 | — |
-| pdf.js (`pdfjs-dist`) | Samen Thuis 4.10.38; Coach **3.11.174** | Apache-2.0 | ✅ | Coach-versie kwetsbaar (CVE-2024-4367, opgelost in 4.2.67) |
-| SheetJS `xlsx` 0.18.5 | Beide | Apache-2.0 | ✅ | Kwetsbaar (o.a. CVE-2024-22363, opgelost in 0.20.2). Nieuwe versies alleen via `cdn.sheetjs.com`, niet via npm |
-| mammoth | Beide | BSD-2-Clause | ✅ | — |
-| tesseract.js `@5` | Samen Thuis | Apache-2.0 | ✅ | Niet exact gepind |
-| jsPDF 2.5.2, html2canvas 1.4.1 | Coach | MIT | ✅ | — |
-| WebLLM (`@mlc-ai/web-llm`) | 🟢 Sportapp, SIDEQUEST | Apache-2.0 | 🟢 | Vereist WebGPU; modellen (Llama, Phi, Gemma, Qwen, Mistral) worden in de browser gedownload; licentie per model controleren |
-| Transformers.js | 🟢 optioneel | Apache-2.0 | 🟢 | Kleine taken (classificatie, embeddings) in browser; ✘ niet gecontroleerd |
-| GPX/FIT/TCX-parsers | 🟢 Sportapp | Nog te kiezen; alleen MIT/Apache/BSD | 🟢 | Bestanden worden lokaal geparsed |
+| `save_goal` | doelvelden, `p_expected_version`, `p_client_mutation_id` | doel | Aanmaken/wijzigen | SQ-2 |
+| `save_quest` | questvelden incl. `recurrence`, versie, mutatie-ID | quest | Aanmaken/wijzigen | SQ-2 |
+| `materialize_occurrences` | `p_until date` (≤ vandaag + 14) | aantal aangemaakt/gemist | Voorkomens bijwerken | SQ-2 |
+| `complete_occurrence` | `p_occurrence`, `p_count`, mutatie-ID | status, XP, munten, nieuwe badges | Afvinken | SQ-2 |
+| `undo_completion` | `p_occurrence` | status | Zelfde dag terugdraaien (correctieboeking) | SQ-2 |
+| `skip_occurrence` | `p_occurrence` | status | Bewust overslaan | SQ-2 |
+| `complete_step` | `p_step`, mutatie-ID | status, XP | Stap afronden | SQ-2 |
+| `record_goal_progress` | `p_goal`, `p_value`, mutatie-ID | stand, behaalde mijlpalen | Voortgang vastleggen | SQ-2 |
+| `set_pause` | quest of alles, periode, reden | pauze | Vakantie/ziekte | SQ-2 |
+| `redeem_reward` | `p_reward` | muntensaldo | Beloning inwisselen | SQ-2 |
+| `accept_suggestion` | `p_suggestion`, `p_edits jsonb` | gemaakte objecten | Voorstel omzetten | SQ-2 |
+| `create_challenge` | uitdagingsvelden | uitdaging | Uitdaging aanmaken | SQ-3 |
+| `invite` | `p_challenge`, max. gebruik | eenmalige code (alleen hash opgeslagen) | Uitnodigen | SQ-3 |
+| `accept_invitation` | code | deelname | Meedoen (rate-limit) | SQ-3 |
+| `leave_challenge` | `p_challenge` | — | Stoppen | SQ-3 |
+| `challenge_leaderboard` | `p_challenge` | naam + score per deelnemer met `share_score` | Klassement | SQ-3 |
+| `export_my_data` | — | JSON | Inzage/export | SQ-2 |
+| `delete_my_data` | bevestiging | — | Verwijderen | SQ-2 |
+| `summary_for_me` | — | tellers | Hub-tegel (I-7); aangeroepen door **hub**-sessie (allowlist) | SQ-2 |
+| `ingest_sport_events` | — | voltooide stappen/voorkomens | I-5; leest `sport.activity_events` met toestemming (allowlist) | SQ-4 |
+| `report_external_progress` | bron-app, ref, percentage | — | I-10; **alleen na apart besluit** | Later |
 
-Regel: geen bibliotheken van een CDN in nieuwe apps; alles via npm, gebundeld en met lockfile. Bestaande apps: CDN-scripts exact pinnen en SRI toevoegen (fase 1).
+Foutcodes (stabiel, voor UI-teksten): `not_authenticated`, `wrong_session`, `not_found`, `version_conflict`, `too_late`, `insufficient_coins`, `invalid_input`, `invite_expired`, `invite_used`, `rate_limited`, `no_consent`.
 
-## 4. Lokale software
+### Vorm `summary_for_me` (contract I-7)
 
-| Software | Doel | Licentie | Status |
+```json
+{ "open_today": 3, "due_soon": 1, "best_active_streak": 12, "level": 7, "active_challenges": 2 }
+```
+
+Geen titels of andere inhoud. Contracttest in SIDEQUEST én Hub.
+
+## 2. Bibliotheken
+
+| Bibliotheek | Licentie | Gebruik | Status |
 |---|---|---|---|
-| Ollama | Lokale LLM op laptop (REST op poort 11434) | MIT | 🟢 optioneel |
-| Supabase CLI + Docker | Lokale Supabase, migraties, type-generatie | MIT / Apache-2.0 | 🟢 |
-| PostgreSQL 15/16 | SQL-semantiektests (bestaand patroon Samen Thuis) | PostgreSQL License | ✅ |
-| Node.js LTS | Build en tests | MIT | ✅ |
+| React, React Router, Vite, Tailwind CSS | MIT | UI en build | Volgens ecosysteem |
+| `@supabase/supabase-js` | MIT | Data en auth | Volgens ecosysteem |
+| `zod` | MIT (te bevestigen, H-8) | Validatie, ook van voorstellen | Voorgesteld |
+| `lucide-react` | ISC (te bevestigen, H-8) | Iconen | Voorgesteld |
+| Vite PWA-plugin (Workbox) | MIT | Service worker | Volgens ecosysteem |
+| Vitest, Testing Library, Playwright, axe | MIT / Apache-2.0 / MPL-2.0 | Tests | Volgens ecosysteem |
+| `@mlc-ai/web-llm` | Apache-2.0 | Optionele lokale AI (SQ-5) | Later, na licentiecheck per model |
 
-## 5. Expliciet uitgesloten
+Bewust **geen** extra afhankelijkheid voor herhalingen (eigen RRULE-subset), feestdagen (lokaal berekend), `.ics` (eigen kleine generator/parser) en animaties (CSS).
 
-| Dienst | Reden |
-|---|---|
-| OpenAI, Anthropic, Google Gemini en andere betaalde AI-API's | Betaald/credits; gezondheidsdata zou het apparaat verlaten |
-| Strava API | Beleid verbiedt gebruik van API-data in AI-toepassingen (prompts, RAG); weergave beperkt tot de eigen gebruiker; nieuwe apps beginnen met 1 atleet. Strijdig met AI-coach en klassementen. Bron: [developers.strava.com](https://developers.strava.com/docs/rate-limits/) en samenvatting door derden — zelf de actuele overeenkomst lezen vóór heroverweging |
-| Garmin Connect / Health API | Vereist goedkeuring als zakelijke partner (✘ niet geverifieerd); daarom niet plannen |
-| Apple HealthKit, Google Health Connect | Alleen native apps, niet bereikbaar vanuit een PWA |
-| Nutritionix, Edamam e.d. | Betaalde of credit-gebaseerde abonnementen |
-| Supabase Pro, Cloudflare/GitHub betaalde plannen | Geen betaalde abonnementen |
-| Scrapers (Pepper, folders, Strava-webpagina's) | Voorwaarden niet verifieerbaar; al bewust uitgesloten in Samen Thuis |
+## 3. Externe diensten
 
-## 6. Verplichte controle vóór elke nieuwe API
-
-1. Officiële documentatie en voorwaarden gelezen; link en datum vastgelegd in deze tabel.
-2. Gratis zonder creditcard; geen verplichte credits.
-3. Commercieel/niet-commercieel gebruik past bij persoonlijk gebruik.
-4. Privacy: welke gegevens verlaten het apparaat? Nooit gezondheidsgegevens.
-5. Limieten in [API_LIMITS.md](API_LIMITS.md); uitvalalternatief bepaald.
-6. Keys alleen als Supabase-secret of GitHub-secret, nooit in frontend of repo.
+Geen nieuwe. Onderzocht en afgewezen of uitgesteld: Google Calendar API, Nager.Date, Open-Meteo. Zie ontwerp § 9.
