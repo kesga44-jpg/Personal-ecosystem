@@ -579,4 +579,3 @@ Ook relevant uit eerdere rondes: **B-13** (restrisico gedeelde authenticatie) vÃ
 - Modellicenties voor WebLLM-modellen.
 
 Bronnen: [Google OAuth 2.0 â€” refresh token expiration](https://developers.google.com/identity/protocols/oauth2#expiration), [Supabase Cron](https://supabase.com/docs/guides/cron), [nagerholidays.com](https://nagerholidays.com/).
-tijdelijk
