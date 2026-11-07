@@ -51,6 +51,8 @@ Elke nieuwe app levert vanaf de eerste versie:
 | Inzage | Overzichtspagina "Mijn gegevens" |
 | Export | JSON-export van alle eigen rijen (RPC `<schema>.export_my_data()`) |
 | Verwijderen | RPC `<schema>.delete_my_data()`; account verwijderen via Hub verwijdert data in alle schema's van project A (`on delete cascade` op `auth.users`) |
+
+> **Opgeschort (2026-11-07, [ADR 0017](docs/adr/0017-accountverwijdering-buiten-scope-f3.md)):** export en verwijderen worden eerst in een afzonderlijk ontwerp uitgewerkt, omdat accountverwijdering via de cascade ook Samen Thuis-gegevens raakt. Tot dat ontwerp is goedgekeurd, bouwt geen app een accountverwijdering.
 | Intrekken toestemming | Hub → Toegangsbeheer; stopt direct nieuwe leesacties door andere apps |
 
 ## 4. Bewaartermijnen (voorstel)
