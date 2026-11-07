@@ -1,6 +1,7 @@
 # Plan H-PR1 — Monorepo-basis en CI
 
 Status: **plan, wacht op goedkeuring**. De PR bestaat nog niet: de repository `personal-ecosystem` en de GitHub-koppeling ontbreken (H-7). Alleen een lokale proefrun in de werkruimte van de AI-assistent is gedaan (§ 7).
+Status: **voorbereid (2026-11-07)**. Besluiten H-PR1-a, -b en -c goedgekeurd; **H-PR1-d en H-PR1-e open** (§ 9). De PR bestaat nog niet: de repository `personal-ecosystem` en de GitHub-koppeling ontbreken (H-7). H-PR1 is lokaal voorbereid als git-branch in de werkruimte van de AI-assistent; reviewpakket met volledige diff, testresultaten, licentiecontrole en audit is apart opgeleverd (§ 11).
 
 ## 1. Doel
 
@@ -41,6 +42,12 @@ Een lege maar werkende monorepo met vaste werkwijze: npm-workspaces, TypeScript 
 | `CHANGELOG.md` | Regel onder [Unreleased] | 3 |
 
 Totaal ± 330 regels exclusief lockfile (richtlijn < 400).
+| `THIRD_PARTY_LICENSES.md` | Lijst runtime-afhankelijkheden (nu leeg) | 10 |
+| `docs/DEPENDENCIES.md` | Versies, waarom geen TypeScript 7, licentiebeleid, onderbouwing per auditmelding (toegevoegd na besluiten) | 85 |
+| `scripts/check-secrets.mjs` + test | Secretcontrole op alle bijgehouden bestanden (toegevoegd na H-PR1-c) | 130 |
+| `CHANGELOG.md` | Regel onder [Unreleased] | 3 |
+
+Totaal na de besluiten: 609 regels exclusief lockfile — boven de richtlijn van 400. Splitsen in H-PR1a (± 475) en H-PR1b (secretcontrole, ± 135) is mogelijk; jouw keuze.
 
 ## 4. CI-ontwerp (`.github/workflows/ci.yml`)
 
@@ -165,6 +172,38 @@ Uitgevoerd in de werkruimte van de AI-assistent met Node 24.22.2 en npm 11.21.2.
 | H-PR1-b | Node 24 LTS nu, Node 26 later via aparte PR | Akkoord |
 | H-PR1-c | Repo privé tot F1 de open bevindingen R1, R4 en R7 heeft opgelost | Akkoord. Let op: in een privé-repo onder een persoonlijk account zijn sommige gratis beveiligingsfuncties (secret scanning) mogelijk niet beschikbaar; niet geverifieerd. Alternatief: gitleaks (MIT) als CI-stap in een latere PR |
 | H-PR1-d | Documentatie importeren als aparte H-PR0, of als eerste commit door de eigenaar bij het aanmaken van de repo | H-PR0 als PR, zodat de diff controleerbaar is |
+| H-PR1-a ✅ | Licentiebeleid: runtime alleen MIT, ISC, Apache-2.0, BSD-2/3, 0BSD, BlueOak-1.0.0, CC0-1.0; dev-only daarnaast MPL-2.0, Python-2.0, CC-BY-4.0; runtime en dev afzonderlijk gecontroleerd; onbekende licentie = fout | Akkoord (2026-11-07), alleen voor dev-afhankelijkheden die niet in runtime of distributie komen. Geen juridisch advies |
+| H-PR1-b ✅ | TypeScript 6.0.3 in plaats van 7 (lintbibliotheek ondersteunt `<6.1.0`); vast in lockfile; reden in `docs/DEPENDENCIES.md` | Akkoord (2026-11-07) |
+| H-PR1-e | Node.js 24 LTS nu; Node 26 later via aparte PR | **Open** — aanbeveling: akkoord. In de voorbereiding is 24 gebruikt |
+| H-PR1-c ✅ | Repo privé tot F1 de open bevindingen R1, R4 en R7 heeft opgelost; geen secrets, tokens of productiegegevens in de repo | Akkoord (2026-11-07); geen vervanging voor het oplossen. Secretcontrole in CI toegevoegd. Let op: in een privé-repo onder een persoonlijk account zijn sommige gratis beveiligingsfuncties (secret scanning) mogelijk niet beschikbaar; niet geverifieerd. Alternatief: gitleaks (MIT) als CI-stap in een latere PR |
+| H-PR1-d | Hoe de documentatie in de repo komt | **Open** — zie § 9.1 |
+
+### 9.1 H-PR1-d — exacte omschrijving en gevolgen (open)
+
+Een PR heeft een bestaande `main`-branch nodig als basis. Een lege GitHub-repo heeft die niet. Er moet dus eerst één commit op `main` komen. De twee opties:
+
+**Optie 1 — H-PR0 als pull request**
+
+1. Jij maakt de privé-repo aan met alleen de automatische README van GitHub ("Add a README file"). Geen `.gitignore`, geen licentie. Daarmee bestaat `main` met één bestand.
+2. Ik maak branch `docs/documentatie-import` met alle `.md`-bestanden uit `C:\Kees\personal-ecosystem-docs\personal-ecosystem` zoals ze op dat moment zijn, ongewijzigd. De automatische README wordt vervangen door de bestaande `README.md`.
+3. Ik open de PR met een SHA-256-lijst per bestand; jij vergelijkt die met je map en merget zelf.
+
+Gevolgen: alles via een controleerbare PR (V-5); 1 extra reviewmoment; H-PR0 heeft nog geen CI (die komt met H-PR1), dus alleen jouw review en de checksumlijst; schrijfrecht voor Claude is al nodig vóór H-PR0.
+
+**Optie 2 — eerste commit door jou**
+
+1. Jij maakt de privé-repo leeg aan en zet de `.md`-bestanden zelf in de eerste commit op `main` (via GitHub-webupload of `git push`).
+2. Daarna start H-PR1 als eerste PR van Claude.
+
+Gevolgen: geen review-PR voor de import; jij bepaalt zelf exact wat erin komt; geen schrijfrecht voor Claude nodig tot H-PR1; de import staat buiten de PR-werkwijze.
+
+**Voor beide opties geldt:**
+
+- Inhoud: alleen `.md`-bestanden. De map verandert nog: tijdens deze sessie zijn er vanuit ander werk `docs/sport/` (13 bestanden) en `docs/sidequest/SIDEQUEST_DESIGN.md` bijgekomen, met status "voorgesteld". Te beslissen: gaan voorgestelde, nog niet goedgekeurde ontwerpen mee in de import, of alleen goedgekeurde documenten?
+- De checksumlijst (SHA-256 per bestand) wordt gemaakt op het moment van import, zodat je die met je map kunt vergelijken.
+- De secretcontrole van H-PR1 vond in de Hub-documentatieset 0 bevindingen; de nieuwe sport- en sidequest-documenten zijn nog niet gecontroleerd.
+- De documentatie bevat Supabase-projectreferenties (geen secrets) en open beveiligingsbevindingen (R1, R4, R7). Daarom privé (H-PR1-c).
+- H-PR1 is op beide manieren dezelfde diff; alleen `CHANGELOG.md` moet al bestaan.
 
 ## 10. Rapport na de PR (sjabloon, V-5)
 
@@ -177,3 +216,7 @@ Beveiliging: npm audit (<aantallen per niveau>), licentiecontrole, geen secrets,
 Afwijkingen van dit plan: <lijst of "geen">
 Risico's / open punten: <lijst>
 ```
+
+## 11. Voorbereiding (2026-11-07)
+
+Lokale branch `feature/repo-monorepo-basis`, één commit. Schone `npm ci` met Node 24.22.2 / npm 11.21.2: opmaak, lint, typecheck geslaagd; 24/24 tests; secretcontrole 0 bevindingen; licenties runtime 0/0, dev 168/0; audit 0 high/critical, 10 moderate (onderbouwd in `docs/DEPENDENCIES.md`). Negatieftests bevestigen dat secret- en licentiecontrole falen bij een nep-token, een `.env`-bestand, een runtime-pakket met MPL-2.0 en een ontbrekende licentie. Reviewpakket: `REVIEW.md`, patch, diff, logs, licentietabel, audit-JSON.

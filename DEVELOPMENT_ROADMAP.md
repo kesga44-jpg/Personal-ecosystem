@@ -37,9 +37,9 @@ Volgens ADR 0011: elke regel is **één afzonderlijke PR** (of één afzonderlij
 
 | PR | Wijziging | Repo | Risico | Afhankelijk van |
 |---|---|---|---|---|
-| PR-1 | CI-workflow die alleen de bestaande tests draait | Samen Thuis | Laag | — |
-| PR-2 | CI-workflow die alleen de bestaande tests draait | Coach | Laag | — |
-| PR-3 | Back-up database + opslag, versleuteld, met maandelijkse hersteltest (ADR 0010) | Nieuwe privé-repo `ecosystem-backups` | Laag (alleen lezen uit projecten) | B-14, secrets door jou ingesteld |
+| PR-1 ✅ goedgekeurd om te maken | CI-workflow die alleen de bestaande tests draait | Samen Thuis | Laag | — |
+| PR-2 ✅ goedgekeurd om te maken | CI-workflow die alleen de bestaande tests draait | Coach | Laag | — |
+| PR-3 ⏸ wacht op ontwerpgoedkeuring | Back-up database + opslag, versleuteld, met hersteltests (ADR 0010, ADR 0014) | Nieuwe privé-repo `ecosystem-backups` | Laag (alleen lezen) | Akkoord ADR 0014 (K-1 t/m K-4), onderzoek V1–V3, aparte goedkeuring databasewijzigingen |
 | — | Eerste handmatige hersteloefening | Lokaal | Laag | PR-3 |
 | PR-4 | pdf.js 3.11.174 → 4.10.38 | Coach | Laag–middel (API v3→v4) | PR-2 |
 | PR-5 | SheetJS upgraden + SRI, exact pinnen | Coach | Laag–middel | PR-2 |
@@ -70,22 +70,24 @@ Ontwerp en PR-indeling: [docs/hub/HUB_DESIGN.md § 12](docs/hub/HUB_DESIGN.md).
 
 ## F3 — Hub: accounts, toegang en meldingen
 
-**Geblokkeerd tot:** F1 afgerond, en B-13 aantoonbaar opgelost: AUTH-1 t/m AUTH-10 groen ([HUB_DESIGN § 8.2](docs/hub/HUB_DESIGN.md)) en besluit B-13a genomen (V-1). Geen F3-migratie daarvoor.
+**Geblokkeerd tot:** F1 afgerond, en B-13 aantoonbaar opgelost: AUTH-1 t/m AUTH-10 groen ([HUB_DESIGN § 8.2](docs/hub/HUB_DESIGN.md)) en ADR 0013 beoordeeld (V-1). Geen F3-migratie daarvoor.
 
-- CI-job `isolation` met het volledige isolatiebewijs ISO-1 t/m ISO-12 (ADR 0001) plus AUTH-1 t/m AUTH-10, draaiend op Samen Thuis-migraties + ecosysteem-migraties.
+- CI-job `isolation` met het volledige isolatiebewijs ISO-1 t/m ISO-18 (ADR 0001 en ADR 0013) plus AUTH-1 t/m AUTH-10, draaiend op Samen Thuis-migraties + ecosysteem-migraties.
+- App-gebonden sessies en verplichte TOTP (ADR 0013, als goedgekeurd).
+- Poort: geen nieuwe app live vóór de Samen Thuis-PR voor ISO-17 is gemerged (aparte goedkeuring).
 - Migratie schema `hub` (apps, roles, consents, notifications, audit, heartbeats, voorkeuren, snelkoppelingen) + RLS-tests. Uitvoering op project A alleen met groen isolatierapport, herstelbare back-up en expliciet akkoord vooraf (V-5).
-- Inloggen met bestaand Samen Thuis-account (project A), afzonderlijk per app met lange sessie (ADR 0015).
-- Accountbeheer: profiel tonen, wachtwoord wijzigen, TOTP, sessies, overal uitloggen. **Geen** data-export en **geen** account verwijderen (V-2, ADR 0017).
+- Inloggen: afzonderlijk per app met lange sessie (ADR 0017); bij goedkeuring van ADR 0013 met app-gebonden sessies en verplichte TOTP.
+- Accountbeheer: profiel tonen, wachtwoord wijzigen, TOTP, sessies, overal uitloggen. **Geen** data-export en **geen** account verwijderen (V-2, ADR 0019).
 - Meldingencentrum (in-app).
-- Werkruimtes als laatste onderdeel (ADR 0014).
-- Niet in F3: herinneringen (ADR 0016).
-- Spike OAuth 2.1 (documentatie + lokaal prototype, niets in Supabase configureren) mag al tijdens F2 (ADR 0015).
+- Werkruimtes als laatste onderdeel (ADR 0016).
+- Niet in F3: herinneringen (ADR 0018).
+- Spike OAuth 2.1 (documentatie + lokaal prototype, niets in Supabase configureren) mag al tijdens F2 (ADR 0017).
 
 **Klaar als:** RLS- en AUTH-tests dekken alle `hub`-tabellen en -functies; jij en Daphne kunnen inloggen; meldingen werken in-app.
 
 ## Later — Accountverwijdering, data-export en gegevensbehoud
 
-Eerst een afzonderlijk ontwerp (verwijderen per app versus account, gevolgen voor Samen Thuis, export, bewaartermijnen, herstel, tests) met afzonderlijke goedkeuring (ADR 0017).
+Eerst een afzonderlijk ontwerp (verwijderen per app versus account, gevolgen voor Samen Thuis, export, bewaartermijnen, herstel, tests) met afzonderlijke goedkeuring (ADR 0019).
 
 ## F4 — Sportapp MVP
 

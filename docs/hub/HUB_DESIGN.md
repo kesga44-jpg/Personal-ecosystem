@@ -2,6 +2,7 @@
 
 Status: **in principe goedgekeurd (2026-11-07)**, met besluiten H-1 t/m H-8 en voorwaarden V-1 t/m V-5 (§ 13). Er is niets gebouwd, gemigreerd of aan bestaande apps gewijzigd.
 Basis: de goedgekeurde architectuur in deze repo ([ARCHITECTURE.md](../../ARCHITECTURE.md), [APP_REGISTRY.md](../../APP_REGISTRY.md), [DATABASE_DESIGN.md](../../DATABASE_DESIGN.md) § 3, [AUTHENTICATION.md](../../AUTHENTICATION.md), [INTEGRATIONS.md](../../INTEGRATIONS.md), ADR 0001–0017).
+Basis: de goedgekeurde architectuur in deze repo ([ARCHITECTURE.md](../../ARCHITECTURE.md), [APP_REGISTRY.md](../../APP_REGISTRY.md), [DATABASE_DESIGN.md](../../DATABASE_DESIGN.md) § 3, [AUTHENTICATION.md](../../AUTHENTICATION.md), [INTEGRATIONS.md](../../INTEGRATIONS.md), ADR 0001–0019).
 Bij strijd gaan de algemene architectuur en de voorwaarden in § 13 voor dit document.
 
 ---
@@ -16,6 +17,7 @@ Bij strijd gaan de algemene architectuur en de voorwaarden in § 13 voor dit doc
   - **F2 — zonder database**, mag parallel aan F1 (H-1): tegels, favorieten, volgorde, recent, widgets, status, thema, PWA. Voorkeuren lokaal (IndexedDB). Start pas als de repository `personal-ecosystem` en de GitHub-koppeling er zijn (H-7).
   - **F3 — met database**, **geblokkeerd** tot F1 klaar is én B-13 aantoonbaar is opgelost (V-1): inloggen, voorkeuren synchroniseren, eigen snelkoppelingen, meldingen, sessies en auditlog. Werkruimtes als laatste onderdeel (H-3).
 - **Buiten scope tot nader besluit:** herinneringen (H-5, ADR 0016) en accountverwijdering/data-export (V-2, ADR 0017).
+- **Buiten scope tot nader besluit:** herinneringen (H-5, ADR 0018) en accountverwijdering/data-export (V-2, ADR 0019).
 - Inloggen: per app afzonderlijk, met veilige, lang geldige sessies. SSO via Supabase OAuth 2.1 Server alleen als spike, zonder iets in Supabase te configureren (H-4).
 
 ## 2. Toetsing van de opdracht aan de architectuur
@@ -32,6 +34,14 @@ Bij strijd gaan de algemene architectuur en de voorwaarden in § 13 voor dit doc
 | 4 | Herinneringen | **Niet bouwen**; overlap met Samen Thuis (§ 5.5) | H-5, ADR 0016 |
 | 5 | Technische status | Past; geen syncstatus van Samen Thuis/Coach | — |
 | 6 | Instellingen | Past, zonder accountverwijdering | V-2, ADR 0017 |
+| 2 | Gebruikers voegen zelf apps toe | Opgelost met eigen snelkoppelingen, los van het register | H-2, ADR 0015 |
+| 3 | Accounts, meerdere gebruikers, instellingen per gebruiker | Past (ADR 0007) | — |
+| 3 | Gedeelde werkruimtes | Alleen gedeelde startpagina's, laatste onderdeel F3 | H-3, ADR 0016 |
+| 3 | Niet onnodig opnieuw inloggen; SSO | Lange sessie per app; OAuth-spike | H-4, ADR 0017 |
+| 4 | Meldingen | Past; Samen Thuis pas na I-9 (losse PR, eigen akkoord); Coach nooit | V-3 |
+| 4 | Herinneringen | **Niet bouwen**; overlap met Samen Thuis (§ 5.5) | H-5, ADR 0018 |
+| 5 | Technische status | Past; geen syncstatus van Samen Thuis/Coach | — |
+| 6 | Instellingen | Past, zonder accountverwijdering | V-2, ADR 0019 |
 | 7 | Ontwerp, responsive, PWA, widgets | Past | — |
 | 8 | Documentatie | Past (§ 11) | — |
 | 9 | Werkwijze | Past; GitHub regelt de eigenaar | H-7 |
@@ -42,6 +52,7 @@ Bij strijd gaan de algemene architectuur en de voorwaarden in § 13 voor dit doc
 **Wel:** startscherm met widgets, app-register, eigen snelkoppelingen, favorieten/volgorde/recent, meldingencentrum, technische status, instellingen, sessiebeheer, auditlog inzien, werkruimtes (laatste stap F3), PWA.
 
 **Niet (nu):** herinneringen (ADR 0016); accountverwijdering, data-export en verwijdering per app (ADR 0017, eerst apart ontwerp); eigen icoon-uploads (H-6); SSO in productie (ADR 0015).
+**Niet (nu):** herinneringen (ADR 0018); accountverwijdering, data-export en verwijdering per app (ADR 0019, eerst apart ontwerp); eigen icoon-uploads (H-6); SSO in productie (ADR 0017).
 
 **Nooit:** functies van andere apps nabouwen; data van andere apps lezen buiten goedgekeurde contracten; Samen Thuis-inbox vervangen (ADR 0004); iframes; registratiescherm; betaalde diensten; wijzigingen in Samen Thuis of Coach als onderdeel van de Hub.
 
@@ -109,6 +120,10 @@ Naam, icoon, korte omschrijving (max. 80 tekens), statusindicator, favorietster,
 Bron: `apps/hub/src/registry.json`, in CI gecontroleerd tegen `APP_REGISTRY.md`. Alleen te wijzigen via een PR met akkoord van de eigenaar. In F3 gespiegeld naar `hub.apps` via migratie.
 
 **Eigen snelkoppelingen** (H-2, ADR 0013): per gebruiker, gescheiden van het register. Naam, URL, omschrijving, icoon, kleur, categorie. Alleen `https://` (uitzondering `http://localhost` voor ontwikkelen). Geen statuscontrole: de Hub doet geen verzoeken naar willekeurige hosts. Een snelkoppeling maakt een app nooit "officieel".
+**Ecosysteem-apps** (ADR 0015): Samen Thuis, Coach, Hub, Sportapp, SIDEQUEST. Velden: `id`, `name`, `url`, `description`, `icon`, `category`, `lifecycle` (`planned`, `active`, `retired`), `supabase_project` (`A`/`B`), `integrations` (contract-ID's), `min_version`.
+Bron: `apps/hub/src/registry.json`, in CI gecontroleerd tegen `APP_REGISTRY.md`. Alleen te wijzigen via een PR met akkoord van de eigenaar. In F3 gespiegeld naar `hub.apps` via migratie.
+
+**Eigen snelkoppelingen** (H-2, ADR 0015): per gebruiker, gescheiden van het register. Naam, URL, omschrijving, icoon, kleur, categorie. Alleen `https://` (uitzondering `http://localhost` voor ontwikkelen). Geen statuscontrole: de Hub doet geen verzoeken naar willekeurige hosts. Een snelkoppeling maakt een app nooit "officieel".
 In F2 lokaal opgeslagen; in F3 in `hub.user_links`.
 
 **Categorieën** (vast, uitbreidbaar via PR): Huishouden, Sport en gezondheid, Persoonlijke groei, Club, Systeem, Overig.
@@ -154,6 +169,15 @@ Inhoud: nooit gezondheids- of lichaamsgegevens. Alleen titel (≤ 120) en tekst 
 
 Eerste onderzoek in de openbare Samen Thuis-repo (`Samen-thuis@0fa9583`, alleen gelezen):
 
+
+Meldingencentrum: filter op app, categorie, ongelezen; gelezen markeren; deep link naar de bron-app. Bewaartermijn 90 dagen na lezen.
+Voorkeuren per bron-app × categorie: `in_app`, `push` (F6), `uit`. `security` is niet uit te zetten.
+Inhoud: nooit gezondheids- of lichaamsgegevens. Alleen titel (≤ 120) en tekst (≤ 500); contracttest per bron-app.
+
+### 5.5 Herinneringen — uitgesteld (H-5, ADR 0018)
+
+Eerste onderzoek in de openbare Samen Thuis-repo (`Samen-thuis@0fa9583`, alleen gelezen):
+
 | Functie in Samen Thuis | Bron | Wat het doet |
 |---|---|---|
 | Routines (`chores`) | `app.js`, `nav-core.js` | Taken met persoon, startdatum en herhaling (o.a. Eenmalig, Dagelijks, Wekelijks, 2× per week, Elke 2 weken) |
@@ -194,6 +218,9 @@ Niet geverifieerd: of `/auth/v1/health` zonder `apikey`-header werkt; we sturen 
 | Account verwijderen, data-export | **Niet in F3** — eerst apart ontwerp (ADR 0017) | Later |
 
 ### 5.8 Werkruimtes (H-3, ADR 0014) — laatste onderdeel F3
+| Account verwijderen, data-export | **Niet in F3** — eerst apart ontwerp (ADR 0019) | Later |
+
+### 5.8 Werkruimtes (H-3, ADR 0016) — laatste onderdeel F3
 
 Een werkruimte is uitsluitend een **gedeelde startpagina**: naam, leden (`owner`, `member`), gedeelde links en een eigen indeling.
 Geeft nooit, ook niet indirect, toegang tot gegevens van andere apps; toont geen meldingen, status of recent van andere leden. Uitnodigen via eenmalige code (hash, 7 dagen).
@@ -229,6 +256,7 @@ Stack volgens ARCHITECTURE § 4. Extra afhankelijkheden (H-8): **zod** (MIT) en 
 Zuivere functie `deriveAppStatus(registryEntry, healthResult, heartbeat, now)` met unit-tests per toestand. Parallelle checks met `AbortController`-time-out; geen achtergrondpolling.
 
 ## 7. Inloggen en SSO (H-4, ADR 0015)
+## 7. Inloggen en SSO (H-4, ADR 0017)
 
 | Optie | Oordeel |
 |---|---|
@@ -263,6 +291,7 @@ Niets wordt uitgevoerd vóór: F1 afgerond, B-13 aantoonbaar opgelost (§ 8.2), 
 | `hub.user_tile_settings` | Nieuw | `user_id`, `tile_ref`, `is_favorite`, `sort_order`, `hidden` | Alleen eigen rijen |
 | `hub.app_launches` | Nieuw | `user_id`, `tile_ref`, `launched_at` | Via `hub.record_launch()`; max. 10; 90 dagen |
 | `hub.workspaces`, `hub.workspace_members`, `hub.workspace_links`, `hub.workspace_invites` | Nieuw (H-3), laatste migratie F3 | Zie ADR 0014 | Leden lezen; eigenaar schrijft via RPC |
+| `hub.workspaces`, `hub.workspace_members`, `hub.workspace_links`, `hub.workspace_invites` | Nieuw (H-3), laatste migratie F3 | Zie ADR 0016 | Leden lezen; eigenaar schrijft via RPC |
 
 Vervallen t.o.v. eerste ontwerp: `hub.reminders` en `hub.materialize_due_reminders()` (H-5); `hub.export_my_data()` en `hub.delete_my_data()` (V-2).
 Geen foreign keys naar `public` of andere app-schema's (ISO-5). Geen gezondheidsgegevens in `hub`.
@@ -304,6 +333,8 @@ Alle security-definer-functies: `set search_path = ''`, volledige namen, `revoke
 Maatregelen die het restrisico verkleinen, onafhankelijk van OAuth: eigen origin per app, strikte CSP zonder externe scripts, geen `innerHTML`, schrijven alleen via gevalideerde RPC's, TOTP aanbieden, "overal uitloggen".
 
 **Resterend na deze tests:** iemand met het token van A kan doen wat A zelf mag in alle apps van project A. Dat kan de database niet verder beperken zonder app-gebonden tokens. B-13 is "opgelost" als (1) AUTH-1 t/m AUTH-10 groen zijn in CI, en (2) jij dit resterende risico expliciet accepteert, of besluit dat F3 moet wachten op app-gebonden tokens (uitkomst van de spike). Die keuze is aan jou (open punt B-13a in DECISIONS.md).
+**Resterend na deze tests:** iemand met het token van A kan doen wat A zelf mag in alle apps van project A, zolang tokens niet app-gebonden zijn.
+In besluitronde 2 is B-13 uitgewerkt in [ADR 0013](../adr/0013-app-gebonden-sessies-en-verplichte-totp.md): app-gebonden sessies, verplichte TOTP (`aal2`) en restrisico's RR-1 t/m RR-7 (status: wacht op beoordeling). Die ADR vervangt het eerder hier voorgestelde vervolgbesluit B-13a. AUTH-1 t/m AUTH-10 blijven gelden naast ISO-13 t/m ISO-18 uit ADR 0013; RLS en RPC's moeten ook zonder sessiebinding veilig zijn (V-1).
 
 ## 9. Beveiliging en privacy
 
@@ -312,6 +343,7 @@ Maatregelen die het restrisico verkleinen, onafhankelijk van OAuth: eigen origin
 - Eigen snelkoppelingen: URL-validatie in client (en in F3 in de database); `noopener,noreferrer`.
 - Alleen publishable keys A en B als build-variabelen.
 - TOTP aanbieden (F3). Auditlog zonder inhoud.
+- TOTP: aanbieden, of verplicht als ADR 0013 wordt goedgekeurd (F3). Auditlog zonder inhoud.
 - Statuspagina toont nooit sleutels, URL's met parameters, e-mailadressen of gebruikers-ID's.
 
 ### 9.1 Afhankelijkheden (H-8)
@@ -346,6 +378,7 @@ Maatregelen die het restrisico verkleinen, onafhankelijk van OAuth: eigen origin
 | Beveiliging | Hub-paragraaf in `SECURITY.md` | F2/F3 |
 | Testen | Hub-paragraaf in `TESTING.md` | F2 |
 | ADR's | 0013–0017 | Nu (geaccepteerd / uitgesteld) |
+| ADR's | 0015–0019 | Nu (geaccepteerd / uitgesteld) |
 | Changelog | `CHANGELOG.md` | Elke PR |
 
 ## 12. Fasering in pull requests
@@ -382,6 +415,7 @@ Zolang de repository en GitHub-koppeling er niet zijn, bestaan deze PR's niet; v
 | H-DB4 + H-PR14 | Werkruimtes (laatste onderdeel) |
 
 **Later, met eigen ontwerp en akkoord:** herinneringen (ADR 0016), accountverwijdering/export (ADR 0017), Web Push I-4 (F6), widgets I-7/I-8, Samen Thuis → Hub I-9 (PR in Samen Thuis-repo).
+**Later, met eigen ontwerp en akkoord:** herinneringen (ADR 0018), accountverwijdering/export (ADR 0019), Web Push I-4 (F6), widgets I-7/I-8, Samen Thuis → Hub I-9 (PR in Samen Thuis-repo).
 
 ## 13. Besluiten en voorwaarden
 
@@ -395,6 +429,11 @@ Zolang de repository en GitHub-koppeling er niet zijn, bestaan deze PR's niet; v
 | H-4 | Afzonderlijk inloggen per app, lange veilige sessies; OAuth 2.1 alleen als spike, niets configureren zonder toestemming | 0015 |
 | H-5 | Herinneringen niet bouwen; overlap met Samen Thuis eerst onderzoeken; later herbeoordelen | 0016 |
 | H-6 | Ingebouwde SVG-iconen, emoji, kleuren; geen uploads of nieuwe bucket | 0013 |
+| H-2 | Eigen snelkoppelingen gescheiden van het register; officiële apps alleen via register + PR | 0015 |
+| H-3 | Werkruimtes alleen gedeelde startpagina's; nooit toegang tot app-data; laatste onderdeel F3 | 0016 |
+| H-4 | Afzonderlijk inloggen per app, lange veilige sessies; OAuth 2.1 alleen als spike, niets configureren zonder toestemming | 0017 |
+| H-5 | Herinneringen niet bouwen; overlap met Samen Thuis eerst onderzoeken; later herbeoordelen | 0018 |
+| H-6 | Ingebouwde SVG-iconen, emoji, kleuren; geen uploads of nieuwe bucket | 0015 |
 | H-7 | Eigenaar regelt repository en GitHub-koppeling; tot dan alleen ontwerp en lokale voorbereiding | — |
 | H-8 | zod en lucide-react, mits noodzakelijk, licenties gedocumenteerd en gecontroleerd | — |
 
@@ -404,6 +443,7 @@ Zolang de repository en GitHub-koppeling er niet zijn, bestaan deze PR's niet; v
 |---|---|
 | V-1 | B-13 vóór F3 oplossen met concrete tests (§ 8.2); RLS en RPC's veilig onafhankelijk van OAuth; geen F3-migraties daarvoor |
 | V-2 | Accountverwijdering (en data-export) uit scope F3; eerst apart ontwerp met afzonderlijke goedkeuring (ADR 0017) |
+| V-2 | Accountverwijdering (en data-export) uit scope F3; eerst apart ontwerp met afzonderlijke goedkeuring (ADR 0019) |
 | V-3 | Samen Thuis en Coach volledig zelfstandig; geen refactors, frameworkconversies, auth- of deploymentwijzigingen; integraties alleen via afzonderlijke PR in die repo na akkoord |
 | V-4 | F2 in kleine PR's; vooraf aantonen dat monorepo en CI geen bestaande workflows of repositories raken; geen live database-, migratie- of Supabase-configuratiewijzigingen |
 | V-5 | Na elke PR rapport; eigenaar merget; elke databasewijziging: isolatierapport, herstelbare back-up en expliciet akkoord vooraf |

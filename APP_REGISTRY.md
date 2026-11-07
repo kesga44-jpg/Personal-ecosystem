@@ -35,7 +35,7 @@ De Hub leest een machineleesbare kopie hiervan (`apps/hub/src/registry.json`) di
 ### Dashboard Hub (`hub`)
 
 - **Doel:** startpunt. Geen eigen domeindata behalve meldingen, voorkeuren en registratie.
-- **Functies:** app-tegels met deep links; eigen snelkoppelingen per gebruiker, los van dit register ([ADR 0013](docs/adr/0013-hub-register-en-eigen-snelkoppelingen.md)); meldingenoverzicht; accountbeheer (profiel, wachtwoord, sessies); toegangsbeheer (welke app mag wat delen); status van projecten A en B, laatste sync per app, versie per app. Data-export en account verwijderen zijn opgeschort tot een apart ontwerp ([ADR 0017](docs/adr/0017-accountverwijdering-buiten-scope-f3.md)). Ontwerp: [docs/hub/HUB_DESIGN.md](docs/hub/HUB_DESIGN.md).
+- **Functies:** app-tegels met deep links; eigen snelkoppelingen per gebruiker, los van dit register ([ADR 0015](docs/adr/0015-hub-register-en-eigen-snelkoppelingen.md)); meldingenoverzicht; accountbeheer (profiel, wachtwoord, sessies); toegangsbeheer (welke app mag wat delen); status van projecten A en B, laatste sync per app, versie per app. Data-export en account verwijderen zijn opgeschort tot een apart ontwerp ([ADR 0019](docs/adr/0019-accountverwijdering-buiten-scope-f3.md)). Ontwerp: [docs/hub/HUB_DESIGN.md](docs/hub/HUB_DESIGN.md).
 - **Werkt zonder:** de andere apps. Als een app of project onbereikbaar is, toont de tegel de status, verder niets.
 
 ### Sportapp (`sport`)
