@@ -32,7 +32,8 @@ Volledige definitie: [APP_REGISTRY.md](APP_REGISTRY.md).
 |---|---|
 | [REPO_ANALYSIS.md](REPO_ANALYSIS.md) | Fase 1–3: analyse bestaande repo's, risico's, hergebruik |
 | [DECISIONS.md](DECISIONS.md) | Genomen en openstaande besluiten |
-| [docs/adr/](docs/adr/) | Architecture Decision Records (0001–0012) |
+| [docs/adr/](docs/adr/) | Architecture Decision Records (0001–0017) |
+| [docs/hub/HUB_DESIGN.md](docs/hub/HUB_DESIGN.md) | Ontwerp Dashboard Hub (in principe goedgekeurd) en [plan H-PR1](docs/hub/H-PR1_PLAN.md) |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Doelarchitectuur en kernkeuzes |
 | [APP_REGISTRY.md](APP_REGISTRY.md) | Welke apps bestaan en waarvoor |
 | [DATA_OWNERSHIP.md](DATA_OWNERSHIP.md) | Wie is eigenaar van welke gegevens |

@@ -1,6 +1,6 @@
 # Ontwikkelroadmap
 
-Elke fase start pas na akkoord op de vorige. Elke fase heeft meetbare eindcriteria.
+Elke fase start pas na akkoord op de vorige, met één uitzondering: F2 mag parallel aan F1 lopen (besluit H-1, 2026-11-07), uitsluitend voor de nieuwe Hub en de nieuwe monorepo. Elke fase heeft meetbare eindcriteria.
 Volgorde: eerst de bestaande apps veilig, dan het fundament, dan pas nieuwe functionaliteit.
 
 ```mermaid
@@ -10,9 +10,9 @@ gantt
   section Fundament
   F0 Ontwerp en akkoord           :f0, 2026-11, 1M
   F1 Veiligheid bestaande apps    :f1, after f0, 1M
-  F2 Monorepo en Hub MVP          :f2, after f1, 1M
+  F2 Monorepo en Hub MVP          :f2, after f0, 1M
   section Nieuwe apps
-  F3 Hub accounts en meldingen    :f3, after f2, 1M
+  F3 Hub accounts en meldingen    :f3, after f1 f2, 1M
   F4 Sportapp volledig functioneel :f4, after f3, 3M
   F4b Poort G-SPORT               :f4b, after f4, 1M
   F5 SIDEQUEST MVP                :f5, after f3, 1M
@@ -37,9 +37,9 @@ Volgens ADR 0011: elke regel is **één afzonderlijke PR** (of één afzonderlij
 
 | PR | Wijziging | Repo | Risico | Afhankelijk van |
 |---|---|---|---|---|
-| PR-1 ✅ goedgekeurd om te maken | CI-workflow die alleen de bestaande tests draait | Samen Thuis | Laag | — |
-| PR-2 ✅ goedgekeurd om te maken | CI-workflow die alleen de bestaande tests draait | Coach | Laag | — |
-| PR-3 ⏸ wacht op ontwerpgoedkeuring | Back-up database + opslag, versleuteld, met hersteltests (ADR 0010, ADR 0014) | Nieuwe privé-repo `ecosystem-backups` | Laag (alleen lezen) | Akkoord ADR 0014 (K-1 t/m K-4), onderzoek V1–V3, aparte goedkeuring databasewijzigingen |
+| PR-1 | CI-workflow die alleen de bestaande tests draait | Samen Thuis | Laag | — |
+| PR-2 | CI-workflow die alleen de bestaande tests draait | Coach | Laag | — |
+| PR-3 | Back-up database + opslag, versleuteld, met maandelijkse hersteltest (ADR 0010) | Nieuwe privé-repo `ecosystem-backups` | Laag (alleen lezen uit projecten) | B-14, secrets door jou ingesteld |
 | — | Eerste handmatige hersteloefening | Lokaal | Laag | PR-3 |
 | PR-4 | pdf.js 3.11.174 → 4.10.38 | Coach | Laag–middel (API v3→v4) | PR-2 |
 | PR-5 | SheetJS upgraden + SRI, exact pinnen | Coach | Laag–middel | PR-2 |
@@ -54,25 +54,38 @@ Volgens ADR 0011: elke regel is **één afzonderlijke PR** (of één afzonderlij
 
 **Klaar als:** CI groen in beide repo's; eerste automatische én handmatige hersteltest geslaagd (database + bestanden); R1–R9 opgelost of bewust geaccepteerd.
 
-## F2 — Monorepo en Hub MVP (zonder database)
+## F2 — Monorepo en Hub MVP (zonder database) — parallel aan F1 (H-1)
 
-- Repo `personal-ecosystem` met deze documentatie, npm-workspaces, `packages/ui`, `packages/core`, CI, Dependabot.
-- Hub: app-tegels met deep links uit `registry.json`, status van projecten A/B (health), versie-info, PWA, responsive.
-- Cloudflare Pages-project `hub`.
+Ontwerp en PR-indeling: [docs/hub/HUB_DESIGN.md § 12](docs/hub/HUB_DESIGN.md).
+
+**Start pas** als de eigenaar de repository `personal-ecosystem` en de GitHub-koppeling heeft geregeld (H-7). Tot dan alleen ontwerp en lokale voorbereiding.
+
+**Grenzen (H-1, V-3, V-4):** uitsluitend de nieuwe Hub en de nieuwe monorepo. Geen wijzigingen aan Samen Thuis, Coach, bestaande repositories, databases, Supabase-configuratie of productieomgevingen. Vóór H-PR1 aantonen dat monorepo en CI niets bestaands raken ([docs/hub/H-PR1_PLAN.md](docs/hub/H-PR1_PLAN.md)).
+
+- H-PR0 documentatie importeren; H-PR1 monorepo-basis en CI; H-PR2 `packages/ui`; H-PR3 `packages/core` + `registry.json`; H-PR4–H-PR8 Hub (tegels, favorieten/volgorde/recent/widgets/eigen snelkoppelingen lokaal, status A/B, instellingen, PWA + CSP + e2e); H-PR9 documentatie en Cloudflare Pages-configuratie (project aanmaken doet de eigenaar).
+- Afhankelijkheden zod en lucide-react alleen in de PR waar ze nodig zijn, met licentiecontrole (H-8).
+- Na elke PR een rapport; de eigenaar merget (V-5).
 
 **Klaar als:** Hub installeerbaar op telefoon/tablet/laptop, Lighthouse PWA- en toegankelijkheidscontroles zonder fouten, CI groen.
 
 ## F3 — Hub: accounts, toegang en meldingen
 
-- CI-job `isolation` met het volledige isolatiebewijs ISO-1 t/m ISO-18 (ADR 0001 en ADR 0013), draaiend op Samen Thuis-migraties + ecosysteem-migraties.
-- App-gebonden sessies en verplichte TOTP (ADR 0013, als goedgekeurd).
-- Poort: geen nieuwe app live vóór de Samen Thuis-PR voor ISO-17 is gemerged (aparte goedkeuring).
-- Migratie schema `hub` (apps, roles, consents, notifications, audit, heartbeats) + RLS-tests. Uitvoering op project A alleen met groen isolatierapport en verse back-up.
-- Inloggen met bestaand Samen Thuis-account (project A).
-- Accountbeheer: profiel tonen, wachtwoord wijzigen, overal uitloggen, data-export, account verwijderen (met waarschuwing dat Samen Thuis-data meegaat).
-- Meldingencentrum (in-app).
+**Geblokkeerd tot:** F1 afgerond, en B-13 aantoonbaar opgelost: AUTH-1 t/m AUTH-10 groen ([HUB_DESIGN § 8.2](docs/hub/HUB_DESIGN.md)) en besluit B-13a genomen (V-1). Geen F3-migratie daarvoor.
 
-**Klaar als:** RLS-tests dekken alle `hub`-tabellen; jij en Daphne kunnen inloggen; meldingen werken in-app.
+- CI-job `isolation` met het volledige isolatiebewijs ISO-1 t/m ISO-12 (ADR 0001) plus AUTH-1 t/m AUTH-10, draaiend op Samen Thuis-migraties + ecosysteem-migraties.
+- Migratie schema `hub` (apps, roles, consents, notifications, audit, heartbeats, voorkeuren, snelkoppelingen) + RLS-tests. Uitvoering op project A alleen met groen isolatierapport, herstelbare back-up en expliciet akkoord vooraf (V-5).
+- Inloggen met bestaand Samen Thuis-account (project A), afzonderlijk per app met lange sessie (ADR 0015).
+- Accountbeheer: profiel tonen, wachtwoord wijzigen, TOTP, sessies, overal uitloggen. **Geen** data-export en **geen** account verwijderen (V-2, ADR 0017).
+- Meldingencentrum (in-app).
+- Werkruimtes als laatste onderdeel (ADR 0014).
+- Niet in F3: herinneringen (ADR 0016).
+- Spike OAuth 2.1 (documentatie + lokaal prototype, niets in Supabase configureren) mag al tijdens F2 (ADR 0015).
+
+**Klaar als:** RLS- en AUTH-tests dekken alle `hub`-tabellen en -functies; jij en Daphne kunnen inloggen; meldingen werken in-app.
+
+## Later — Accountverwijdering, data-export en gegevensbehoud
+
+Eerst een afzonderlijk ontwerp (verwijderen per app versus account, gevolgen voor Samen Thuis, export, bewaartermijnen, herstel, tests) met afzonderlijke goedkeuring (ADR 0017).
 
 ## F4 — Sportapp MVP
 
