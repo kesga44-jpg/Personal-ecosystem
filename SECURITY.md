@@ -1,47 +1,115 @@
-# Beveiliging SIDEQUEST
+# Beveiliging
 
-Aanvulling op de root-[SECURITY.md](../../../SECURITY.md), ADR 0001, ADR 0007 en ADR 0013 (voorgesteld). Status: **voorgesteld**.
+Principe: beveiliging vanaf het ontwerp. De database is de enige plek waar autorisatie wordt afgedwongen; de client is niet te vertrouwen.
 
-## 1. Wat beschermen we
+## 1. Bevindingen bestaande apps
 
-| Gegevens | Gevoeligheid | Wie mag het zien |
-|---|---|---|
-| Doelen, quests, voortgang, statistieken | Persoonlijk (kan gevoelige thema's bevatten, bijv. "stoppen met roken") | Alleen de gebruiker |
-| XP, munten, badges | Persoonlijk | Alleen de gebruiker |
-| Score binnen een uitdaging | Gedeeld na keuze | Deelnemers van die uitdaging, alleen bij `share_score` |
-| Uitnodigingscodes | Geheim | Niemand (alleen hash opgeslagen) |
+Volledige onderbouwing in [REPO_ANALYSIS.md](REPO_ANALYSIS.md#technische-risicos-gerangschikt). Herstel gebeurt **alleen** als afzonderlijke PR in de eigen repo, elk na goedkeuring van het voorstel ([ADR 0011](docs/adr/0011-bestaande-apps-afzonderlijke-prs.md)). Volgorde: [DEVELOPMENT_ROADMAP.md fase F1](DEVELOPMENT_ROADMAP.md).
 
-Geen gezondheids-, lichaams- of financiële gegevens in `quest`.
+| # | Bevinding | Voorgestelde maatregel | Repo |
+|---|---|---|---|
+| R1 | `household_data` open voor `anon` | Bestaand script `phase3_revoke_anon_household_data.sql` uitvoeren nadat beide gebruikers zijn overgestapt op accountsync; eerst export | Samen Thuis |
+| R2 | pdf.js 3.11.174 (CVE-2024-4367) | Upgrade naar dezelfde 4.10.38 als Samen Thuis; tot dan `isEvalSupported: false` | Coach |
+| R3 | SheetJS 0.18.5 | Upgrade naar actuele versie van `cdn.sheetjs.com`, gepind + SRI | Beide |
+| R4 | Extern BrainyQuote-script | Verwijderen; lokale citatenlijst gebruiken (`quotes-core.js` bestaat) | Samen Thuis |
+| R5 | Geen SRI, ongepinde versie | Exacte versies + `integrity`-attribuut | Beide |
+| R6 | Mogelijk gedeelde origin | Verifiëren; nieuwe apps op eigen origin | Hosting |
+| R7 | Edge Functions zonder JWT, CORS `*` | JWT-verificatie aan; CORS beperken tot app-origin; rate limit per gebruiker | Samen Thuis |
+| R8 | Bucket `vc2` buiten Auth | Overzetten naar Auth-RLS (`user_id`-map) | Coach |
+| R9 | Spelersdata naar vrije AI-URL | Endpointveld beperken tot `localhost`/eigen netwerk, of persoonsnamen vervangen door rugnummers vóór verzenden | Coach |
+| R11 | Geen back-ups | Database én opslag, versleuteld, met hersteltests (§ 6) | Beide projecten |
+| R13 | Geen CI | Workflow die bestaande `node --test` draait (zie [TESTING.md](TESTING.md)) | Beide |
+| R17 | Coach-RLS niet geverifieerd | Checklist in Supabase-dashboard; SQL-test toevoegen naar Samen Thuis-patroon | Coach |
 
-## 2. Dreigingen en maatregelen
+## 2. Dreigingsmodel (kort)
 
-| # | Dreiging | Maatregel |
-|---|---|---|
-| T-1 | Huisgenoot of andere gebruiker leest questdata | RLS op `user_id`; ISO-8-tests; geen gedeelde huishoudrechten |
-| T-2 | Token van een andere app (Hub, Sportapp, Samen Thuis) leest `quest` | ADR 0013: `only_sidequest_app` + `require_aal2` op elke tabel, controle in elke RPC; ISO-13 t/m ISO-15 |
-| T-3 | XP of munten vervalsen via directe insert | Geen `insert`-recht op ledgers; alleen RPC's; onveranderlijk door trigger |
-| T-4 | Dubbele XP door herhaald versturen | Unieke sleutels + `on conflict do nothing`; idempotentietests |
-| T-5 | Uitnodigingscode raden | Willekeurige code ≥ 128 bit, hash opgeslagen, 7 dagen geldig, max. gebruik, rate-limit op `accept_invitation` |
-| T-6 | Deelnemer leest overige data van andere deelnemers | Lezen alleen via `challenge_leaderboard()`; alleen naam + score |
-| T-7 | XSS steelt token | Eigen origin (ADR 0005), strikte CSP, geen externe scripts, geen `dangerouslySetInnerHTML`, React-escaping |
-| T-8 | Kwaadaardig `.ics`-bestand | Parseren als tekst met grootte- en aantalslimiet; nooit als HTML renderen; voorbeeld vóór opslaan |
-| T-9 | Lokale AI produceert schadelijke of foute wijzigingen | Alleen voorstellen, zod-validatie, bevestiging door gebruiker; geen AI-pad naar voortgang of XP |
-| T-10 | Databaselimiet volschrijven | Lengtelimieten, max. 500 actieve quests, max. 14 dagen vooruit materialiseren |
-| T-11 | Meldingen lekken inhoud naar Hub | Alleen titel/tekst met algemene inhoud; geen doeltitels in tellers (`summary_for_me`) |
-| T-12 | Gegevens blijven na verwijderen | `delete_my_data()`; `on delete cascade` op `auth.users` |
+| Dreiging | Maatregel |
+|---|---|
+| Iemand met de publishable key leest of wijzigt data | RLS op elke tabel; `revoke all from anon`; tests per tabel |
+| Ingelogde gebruiker leest data van een ander | RLS met `auth.uid()`; groepsdata alleen via geaggregeerde, opt-in tabellen |
+| XSS steelt tokens | Eigen origin per app; CSP; geen `innerHTML` met gebruikersinvoer in nieuwe apps (React escapet standaard; `dangerouslySetInnerHTML` verboden) |
+| Supply-chain (npm/CDN) | Lockfile, `npm ci`, Dependabot, `npm audit` in CI; geen runtime-CDN in nieuwe apps |
+| Misbruik Edge Function als proxy | JWT verplicht, CORS-allowlist, invoervalidatie, limiet per gebruiker |
+| Dubbele boekingen (punten, XP) | Unieke constraints + idempotente RPC's + onveranderlijk logboek |
+| Verlies van data | Back-ups, export per gebruiker, alleen additieve migraties |
+| Secret in repo | Secret scanning (GitHub, gratis voor publieke repo's); pre-commit check |
+| Kwaadaardig importbestand (PDF, GPX, XLSX) | Parsen in de client met actuele bibliotheken; groottelimiet; geen uitvoerbare inhoud bewaren |
 
-## 3. CSP (`apps/sidequest/public/_headers`, voorstel)
+## 3. Verplichte maatregelen nieuwe apps
+
+### Database
+
+- Elke tabel: `enable row level security` in dezelfde migratie als `create table`.
+- `revoke all on all tables in schema <x> from anon, authenticated;` en daarna minimale `grant`.
+- `security definer`-functies: altijd `set search_path = ''`, volledige objectnamen, eigen `auth.uid()`-controle, `revoke execute from public, anon`.
+- Geen `using (true)` voor `authenticated` of `anon` op persoonlijke data.
+- Supabase Security Advisor (dashboard) na elke migratie: nul waarschuwingen.
+
+### Frontend
+
+Content Security Policy (via `_headers` op Cloudflare Pages):
 
 ```
-/*
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://<project-a>.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
-  Referrer-Policy: strict-origin-when-cross-origin
-  X-Content-Type-Options: nosniff
-  Permissions-Policy: camera=(), microphone=(), geolocation=()
+default-src 'self';
+script-src 'self';
+style-src 'self';
+img-src 'self' data: blob: https://<project-a>.supabase.co;
+connect-src 'self' https://<project-a>.supabase.co wss://<project-a>.supabase.co https://api.open-meteo.com https://world.openfoodfacts.org;
+worker-src 'self' blob:;
+frame-ancestors 'none';
+base-uri 'self';
+form-action 'self';
 ```
 
-Modelhosts voor WebLLM komen pas in `connect-src` bij SQ-5, na licentiecontrole.
+Aanvullend: `Referrer-Policy: strict-origin-when-cross-origin`, `X-Content-Type-Options: nosniff`, `Permissions-Policy` met alleen benodigde rechten (camera voor barcodescan in Sportapp).
+WebLLM downloadt modellen van externe hosts; die hosts worden pas aan `connect-src` toegevoegd als B-8 is goedgekeurd.
 
-## 4. Melden van problemen
+### Secrets
 
-Beveiligingsproblemen niet als openbaar issue melden (de repo is openbaar); rechtstreeks aan de eigenaar.
+| Secret | Waar |
+|---|---|
+| Supabase publishable key | Frontend (is publiek bedoeld) |
+| Supabase service role / secret key | Nergens in repo of frontend; alleen lokaal of als GitHub-secret voor back-up |
+| VAPID private key | Supabase Edge Function secret |
+| API-keys (NED e.d.) | Supabase Edge Function secret |
+| Pooler-URL's A/B (met databasewachtwoord), Storage-S3-sleutels A/B, CI-age-sleutel | GitHub-secrets in **privé** repo `ecosystem-backups` (ADR 0010) |
+
+## 4. Gezondheids- en persoonsgegevens
+
+- Gezondheidsvelden zijn optioneel en minimaal.
+- Nooit in meldingen, logs, auditdetails, analytics of AI-prompts buiten het apparaat.
+- Exports waarschuwen dat het bestand gevoelige gegevens bevat (bestaand gedrag Samen Thuis).
+
+## 5. Afhankelijkheden
+
+- Dependabot (gratis) wekelijks voor npm en GitHub Actions.
+- GitHub Actions: acties pinnen op commit-SHA; `permissions: contents: read` als standaard.
+- `npm audit --audit-level=high` blokkeert merge.
+
+## 6. Back-ups en herstel
+
+Uitgewerkt in [ADR 0010](docs/adr/0010-backup-database-en-opslag.md). Samengevat:
+
+| Wat | Hoe | Frequentie |
+|---|---|---|
+| Database A en B | `supabase db dump` (rollen, schema, data) via session pooler (IPv4) | Wekelijks + vóór elke migratie |
+| Opslag A en B (alle buckets) | Incrementeel downloaden op basis van manifest met SHA-256 (egress sparen) | Wekelijks |
+| Versleuteling | `age`, twee ontvangers: offline sleutel eigenaar + CI-hersteltestsleutel | Altijd, vóór upload |
+| Bewaarplaats | Releases in privé-repo `ecosystem-backups`; 4 wekelijks + 6 maandelijks; Coach max. 6 maanden | — |
+| Automatische hersteltest | Herstellen in lokale Supabase in de runner; rijen, bestanden (SHA-256) en isolatietests controleren | Maandelijks |
+| Handmatige hersteloefening | Met offline sleutel op eigen laptop; vastleggen in `RESTORE_LOG.md` | Elk kwartaal |
+| Per gebruiker | JSON-export in elke app (bestaat in Samen Thuis en Coach) | Op verzoek |
+
+Een databasedump bevat geen Storage-bestanden; daarom aparte opslagback-up. Back-ups nooit als artefact in een publieke repo.
+
+## 7. Melden van een beveiligingsprobleem
+
+Privé melden bij de eigenaar via GitHub Security Advisories van de betreffende repo. Geen publieke issue.
+
+## 8. Incidentprocedure (kort)
+
+1. Getroffen key roteren (Supabase → API keys) of functie uitschakelen.
+2. Betrokken policies dichtzetten (`revoke`).
+3. Logs veiligstellen (Free bewaart maar 1 dag).
+4. Oorzaak vastleggen in `CHANGELOG.md` en een ADR.
+5. Betrokkenen informeren; bij een datalek met persoonsgegevens van derden (Coach): meldplicht beoordelen.
