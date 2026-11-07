@@ -1,6 +1,7 @@
 # SIDEQUEST — analyse, functioneel en technisch ontwerp
 
 Status: **voorgesteld (2026-11-07)**, wacht op goedkeuring. Er is niets gebouwd, gemigreerd of aan bestaande apps gewijzigd.
+Basis: de goedgekeurde architectuur in deze repo ([ARCHITECTURE.md](../../ARCHITECTURE.md), [APP_REGISTRY.md](../../APP_REGISTRY.md), [DATA_OWNERSHIP.md](../../DATA_OWNERSHIP.md), [DATABASE_DESIGN.md](../../DATABASE_DESIGN.md) § 5, [AUTHENTICATION.md](../../AUTHENTICATION.md), [INTEGRATIONS.md](../../INTEGRATIONS.md), ADR 0001–0012) en het Hub-ontwerp ([HUB_DESIGN.md](../hub/HUB_DESIGN.md)).
 Basis: de goedgekeurde architectuur in deze repo ([ARCHITECTURE.md](../../ARCHITECTURE.md), [APP_REGISTRY.md](../../APP_REGISTRY.md), [DATA_OWNERSHIP.md](../../DATA_OWNERSHIP.md), [DATABASE_DESIGN.md](../../DATABASE_DESIGN.md) § 5, [AUTHENTICATION.md](../../AUTHENTICATION.md), [INTEGRATIONS.md](../../INTEGRATIONS.md), ADR 0001–0012), besluitronde 2 in [DECISIONS.md](../../DECISIONS.md) met de voorgestelde [ADR 0013](../adr/0013-app-gebonden-sessies-en-verplichte-totp.md) (app-gebonden sessies, verplichte TOTP) en [ADR 0014](../adr/0014-backuptoegang-zonder-service-key.md), en het Hub-ontwerp ([HUB_DESIGN.md](../hub/HUB_DESIGN.md)).
 
 Dit ontwerp gaat uit van optie C uit ADR 0013. Wordt daar anders besloten (bijv. optie B, aparte accounts per app), dan vervallen of verzwaren de koppelingen in § 7.
@@ -23,6 +24,7 @@ Dit document volgt de opdracht "PROJECT: SIDEQUEST" en geeft per eis aan: past b
 
 | # | Eis | Oordeel | Toelichting |
 |---|---|---|---|
+| 1 | Meerdere gebruikers, eigen profielen | Past | Gedeelde Auth project A. Accounts ontstaan via Samen Thuis of een Hub-uitnodiging; SIDEQUEST krijgt geen registratiescherm (AUTHENTICATION § 3). SIDEQUEST-profiel (`quest.profiles`) bevat alleen app-instellingen; naam en foto komen uit het bestaande profiel. |
 | 1 | Meerdere gebruikers, eigen profielen | Past | Gedeelde Auth project A, met app-gebonden sessies en verplichte TOTP (ADR 0013, voorgesteld): een SIDEQUEST-sessie geeft alleen toegang tot `quest`, en alleen met `aal2`. Accounts ontstaan via Samen Thuis of een Hub-uitnodiging; SIDEQUEST krijgt geen registratiescherm (AUTHENTICATION § 3). SIDEQUEST-profiel (`quest.profiles`) bevat alleen app-instellingen; naam en foto komen uit het bestaande profiel. |
 | 1 | Persoonlijke doelen, privé-uitdagingen | Past | RLS `user_id = auth.uid()`; huisgenoten zien niets (ISO-8). |
 | 1 | Optioneel gedeelde groepen | **Uitbreiding** | Architectuur kent alleen deelnemers per uitdaging. Voorstel: eerst uitnodigen per uitdaging; vaste groepen (`quest.parties`) later. → S-5 |
@@ -371,6 +373,7 @@ Feiten: spaardoelen staan in `public.household_state`, client-side versleuteld; 
 | Optie | Werking | Oordeel |
 |---|---|---|
 | A. Handmatige koppeling | In SIDEQUEST een doel "Vakantie sparen" met meetwijze percentage, deep link naar Samen Thuis; gebruiker werkt het percentage bij of koppelt quests ("maandelijks inleggen") | **Nu.** Geen wijziging in Samen Thuis, geen financiële data in SIDEQUEST |
+| B. Contract I-10 | Samen Thuis (na opt-in) roept `quest.report_external_progress('samen-thuis', <spaardoel-id>, <percentage>)` aan bij openen. Alleen percentage en ID, geen bedragen | **Later**, als losse PR in Samen Thuis na voorstel en akkoord (ADR 0011). Vereist ook consent-scope in Hub |
 | B. Contract I-10 | Samen Thuis (na opt-in) roept `quest.report_external_progress('samen-thuis', <spaardoel-id>, <percentage>)` aan bij openen. Alleen percentage en ID, geen bedragen | **Later**, als losse PR in Samen Thuis na voorstel en akkoord (ADR 0011). Vereist een consent-scope in de Hub én een allowlist-uitzondering in ADR 0013 voor een ongebonden Samen Thuis-sessie; dat verzwakt ISO-17 en is daarom een apart besluit |
 | C. SIDEQUEST leest `household_state` | — | **Afgewezen**: versleuteld, ander schema, schendt ADR 0001 en DATA_OWNERSHIP |
 
@@ -477,6 +480,7 @@ Bij invoering wordt elke dienst opgenomen in API_CATALOG.md en API_LIMITS.md vol
 | `CHANGELOG.md` | `apps/sidequest/` | Per versie (SemVer) |
 | `CLAUDE.md` | `apps/sidequest/` | Verwijst naar root-CLAUDE.md + SIDEQUEST-regels (XP alleen via RPC, AI alleen voorstellen, geen brongegevens kopiëren) |
 
+Daarnaast bij goedkeuring bijwerken in de root: APP_REGISTRY, DATA_OWNERSHIP, INTEGRATIONS (I-10, kalender), DATABASE_DESIGN § 5, DECISIONS (S-besluiten) en ADR's 0017–0021.
 Daarnaast bij goedkeuring bijwerken in de root: APP_REGISTRY, DATA_OWNERSHIP, INTEGRATIONS (I-10, kalender), DATABASE_DESIGN § 5, DECISIONS (S-besluiten) en ADR's met de eerstvolgende vrije nummers (0013 en 0014 zijn in gebruik; de Hub-ADR's krijgen voorrang).
 
 ---
@@ -575,6 +579,11 @@ Tijdsindicatie in vrije tijd; geen toezegging.
 | S-9 | Recurrence in TypeScript én SQL met gedeelde fixtures, of alleen client berekent en RPC valideert | Gedeelde fixtures, beide implementaties (server blijft bron van waarheid) |
 | S-10 | Standaardscoring klassement: verbetering t.o.v. eigen basisniveau; absoluut per uitdaging te kiezen | Ja |
 | S-11 | XP voor zelfgemaakte quests via moeilijkheid (1–5), eigen weging binnen 1–500 | Ja |
+| S-12 | GitHub-toegang: de GitHub-token in deze sessie is ongeldig, en de repo `personal-ecosystem` bestaat nog niet op GitHub (alleen lokaal). Zelfde punt als B-16/H-7 | Jij maakt de repo aan en koppelt GitHub in Claude; ik maak branches en PR's, jij merget |
+| S-13 | Meldingen zonder server-planner (aanmaken bij openen); pg_cron pas na verificatie op Free | Ja |
+| S-14 | Documentatie: 10 bestanden in `apps/sidequest/`, rootdocumenten blijven leidend voor ecosysteemafspraken | Ja |
+
+Ook relevant uit eerdere rondes: **B-13** (restrisico gedeelde authenticatie) vóór SQ-2, en **H-8** (zod, lucide-react).
 | S-12 | GitHub-toegang: de repo `kesga44-jpg/personal-ecosystem` bestaat (openbaar), maar deze sessie heeft nog geen schrijfrecht. Zelfde punt als B-16/H-7 | Koppel de repo in Claude (B-16: tijdelijk, geen commits naar `main`, geen merges); ik maak branches en PR's, jij merget |
 | S-13 | Meldingen zonder server-planner (aanmaken bij openen); pg_cron pas na verificatie op Free | Ja |
 | S-14 | Documentatie: 10 bestanden in `apps/sidequest/`, rootdocumenten blijven leidend voor ecosysteemafspraken | Ja |

@@ -1,5 +1,6 @@
 # Plan H-PR1 — Monorepo-basis en CI
 
+Status: **plan, wacht op goedkeuring**. De PR bestaat nog niet: de repository `personal-ecosystem` en de GitHub-koppeling ontbreken (H-7). Alleen een lokale proefrun in de werkruimte van de AI-assistent is gedaan (§ 7).
 Status: **voorbereid (2026-11-07)**. Besluiten H-PR1-a, -b en -c goedgekeurd; **H-PR1-d en H-PR1-e open** (§ 9). De PR bestaat nog niet: de repository `personal-ecosystem` en de GitHub-koppeling ontbreken (H-7). H-PR1 is lokaal voorbereid als git-branch in de werkruimte van de AI-assistent; reviewpakket met volledige diff, testresultaten, licentiecontrole en audit is apart opgeleverd (§ 11).
 
 ## 1. Doel
@@ -37,6 +38,10 @@ Een lege maar werkende monorepo met vaste werkwijze: npm-workspaces, TypeScript 
 | `.github/workflows/ci.yml` | § 4 | 60 |
 | `.github/dependabot.yml` | npm + GitHub Actions, wekelijks, max. 5 open PR's | 20 |
 | `.github/pull_request_template.md` | Wat, waarom, getest, niet getest, beveiliging, risico's (V-5) | 20 |
+| `THIRD_PARTY_LICENSES.md` | Lijst runtime-afhankelijkheden (nu leeg) + uitleg beleid | 15 |
+| `CHANGELOG.md` | Regel onder [Unreleased] | 3 |
+
+Totaal ± 330 regels exclusief lockfile (richtlijn < 400).
 | `THIRD_PARTY_LICENSES.md` | Lijst runtime-afhankelijkheden (nu leeg) | 10 |
 | `docs/DEPENDENCIES.md` | Versies, waarom geen TypeScript 7, licentiebeleid, onderbouwing per auditmelding (toegevoegd na besluiten) | 85 |
 | `scripts/check-secrets.mjs` + test | Secretcontrole op alle bijgehouden bestanden (toegevoegd na H-PR1-c) | 130 |
@@ -163,6 +168,10 @@ Uitgevoerd in de werkruimte van de AI-assistent met Node 24.22.2 en npm 11.21.2.
 
 | # | Vraag | Aanbeveling |
 |---|---|---|
+| H-PR1-a | Licentiebeleid: runtime alleen MIT, ISC, Apache-2.0, BSD-2/3, 0BSD, BlueOak-1.0.0, CC0-1.0; dev-only daarnaast MPL-2.0, Python-2.0, CC-BY-4.0 | Akkoord. MPL-2.0 is bestandsgebonden copyleft en geldt hier alleen voor ongewijzigd gebruikte buildtools (lightningcss), die niet in de app terechtkomen. Geen juridisch advies |
+| H-PR1-b | Node 24 LTS nu, Node 26 later via aparte PR | Akkoord |
+| H-PR1-c | Repo privé tot F1 de open bevindingen R1, R4 en R7 heeft opgelost | Akkoord. Let op: in een privé-repo onder een persoonlijk account zijn sommige gratis beveiligingsfuncties (secret scanning) mogelijk niet beschikbaar; niet geverifieerd. Alternatief: gitleaks (MIT) als CI-stap in een latere PR |
+| H-PR1-d | Documentatie importeren als aparte H-PR0, of als eerste commit door de eigenaar bij het aanmaken van de repo | H-PR0 als PR, zodat de diff controleerbaar is |
 | H-PR1-a ✅ | Licentiebeleid: runtime alleen MIT, ISC, Apache-2.0, BSD-2/3, 0BSD, BlueOak-1.0.0, CC0-1.0; dev-only daarnaast MPL-2.0, Python-2.0, CC-BY-4.0; runtime en dev afzonderlijk gecontroleerd; onbekende licentie = fout | Akkoord (2026-11-07), alleen voor dev-afhankelijkheden die niet in runtime of distributie komen. Geen juridisch advies |
 | H-PR1-b ✅ | TypeScript 6.0.3 in plaats van 7 (lintbibliotheek ondersteunt `<6.1.0`); vast in lockfile; reden in `docs/DEPENDENCIES.md` | Akkoord (2026-11-07) |
 | H-PR1-e | Node.js 24 LTS nu; Node 26 later via aparte PR | **Open** — aanbeveling: akkoord. In de voorbereiding is 24 gebruikt |
