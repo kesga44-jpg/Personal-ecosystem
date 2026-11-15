@@ -15,7 +15,7 @@ Elke workspace heeft een eigen Vite entrypoint, manifest, icon, service worker e
 
 ## Publieke landingspagina
 
-De GitHub Pages-root gebruikt `index.html` als Nederlandstalige startpagina. App-links staan in `app-urls.js`; laat de URL leeg totdat de app een eigen HTTPS-origin heeft. De pagina houdt Openen uitgeschakeld zolang een URL ontbreekt en weigert ongeldige links of origins die met een andere app worden gedeeld.
+De GitHub Pages-root gebruikt `index.html` als Nederlandstalige startpagina. De vaste links naar Samen Thuis en Coach openen hun bestaande GitHub Pages-pagina's in een nieuw tabblad. Ze delen de GitHub Pages-origin met de landingspagina; er worden geen scripts of gegevens van die apps geladen. Dit verandert de bestaande origin-isolatie niet. Links voor Hub, Sportapp en SIDEQUEST staan in `app-urls.js`; laat de URL leeg totdat de app een eigen HTTPS-origin heeft. De pagina houdt Openen uitgeschakeld zolang een URL ontbreekt en weigert ongeldige links of origins die met een andere nieuwe app of de landingspagina worden gedeeld.
 
 De pagina gebruikt alleen lokale scripts en stylesheets. De Content Security Policy staat in een `meta`-element omdat GitHub Pages geen configureerbare response-headers biedt. Browsers ondersteunen `frame-ancestors` niet vanuit een CSP-meta-element; die headerbescherming kan op GitHub Pages dus niet worden afgedwongen. De pagina laadt geen externe scripts of gegevens.
 
