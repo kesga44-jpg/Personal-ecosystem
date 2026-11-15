@@ -24,7 +24,7 @@ npm run dev:sportapp  # http://localhost:5174
 npm run dev:sidequest # http://localhost:5175
 ```
 
-In de lokale Hub zijn Sportapp en SIDEQUEST gekoppeld aan respectievelijk poort 5174 en 5175. In een deployment kunnen de URL's worden ingesteld met `VITE_SPORTAPP_URL` en `VITE_SIDEQUEST_URL`, of via Hub → Instellingen. Publiceer elk project op een eigen Cloudflare Pages-origin.
+In de lokale Hub zijn Sportapp en SIDEQUEST gekoppeld aan respectievelijk poort 5174 en 5175. In een deployment kunnen de URL's worden ingesteld met `VITE_SPORTAPP_URL` en `VITE_SIDEQUEST_URL`, of via Hub → Instellingen. De drie Cloudflare Workers gebruiken statische assets en elk een eigen origin; zie [DEPLOYMENT.md](DEPLOYMENT.md) voor de buildinstellingen.
 
 ## Verifiëren
 
@@ -35,6 +35,7 @@ npm run build:hub
 npm run build:sportapp
 npm run build:sidequest
 npm run build:all
+npm run check:dist
 npm run test:e2e
 ```
 
