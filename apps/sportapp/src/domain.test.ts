@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculateSportStats, parseGpx, validateSportBackup, type Activity } from './domain';
+import { calculateSportStats, parseGpx, validateSportActivity, validateSportBackup, type Activity } from './domain';
 
 describe('sport domain', () => {
   it('calculates activity count, distance, duration and type distribution from saved records', () => {
@@ -17,7 +17,7 @@ describe('sport domain', () => {
     });
   });
 
-  it('parses GPX route totals and rejects invalid or unsafe XML', () => {
+  it('parses a timestamped GPX route and rejects unsafe or untimed files', () => {
     const gpx = `<?xml version="1.0"?><gpx><trk><name>Morning run</name><trkseg>
       <trkpt lat="52.0" lon="5.0"><time>2026-11-15T08:00:00Z</time></trkpt>
       <trkpt lat="52.001" lon="5.0"><time>2026-11-15T08:10:00Z</time></trkpt>
@@ -27,10 +27,114 @@ describe('sport domain', () => {
       name: 'Morning run',
       startedAt: '2026-11-15T08:00:00.000Z',
       durationMinutes: 10,
-      distanceKm: 0.11
+      distanceKm: 0.1112
     });
     expect(() => parseGpx('<!DOCTYPE x><gpx/>', 'bad.gpx')).toThrow('onveilige');
     expect(() => parseGpx('<gpx/>', 'empty.gpx')).toThrow('minimaal twee punten');
+    expect(() => parseGpx(
+      '<gpx><trkseg><trkpt lat="52" lon="5"/><trkpt lat="52.001" lon="5"/></trkseg></gpx>',
+      'untimed.gpx'
+    )).toThrow('tijdstempels');
+    expect(() => parseGpx(
+      '<gpx><trkseg><trkpt lat="52" lon="5"><time>2026-11-15T08:00:00Z</time></trkpt><trkpt lat="52.001" lon="5"/></trkseg></gpx>',
+      'single-time.gpx'
+    )).toThrow('tijdstempels');
+  });
+
+  it('rejects missing, empty and out-of-range GPX coordinates', () => {
+    for (const [coordinates, message] of [
+      ['lon="5"', 'latitude'],
+      ['lat="52"', 'latitude'],
+      ['lat="" lon="5"', 'latitude'],
+      ['lat="52" lon=""', 'latitude'],
+      ['lat="91" lon="5"', 'ongeldige GPS'],
+      ['lat="52" lon="181"', 'ongeldige GPS'],
+      ['lat="0x1" lon="5"', 'ongeldige GPS']
+    ]) {
+      const gpx = `<gpx><trkseg><trkpt ${coordinates}><time>2026-11-15T08:00:00Z</time></trkpt><trkpt lat="52.001" lon="5"><time>2026-11-15T08:10:00Z</time></trkpt></trkseg></gpx>`;
+      expect(() => parseGpx(gpx, 'invalid-coordinate.gpx')).toThrow(message);
+    }
+  });
+
+  it('adds segment distances without connecting separate segments', () => {
+    const gpx = `<gpx>
+      <trk><trkseg>
+        <trkpt lat="52" lon="5"><time>2026-11-15T08:00:00Z</time></trkpt>
+        <trkpt lat="52.001" lon="5"><time>2026-11-15T08:10:00Z</time></trkpt>
+      </trkseg></trk>
+      <trk><trkseg>
+        <trkpt lat="53" lon="6"><time>2026-11-15T08:20:00Z</time></trkpt>
+        <trkpt lat="53.001" lon="6"><time>2026-11-15T08:30:00Z</time></trkpt>
+      </trkseg></trk>
+    </gpx>`;
+    expect(parseGpx(gpx, 'segments.gpx')).toMatchObject({
+      startedAt: '2026-11-15T08:00:00.000Z',
+      durationMinutes: 30,
+      distanceKm: 0.2224
+    });
+  });
+
+  it('keeps short positive GPX distances valid for backup export', () => {
+    const preview = parseGpx(
+      '<gpx><trkseg><trkpt lat="52" lon="5"><time>2026-11-15T08:00:00Z</time></trkpt><trkpt lat="52.00001" lon="5"><time>2026-11-15T08:01:00Z</time></trkpt></trkseg></gpx>',
+      'short.gpx'
+    );
+    const activity: Activity = {
+      id: 'b'.repeat(64),
+      startedAt: preview.startedAt,
+      type: 'run',
+      durationMinutes: preview.durationMinutes,
+      distanceKm: preview.distanceKm,
+      notes: `GPX-import: ${preview.name}`,
+      sourceFingerprint: 'b'.repeat(64)
+    };
+
+    expect(preview.distanceKm).toBeGreaterThan(0);
+    expect(() => validateSportBackup({
+      stores: { activities: [activity], trainings: [] }
+    })).not.toThrow();
+  });
+
+  it('rejects invalid and backwards GPX timestamps', () => {
+    const gpx = `<gpx><trkseg>
+      <trkpt lat="52" lon="5"><time>2026-11-15T08:10:00Z</time></trkpt>
+      <trkpt lat="52.001" lon="5"><time>2026-11-15T08:00:00Z</time></trkpt>
+    </trkseg></gpx>`;
+    expect(() => parseGpx(gpx, 'backwards.gpx')).toThrow('oplopende volgorde');
+    expect(() => parseGpx(
+      '<gpx><trkseg><trkpt lat="52" lon="5"><time>not-a-date</time></trkpt><trkpt lat="52.001" lon="5"><time>2026-11-15T08:10:00Z</time></trkpt></trkseg></gpx>',
+      'invalid-time.gpx'
+    )).toThrow('ongeldige datum');
+    expect(() => parseGpx(
+      '<gpx><trkseg><trkpt lat="52" lon="5"><time>2026-02-30T08:00:00Z</time></trkpt><trkpt lat="52.001" lon="5"><time>2026-11-15T08:10:00Z</time></trkpt></trkseg></gpx>',
+      'invalid-calendar-date.gpx'
+    )).toThrow('ongeldige datum');
+    expect(() => parseGpx(
+      '<gpx><trkseg><trkpt lat="52" lon="5"><time>2026-11-15T08:00:00Z</time></trkpt><trkpt lat="52.001" lon="5"><time>2026-11-15T08:00:00Z</time></trkpt></trkseg></gpx>',
+      'zero-duration.gpx'
+    )).toThrow('positieve tijdsduur');
+  });
+
+  it('applies the same validation to manually created and imported activities', () => {
+    const valid: Activity = {
+      id: 'gpx-id',
+      startedAt: '2026-11-15T08:00:00.000Z',
+      type: 'run',
+      durationMinutes: 10,
+      distanceKm: 1.2,
+      notes: 'GPX-import'
+    };
+    expect(() => validateSportActivity(valid)).not.toThrow();
+    expect(() => validateSportBackup({
+      stores: {
+        activities: [{ ...valid, sourceFingerprint: 'a'.repeat(64) }],
+        trainings: []
+      }
+    })).not.toThrow();
+    expect(() => validateSportActivity({ ...valid, durationMinutes: 0 })).toThrow('ongeldige activiteitgegevens');
+    expect(() => validateSportBackup({
+      stores: { activities: [{ ...valid, durationMinutes: 0 }], trainings: [] }
+    })).toThrow('ongeldige activiteitgegevens');
   });
 
   it('rejects invalid sport records before a backup can replace existing data', () => {

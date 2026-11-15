@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { BrowserRouter, Link, Route, Routes, useNavigate } from 'react-router-dom';
 import { downloadJson, formatDate, formatDuration, newId } from '@ecosystem/core';
-import { openLocalDatabase, type LocalDatabase } from '@ecosystem/storage';
+import { openLocalDatabase, parseLocalBackup, runStorageAction as performStorageAction, type LocalDatabase } from '@ecosystem/storage';
 import {
   AppFrame,
   Button,
@@ -20,6 +20,7 @@ import {
   fingerprintFile,
   parseGpx,
   sportLabels,
+  validateSportActivity,
   validateSportBackup,
   type Activity,
   type GpxPreview,
@@ -91,14 +92,16 @@ function App() {
   }, []);
 
   async function runStorageAction(action: (db: LocalDatabase) => Promise<void>) {
-    if (!database) return;
-    setError('');
-    try {
-      await action(database);
-      await refresh(database);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'De wijziging kon niet worden opgeslagen.');
+    if (!database) {
+      setError('Lokale opslag is niet beschikbaar.');
+      return false;
     }
+    return performStorageAction(
+      () => action(database),
+      () => refresh(database),
+      setError,
+      'De wijziging kon niet worden opgeslagen.'
+    );
   }
 
   if (loading) return <LoadingState />;
@@ -251,8 +254,8 @@ function ActivitiesPage({
   error
 }: {
   activities: Activity[];
-  onSave: (activity: Activity) => Promise<void>;
-  onDelete: (id: string) => Promise<void>;
+  onSave: (activity: Activity) => Promise<boolean>;
+  onDelete: (id: string) => Promise<boolean>;
   error: string;
 }) {
   const [editing, setEditing] = useState<Activity | null>(null);
@@ -268,7 +271,6 @@ function ActivitiesPage({
   async function readGpx(file?: File) {
     if (!file) return;
     setImportError('');
-    setPreview(null);
     try {
       if (!file.name.toLowerCase().endsWith('.gpx')) throw new Error('Kies een bestand met de extensie .gpx.');
       if (file.size > 10 * 1024 * 1024) throw new Error('GPX-bestanden mogen maximaal 10 MB groot zijn.');
@@ -284,15 +286,23 @@ function ActivitiesPage({
 
   async function saveGpx() {
     if (!preview) return;
-    await onSave({
-      id: newId(),
+    const activity: Activity = {
+      id: preview.fingerprint,
       startedAt: preview.details.startedAt,
       type: 'run',
       durationMinutes: preview.details.durationMinutes,
       distanceKm: preview.details.distanceKm,
       notes: `GPX-import: ${preview.details.name}`,
       sourceFingerprint: preview.fingerprint
-    });
+    };
+    try {
+      validateSportActivity(activity);
+    } catch (cause) {
+      setImportError(cause instanceof Error ? cause.message : 'GPX-activiteit bevat ongeldige gegevens.');
+      return;
+    }
+    const saved = await onSave(activity);
+    if (!saved) return;
     setPreview(null);
     setImportError('');
   }
@@ -335,9 +345,12 @@ function ActivitiesPage({
           initial={editing}
           onCancel={() => { setShowForm(false); setEditing(null); }}
           onSave={async (activity) => {
-            await onSave(activity);
-            setShowForm(false);
-            setEditing(null);
+            const saved = await onSave(activity);
+            if (saved) {
+              setShowForm(false);
+              setEditing(null);
+            }
+            return saved;
           }}
         />
       )}
@@ -381,8 +394,9 @@ function ActivityForm({
 }: {
   initial: Activity | null;
   onCancel: () => void;
-  onSave: (activity: Activity) => Promise<void>;
+  onSave: (activity: Activity) => Promise<boolean>;
 }) {
+  const [id] = useState(() => initial?.id ?? newId());
   const [type, setType] = useState<SportType>(initial?.type ?? 'run');
   const [startedAt, setStartedAt] = useState(localDateTime(initial?.startedAt));
   const [duration, setDuration] = useState(initial?.durationMinutes.toString() ?? '');
@@ -403,8 +417,8 @@ function ActivityForm({
       setFormError('Afstand moet een positief getal zijn.');
       return;
     }
-    await onSave({
-      id: initial?.id ?? newId(),
+    const activity: Activity = {
+      id,
       startedAt: new Date(startedAt).toISOString(),
       type,
       durationMinutes,
@@ -412,8 +426,13 @@ function ActivityForm({
       notes: notes.trim().slice(0, 1000),
       ...(initial?.sourceFingerprint ? { sourceFingerprint: initial.sourceFingerprint } : {}),
       ...(initial?.trainingId ? { trainingId: initial.trainingId } : {})
-    });
-    navigate('/activiteiten');
+    };
+    try {
+      validateSportActivity(activity);
+      if (await onSave(activity)) navigate('/activiteiten');
+    } catch (cause) {
+      setFormError(cause instanceof Error ? cause.message : 'Activiteit bevat ongeldige gegevens.');
+    }
   }
 
   return (
@@ -458,9 +477,9 @@ function TrainingsPage({
   error
 }: {
   trainings: Training[];
-  onSave: (training: Training) => Promise<void>;
-  onLog: (training: Training) => Promise<void>;
-  onDelete: (id: string) => Promise<void>;
+  onSave: (training: Training) => Promise<boolean>;
+  onLog: (training: Training) => Promise<boolean>;
+  onDelete: (id: string) => Promise<boolean>;
   error: string;
 }) {
   const [showForm, setShowForm] = useState(false);
@@ -481,9 +500,12 @@ function TrainingsPage({
           initial={editing}
           onCancel={() => { setShowForm(false); setEditing(null); }}
           onSave={async (training) => {
-            await onSave(training);
-            setShowForm(false);
-            setEditing(null);
+            const saved = await onSave(training);
+            if (saved) {
+              setShowForm(false);
+              setEditing(null);
+            }
+            return saved;
           }}
         />
       )}
@@ -523,8 +545,9 @@ function TrainingForm({
 }: {
   initial: Training | null;
   onCancel: () => void;
-  onSave: (training: Training) => Promise<void>;
+  onSave: (training: Training) => Promise<boolean>;
 }) {
+  const [id] = useState(() => initial?.id ?? newId());
   const [title, setTitle] = useState(initial?.title ?? '');
   const [category, setCategory] = useState(initial?.category ?? '');
   const [goal, setGoal] = useState(initial?.goal ?? '');
@@ -539,7 +562,7 @@ function TrainingForm({
       return;
     }
     await onSave({
-      id: initial?.id ?? newId(),
+      id,
       title: title.trim().slice(0, 100),
       category: category.trim().slice(0, 60),
       goal: goal.trim().slice(0, 500),
@@ -573,7 +596,7 @@ function SettingsPage({
   error
 }: {
   database: LocalDatabase;
-  onRestore: (data: unknown) => Promise<void>;
+  onRestore: (data: unknown) => Promise<boolean>;
   error: string;
 }) {
   const [storageSize, setStorageSize] = useState<number | null>(null);
@@ -592,7 +615,7 @@ function SettingsPage({
     setRestoreError('');
     try {
       if (file.size > 25 * 1024 * 1024) throw new Error('Back-ups mogen maximaal 25 MB groot zijn.');
-      const data: unknown = JSON.parse(await file.text());
+      const data = parseLocalBackup(await file.text());
       database.validateRestore(data);
       validateSportBackup(data);
       if (!window.confirm('Herstel vervangt alle bestaande Sportapp-gegevens op dit apparaat. Je huidige gegevens worden overschreven. Doorgaan?')) return;

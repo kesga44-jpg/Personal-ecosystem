@@ -104,4 +104,10 @@ describe('SIDEQUEST rules', () => {
       }
     })).toThrow('ongeldige questgegevens');
   });
+
+  it('accepts an empty app-scoped backup', () => {
+    expect(() => validateSidequestBackup({
+      stores: { goals: [], habits: [], habitChecks: [], quests: [] }
+    })).not.toThrow();
+  });
 });

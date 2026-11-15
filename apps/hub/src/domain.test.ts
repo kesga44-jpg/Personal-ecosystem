@@ -10,6 +10,16 @@ describe('Hub backup and URL validation', () => {
     expect(isSafeUrl('https://user:pass@example.com')).toBe(false);
   });
 
+  it('accepts empty and valid Hub backups', () => {
+    expect(() => validateHubBackup({ stores: { launches: [], shortcuts: [] } })).not.toThrow();
+    expect(() => validateHubBackup({
+      stores: {
+        launches: [{ id: 'launch', appId: 'sportapp', appName: 'Sportapp', openedAt: '2026-11-15T00:00:00Z' }],
+        shortcuts: [{ id: 'shortcut', title: 'Example', url: 'https://example.com/', createdAt: '2026-11-15T00:00:00Z' }]
+      }
+    })).not.toThrow();
+  });
+
   it('rejects backup links with unsafe schemes before restore', () => {
     expect(() => validateHubBackup({
       stores: {

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { BrowserRouter, Link, Route, Routes, useNavigate } from 'react-router-dom';
 import { downloadJson, formatDate, newId } from '@ecosystem/core';
-import { openLocalDatabase, type LocalDatabase } from '@ecosystem/storage';
+import { openLocalDatabase, parseLocalBackup, runStorageAction as performStorageAction, type LocalDatabase } from '@ecosystem/storage';
 import {
   AppFrame,
   Button,
@@ -100,14 +100,16 @@ function App() {
   }, []);
 
   async function runStorageAction(action: (db: LocalDatabase) => Promise<void>) {
-    if (!database) return;
-    setError('');
-    try {
-      await action(database);
-      await refresh(database);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'De wijziging kon niet worden opgeslagen.');
+    if (!database) {
+      setError('Lokale opslag is niet beschikbaar.');
+      return false;
     }
+    return performStorageAction(
+      () => action(database),
+      () => refresh(database),
+      setError,
+      'De wijziging kon niet worden opgeslagen.'
+    );
   }
 
   if (loading) return <LoadingState />;
@@ -312,8 +314,8 @@ function GoalsPage({
   error
 }: {
   goals: Goal[];
-  onSave: (goal: Goal) => Promise<void>;
-  onArchive: (goal: Goal) => Promise<void>;
+  onSave: (goal: Goal) => Promise<boolean>;
+  onArchive: (goal: Goal) => Promise<boolean>;
   error: string;
 }) {
   const [showForm, setShowForm] = useState(false);
@@ -327,7 +329,14 @@ function GoalsPage({
         <GoalForm
           initial={editing}
           onCancel={() => { setShowForm(false); setEditing(null); }}
-          onSave={async (goal) => { await onSave(goal); setShowForm(false); setEditing(null); }}
+          onSave={async (goal) => {
+            const saved = await onSave(goal);
+            if (saved) {
+              setShowForm(false);
+              setEditing(null);
+            }
+            return saved;
+          }}
         />
       )}
       <Card title="Jouw doelen">
@@ -370,8 +379,9 @@ function GoalForm({
 }: {
   initial: Goal | null;
   onCancel: () => void;
-  onSave: (goal: Goal) => Promise<void>;
+  onSave: (goal: Goal) => Promise<boolean>;
 }) {
+  const [id] = useState(() => initial?.id ?? newId());
   const [title, setTitle] = useState(initial?.title ?? '');
   const [category, setCategory] = useState(initial?.category ?? '');
   const [targetDate, setTargetDate] = useState(initial?.targetDate ?? '');
@@ -388,8 +398,8 @@ function GoalForm({
       if (!title.trim() || !category.trim() || !targetDate || targetDate < todayKey()) {
         throw new Error('Vul een titel, categorie en deadline vandaag of later in.');
       }
-      await onSave({
-        id: initial?.id ?? newId(),
+      if (!await onSave({
+        id,
         title: title.trim().slice(0, 100),
         category: category.trim().slice(0, 60),
         targetDate,
@@ -397,7 +407,7 @@ function GoalForm({
         progress: progressValue,
         status: progressValue >= targetValue ? 'completed' : 'active',
         createdAt: initial?.createdAt ?? new Date().toISOString()
-      });
+      })) return;
     } catch (cause) {
       setFormError(cause instanceof Error ? cause.message : 'Controleer je doelgegevens.');
     }
@@ -430,9 +440,9 @@ function HabitsPage({
 }: {
   habits: Habit[];
   checks: HabitCheck[];
-  onSave: (habit: Habit) => Promise<void>;
-  onArchive: (habit: Habit) => Promise<void>;
-  onCheck: (habit: Habit) => Promise<void>;
+  onSave: (habit: Habit) => Promise<boolean>;
+  onArchive: (habit: Habit) => Promise<boolean>;
+  onCheck: (habit: Habit) => Promise<boolean>;
   error: string;
 }) {
   const [showForm, setShowForm] = useState(false);
@@ -443,7 +453,14 @@ function HabitsPage({
     <div className="stack">
       {error && <ErrorBanner message={error} />}
       <PageHeader eyebrow="Elke stap telt" title="Gewoontes" description="Kies dagelijks of wekelijks. Een dag missen verlaagt je punten niet." action={<Button onClick={() => { setEditing(null); setShowForm(true); }}>＋ Gewoonte maken</Button>} />
-      {showForm && <HabitForm initial={editing} onCancel={() => { setShowForm(false); setEditing(null); }} onSave={async (habit) => { await onSave(habit); setShowForm(false); setEditing(null); }} />}
+      {showForm && <HabitForm initial={editing} onCancel={() => { setShowForm(false); setEditing(null); }} onSave={async (habit) => {
+        const saved = await onSave(habit);
+        if (saved) {
+          setShowForm(false);
+          setEditing(null);
+        }
+        return saved;
+      }} />}
       <Card title="Actieve gewoontes">
         {active.length ? (
           <div className="list">
@@ -491,8 +508,9 @@ function HabitForm({
 }: {
   initial: Habit | null;
   onCancel: () => void;
-  onSave: (habit: Habit) => Promise<void>;
+  onSave: (habit: Habit) => Promise<boolean>;
 }) {
+  const [id] = useState(() => initial?.id ?? newId());
   const [title, setTitle] = useState(initial?.title ?? '');
   const [frequency, setFrequency] = useState<Habit['frequency']>(initial?.frequency ?? 'daily');
   const [weeklyTarget, setWeeklyTarget] = useState(initial?.weeklyTarget.toString() ?? '3');
@@ -505,14 +523,14 @@ function HabitForm({
       setFormError('Vul een naam in en kies een weekdoel van 1 tot 7.');
       return;
     }
-    await onSave({
-      id: initial?.id ?? newId(),
+    if (!await onSave({
+      id,
       title: title.trim().slice(0, 100),
       frequency,
       weeklyTarget: frequency === 'daily' ? 1 : count,
       archived: false,
       createdAt: initial?.createdAt ?? new Date().toISOString()
-    });
+    })) return;
   }
 
   return (
@@ -537,8 +555,8 @@ function QuestsPage({
   error
 }: {
   quests: Quest[];
-  onSave: (quest: Quest) => Promise<void>;
-  onProgress: (quest: Quest) => Promise<void>;
+  onSave: (quest: Quest) => Promise<boolean>;
+  onProgress: (quest: Quest) => Promise<boolean>;
   error: string;
 }) {
   const [showForm, setShowForm] = useState(false);
@@ -548,7 +566,11 @@ function QuestsPage({
     <div className="stack">
       {error && <ErrorBanner message={error} />}
       <PageHeader eyebrow="Uitdagingen, op jouw tempo" title="Quests" description="Maak een uitdaging met een helder doel en transparante puntenbeloning." action={<Button onClick={() => setShowForm(true)}>＋ Quest maken</Button>} />
-      {showForm && <QuestForm onCancel={() => setShowForm(false)} onSave={async (quest) => { await onSave(quest); setShowForm(false); }} />}
+      {showForm && <QuestForm onCancel={() => setShowForm(false)} onSave={async (quest) => {
+        const saved = await onSave(quest);
+        if (saved) setShowForm(false);
+        return saved;
+      }} />}
       <Card title="Actieve quests">
         {active.length ? (
           <div className="list">
@@ -579,7 +601,8 @@ function QuestsPage({
   );
 }
 
-function QuestForm({ onCancel, onSave }: { onCancel: () => void; onSave: (quest: Quest) => Promise<void> }) {
+function QuestForm({ onCancel, onSave }: { onCancel: () => void; onSave: (quest: Quest) => Promise<boolean> }) {
+  const [id] = useState(() => newId());
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [target, setTarget] = useState('3');
@@ -595,8 +618,8 @@ function QuestForm({ onCancel, onSave }: { onCancel: () => void; onSave: (quest:
       if (!title.trim() || !Number.isInteger(targetValue) || !Number.isInteger(rewardPoints) || rewardPoints < 0 || rewardPoints > 10000) {
         throw new Error('Vul een naam, geheel aantal stappen en beloning van 0 tot 10.000 punten in.');
       }
-      await onSave({
-        id: newId(),
+      if (!await onSave({
+        id,
         title: title.trim().slice(0, 100),
         description: description.trim().slice(0, 500),
         target: targetValue,
@@ -605,7 +628,7 @@ function QuestForm({ onCancel, onSave }: { onCancel: () => void; onSave: (quest:
         status: 'active',
         completedAt: null,
         createdAt: new Date().toISOString()
-      });
+      })) return;
     } catch (cause) {
       setFormError(cause instanceof Error ? cause.message : 'Controleer de questgegevens.');
     }
@@ -634,7 +657,7 @@ function SettingsPage({
   error
 }: {
   database: LocalDatabase;
-  onRestore: (data: unknown) => Promise<void>;
+  onRestore: (data: unknown) => Promise<boolean>;
   error: string;
 }) {
   const [storageSize, setStorageSize] = useState<number | null>(null);
@@ -649,7 +672,7 @@ function SettingsPage({
     setRestoreError('');
     try {
       if (file.size > 25 * 1024 * 1024) throw new Error('Back-ups mogen maximaal 25 MB groot zijn.');
-      const data: unknown = JSON.parse(await file.text());
+      const data = parseLocalBackup(await file.text());
       database.validateRestore(data);
       validateSidequestBackup(data);
       if (!window.confirm('Herstel vervangt alle bestaande SIDEQUEST-gegevens op dit apparaat. Je huidige gegevens worden overschreven. Doorgaan?')) return;

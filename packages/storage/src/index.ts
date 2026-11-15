@@ -30,6 +30,37 @@ export interface LocalDatabase {
   close(): void;
 }
 
+export function parseLocalBackup(content: string): unknown {
+  try {
+    return JSON.parse(content) as unknown;
+  } catch {
+    throw new Error('Back-upbestand bevat geen geldige JSON.');
+  }
+}
+
+export async function runStorageAction(
+  action: () => Promise<void>,
+  refresh: () => Promise<void>,
+  setError: (message: string) => void,
+  failureMessage: string
+): Promise<boolean> {
+  setError('');
+  try {
+    await action();
+  } catch (cause) {
+    const details = cause instanceof Error && cause.message.trim() ? cause.message : failureMessage;
+    setError(`Opslaan mislukt: ${details}`);
+    return false;
+  }
+
+  try {
+    await refresh();
+  } catch {
+    setError('De gegevens zijn opgeslagen, maar het overzicht kon niet worden bijgewerkt. Vernieuw de pagina om de gegevens opnieuw te laden.');
+  }
+  return true;
+}
+
 function requestResult<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);

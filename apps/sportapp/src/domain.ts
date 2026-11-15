@@ -43,6 +43,31 @@ export const sportLabels: Record<SportType, string> = {
   other: 'Overig'
 };
 
+export function validateSportActivity(value: unknown): asserts value is Activity {
+  if (!value || typeof value !== 'object') {
+    throw new Error('Sportapp bevat een ongeldige activiteit.');
+  }
+  const activity = value as Partial<Activity>;
+  if (
+    typeof activity.id !== 'string' ||
+    !activity.id.trim() ||
+    activity.id.length > 200 ||
+    typeof activity.startedAt !== 'string' ||
+    !Number.isFinite(Date.parse(activity.startedAt)) ||
+    typeof activity.type !== 'string' ||
+    !Object.hasOwn(sportLabels, activity.type) ||
+    !Number.isInteger(activity.durationMinutes) ||
+    activity.durationMinutes! < 1 ||
+    !(activity.distanceKm === null || (typeof activity.distanceKm === 'number' && Number.isFinite(activity.distanceKm) && activity.distanceKm > 0)) ||
+    typeof activity.notes !== 'string' ||
+    activity.notes.length > 1000 ||
+    (activity.sourceFingerprint !== undefined && !/^[a-f0-9]{64}$/.test(activity.sourceFingerprint)) ||
+    (activity.trainingId !== undefined && (typeof activity.trainingId !== 'string' || !activity.trainingId.trim()))
+  ) {
+    throw new Error('Sportapp-back-up bevat ongeldige activiteitgegevens.');
+  }
+}
+
 export function validateSportBackup(input: unknown): void {
   if (!input || typeof input !== 'object' || !('stores' in input) || !input.stores || typeof input.stores !== 'object') {
     throw new Error('Sportapp-back-up heeft geen geldige gegevenssectie.');
@@ -54,25 +79,10 @@ export function validateSportBackup(input: unknown): void {
     throw new Error('Sportapp-back-up mist activiteiten of trainingen.');
   }
 
-  const types = new Set(Object.keys(sportLabels));
   const fingerprints = new Set<string>();
   for (const value of activities) {
-    if (!value || typeof value !== 'object') throw new Error('Sportapp-back-up bevat een ongeldige activiteit.');
-    const activity = value as Partial<Activity>;
-    if (
-      typeof activity.startedAt !== 'string' ||
-      !Number.isFinite(Date.parse(activity.startedAt)) ||
-      typeof activity.type !== 'string' ||
-      !types.has(activity.type) ||
-      !Number.isInteger(activity.durationMinutes) ||
-      activity.durationMinutes! < 1 ||
-      !(activity.distanceKm === null || (typeof activity.distanceKm === 'number' && Number.isFinite(activity.distanceKm) && activity.distanceKm > 0)) ||
-      typeof activity.notes !== 'string' ||
-      activity.notes.length > 1000 ||
-      (activity.sourceFingerprint !== undefined && !/^[a-f0-9]{64}$/.test(activity.sourceFingerprint))
-    ) {
-      throw new Error('Sportapp-back-up bevat ongeldige activiteitgegevens.');
-    }
+    validateSportActivity(value);
+    const activity = value as Activity;
     if (activity.sourceFingerprint) {
       if (fingerprints.has(activity.sourceFingerprint)) throw new Error('Sportapp-back-up bevat dubbele GPX-importen.');
       fingerprints.add(activity.sourceFingerprint);
@@ -124,6 +134,35 @@ function haversineDistanceKm(lat1: number, lon1: number, lat2: number, lon2: num
   return 2 * earthRadiusKm * Math.asin(Math.sqrt(a));
 }
 
+function parseGpxTimestamp(value: string): number {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-](\d{2}):(\d{2}))$/.exec(value);
+  if (!match) return Number.NaN;
+
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, zone, zoneHourText, zoneMinuteText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const hour = Number(hourText);
+  const minute = Number(minuteText);
+  const second = Number(secondText);
+  const daysInMonth = month >= 1 && month <= 12
+    ? new Date(Date.UTC(year, month, 0)).getUTCDate()
+    : 0;
+  const zoneHour = Number(zoneHourText ?? 0);
+  const zoneMinute = Number(zoneMinuteText ?? 0);
+  if (
+    day < 1 ||
+    day > daysInMonth ||
+    hour > 23 ||
+    minute > 59 ||
+    second > 59 ||
+    (zone !== 'Z' && (zoneHour > 23 || zoneMinute > 59))
+  ) {
+    return Number.NaN;
+  }
+  return Date.parse(value);
+}
+
 export function parseGpx(content: string, fileName: string): GpxPreview {
   if (!content.trim() || /<!DOCTYPE|<!ENTITY/i.test(content)) {
     throw new Error('Dit GPX-bestand is leeg of bevat onveilige XML-instructies.');
@@ -150,31 +189,49 @@ export function parseGpx(content: string, fileName: string): GpxPreview {
   for (const group of pointGroups) {
     let previous: { lat: number; lon: number } | null = null;
     for (const point of group) {
-      const lat = Number(point.getAttribute('lat'));
-      const lon = Number(point.getAttribute('lon'));
+      const latText = point.getAttribute('lat');
+      const lonText = point.getAttribute('lon');
+      if (!latText?.trim() || !lonText?.trim()) {
+        throw new Error('GPX bevat een routepunt zonder latitude of longitude.');
+      }
+      if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(latText.trim()) ||
+          !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(lonText.trim())) {
+        throw new Error('GPX bevat ongeldige GPS-coördinaten.');
+      }
+      const lat = Number(latText);
+      const lon = Number(lonText);
       if (!Number.isFinite(lat) || Math.abs(lat) > 90 || !Number.isFinite(lon) || Math.abs(lon) > 180) {
         throw new Error('GPX bevat ongeldige GPS-coördinaten.');
       }
       const timeText = point.getElementsByTagNameNS('*', 'time')[0]?.textContent?.trim();
-      const time = timeText ? Date.parse(timeText) : Number.NaN;
-      if (timeText && !Number.isFinite(time)) throw new Error('GPX bevat een ongeldige datum.');
-      if (Number.isFinite(time)) times.push(time);
+      if (timeText) {
+        const time = parseGpxTimestamp(timeText);
+        if (!Number.isFinite(time)) throw new Error('GPX bevat een ongeldige datum.');
+        if (times.length && time < times[times.length - 1]!) {
+          throw new Error('GPX-tijdstempels staan niet in oplopende volgorde.');
+        }
+        times.push(time);
+      }
       if (previous) distanceKm += haversineDistanceKm(previous.lat, previous.lon, lat, lon);
       previous = { lat, lon };
     }
   }
   if (distanceKm <= 0) throw new Error('GPX-route heeft geen meetbare afstand.');
+  if (times.length < 2) {
+    throw new Error('GPX bevat onvoldoende bruikbare tijdstempels om een geldige duur te bepalen.');
+  }
 
-  const durationMinutes =
-    times.length >= 2 ? Math.max(1, Math.round((Math.max(...times) - Math.min(...times)) / 60_000)) : 0;
-  const firstTime = times.length ? new Date(Math.min(...times)).toISOString() : new Date().toISOString();
+  const elapsed = times[times.length - 1]! - times[0]!;
+  if (elapsed <= 0) throw new Error('GPX bevat geen geldige, positieve tijdsduur.');
+  const durationMinutes = Math.max(1, Math.round(elapsed / 60_000));
+  const firstTime = new Date(times[0]!).toISOString();
   const name = document.getElementsByTagNameNS('*', 'name')[0]?.textContent?.trim() || fileName.replace(/\.gpx$/i, '');
 
   return {
     name: name.slice(0, 100),
     startedAt: firstTime,
     durationMinutes,
-    distanceKm: Math.round(distanceKm * 100) / 100
+    distanceKm: Math.round(distanceKm * 10_000) / 10_000
   };
 }
 

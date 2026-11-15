@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { BrowserRouter, Link, Route, Routes, useNavigate } from 'react-router-dom';
 import { downloadJson, formatDate, newId } from '@ecosystem/core';
-import { openLocalDatabase, type LocalDatabase } from '@ecosystem/storage';
+import { openLocalDatabase, parseLocalBackup, runStorageAction as performStorageAction, type LocalDatabase } from '@ecosystem/storage';
 import {
   AppFrame,
   Button,
@@ -133,34 +133,38 @@ function App() {
     }
     const appName = appId === 'sportapp' ? 'Sportapp' : 'SIDEQUEST';
     window.open(url, '_blank', 'noopener,noreferrer');
-    try {
-      await database.put('launches', { id: newId(), appId, appName, openedAt: new Date().toISOString() });
-      await refresh(database);
-    } catch (cause) {
-      setError(cause instanceof Error ? `App gestart, maar activiteit kon niet worden vastgelegd: ${cause.message}` : 'App gestart, maar activiteit kon niet worden vastgelegd.');
-    }
+    await performStorageAction(
+      () => database.put('launches', { id: newId(), appId, appName, openedAt: new Date().toISOString() }),
+      () => refresh(database),
+      setError,
+      'App gestart, maar activiteit kon niet worden vastgelegd.'
+    );
   }
 
-  async function addShortcut(shortcut: Shortcut) {
-    if (!database) return;
-    setError('');
-    try {
-      await database.put('shortcuts', shortcut);
-      await refresh(database);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Snelkoppeling kon niet worden opgeslagen.');
-      throw cause;
+  async function addShortcut(shortcut: Shortcut): Promise<boolean> {
+    if (!database) {
+      setError('Lokale opslag is niet beschikbaar.');
+      return false;
     }
+    return performStorageAction(
+      () => database.put('shortcuts', shortcut),
+      () => refresh(database),
+      setError,
+      'De snelkoppeling kon niet worden opgeslagen.'
+    );
   }
 
-  async function removeShortcut(id: string) {
-    if (!database) return;
-    try {
-      await database.remove('shortcuts', id);
-      await refresh(database);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Snelkoppeling kon niet worden verwijderd.');
+  async function removeShortcut(id: string): Promise<boolean> {
+    if (!database) {
+      setError('Lokale opslag is niet beschikbaar.');
+      return false;
     }
+    return performStorageAction(
+      () => database.remove('shortcuts', id),
+      () => refresh(database),
+      setError,
+      'De snelkoppeling kon niet worden verwijderd.'
+    );
   }
 
   if (loading) return <LoadingState />;
@@ -171,8 +175,8 @@ function App() {
       <AppFrame appName="Personal Ecosystem" appMark="P" navigation={navigation}>
         <Routes>
           <Route path="/" element={<HomePage preferences={preferences} shortcuts={shortcuts} launches={launches} storageLabel={storageLabel} error={error} onOpen={openApp} />} />
-          <Route path="/apps/sportapp" element={<AppInfoPage appId="sportapp" appName="Sportapp" url={preferences.sportUrl} onOpen={openApp} />} />
-          <Route path="/apps/sidequest" element={<AppInfoPage appId="sidequest" appName="SIDEQUEST" url={preferences.sidequestUrl} onOpen={openApp} />} />
+          <Route path="/apps/sportapp" element={<AppInfoPage appId="sportapp" appName="Sportapp" url={preferences.sportUrl} onOpen={openApp} error={error} />} />
+          <Route path="/apps/sidequest" element={<AppInfoPage appId="sidequest" appName="SIDEQUEST" url={preferences.sidequestUrl} onOpen={openApp} error={error} />} />
           <Route path="/activiteiten" element={<ActivityPage launches={launches} />} />
           <Route
             path="/instellingen"
@@ -284,18 +288,21 @@ function AppInfoPage({
   appId,
   appName,
   url,
-  onOpen
+  onOpen,
+  error
 }: {
   appId: 'sportapp' | 'sidequest';
   appName: string;
   url: string;
   onOpen: (appId: 'sportapp' | 'sidequest') => Promise<void>;
+  error: string;
 }) {
   const description = appId === 'sportapp'
     ? 'Persoonlijke sportactiviteiten, trainingsplannen, GPX-import en statistieken.'
     : 'Persoonlijke doelen, dagelijkse of wekelijkse gewoontes, quests en voortgang.';
   return (
     <div className="stack">
+      {error && <ErrorBanner message={error} />}
       <PageHeader eyebrow="Applicatie" title={appName} description={description} />
       <Card title="Applicatiegegevens">
         <div className="list">
@@ -341,8 +348,8 @@ function SettingsPage({
   shortcuts: Shortcut[];
   error: string;
   onSavePreferences: (preferences: HubPreferences) => Promise<void>;
-  onAddShortcut: (shortcut: Shortcut) => Promise<void>;
-  onRemoveShortcut: (id: string) => Promise<void>;
+  onAddShortcut: (shortcut: Shortcut) => Promise<boolean>;
+  onRemoveShortcut: (id: string) => Promise<boolean>;
 }) {
   const [name, setName] = useState(preferences.displayName);
   const [sportUrl, setSportUrl] = useState(preferences.sportUrl);
@@ -350,6 +357,7 @@ function SettingsPage({
   const [theme, setTheme] = useState<HubPreferences['theme']>(preferences.theme);
   const [shortcutTitle, setShortcutTitle] = useState('');
   const [shortcutUrl, setShortcutUrl] = useState('');
+  const [shortcutId, setShortcutId] = useState(() => newId());
   const [formError, setFormError] = useState('');
   const [storageBytes, setStorageBytes] = useState<number | null>(null);
   const [records, setRecords] = useState<number | null>(null);
@@ -391,9 +399,10 @@ function SettingsPage({
       return;
     }
     try {
-      await onAddShortcut({ id: newId(), title: shortcutTitle.trim().slice(0, 60), url: normalized.url, createdAt: new Date().toISOString() });
+      if (!await onAddShortcut({ id: shortcutId, title: shortcutTitle.trim().slice(0, 60), url: normalized.url, createdAt: new Date().toISOString() })) return;
       setShortcutTitle('');
       setShortcutUrl('');
+      setShortcutId(newId());
     } catch {
       setFormError('De snelkoppeling kon niet worden opgeslagen.');
     }
@@ -462,7 +471,7 @@ function SettingsPage({
             setBackupError('');
             try {
               if (file.size > 25 * 1024 * 1024) throw new Error('Back-ups mogen maximaal 25 MB groot zijn.');
-              const data: unknown = JSON.parse(await file.text());
+              const data = parseLocalBackup(await file.text());
               database.validateRestore(data);
               validateHubBackup(data);
               if (!window.confirm('Herstel vervangt alle bestaande Hub-appopeningen en snelkoppelingen op dit apparaat. Doorgaan?')) return;
