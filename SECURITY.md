@@ -113,3 +113,11 @@ Privé melden bij de eigenaar via GitHub Security Advisories van de betreffende 
 3. Logs veiligstellen (Free bewaart maar 1 dag).
 4. Oorzaak vastleggen in `CHANGELOG.md` en een ADR.
 5. Betrokkenen informeren; bij een datalek met persoonsgegevens van derden (Coach): meldplicht beoordelen.
+
+## 9. Huidige local-first apps
+
+- De drie nieuwe apps gebruiken eigen IndexedDB-databases en alleen appgebonden export/herstel. Herstel valideert app-id, schema-versie en records vóór bevestiging.
+- Browseropslag is niet versleuteld; geen eigen cryptografisch protocol is toegevoegd. Lokale device-toegang en onbeveiligde backupbestanden zijn resterende risico's.
+- GPX XML wordt lokaal geparseerd; DTD/entity-instructies, ongeldige coordinaten, niet-GPX-bestanden, bestanden boven 10 MB en dubbele SHA-256-fingerprints worden geweigerd. Ruwe trackpunten worden niet opgeslagen.
+- Cloudflare `_headers` bevat een self-only scriptpolicy en geen externe `connect-src`; `_redirects` levert uitsluitend de SPA-shell. Er is geen runtime API of automatische upload.
+- `npm audit --omit=dev` had 0 bevindingen op 15-11-2026. Zie [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) voor de resterende moderate build-only adviezen.

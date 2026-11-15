@@ -1,56 +1,52 @@
 # Personal Ecosystem
 
-Centrale architectuur, documentatie en afspraken voor het persoonlijke software-ecosysteem van Kees.
+Een local-first platform met drie zelfstandig te bouwen webapps:
 
-Status: **architectuur goedgekeurd (2026-11-07)**, met voorwaarden. Er is nog niets gebouwd of gemigreerd. Volgende stap: fase F1, PR voor PR na goedkeuring. Zie [DECISIONS.md](DECISIONS.md).
+| App | Eigenaar van | Starten | Productiebuild |
+|---|---|---|---|
+| Hub | Startpagina, app-links, eigen snelkoppelingen en app-openingen | `npm run dev:hub` | `npm run build:hub` |
+| Sportapp | Sportactiviteiten, trainingsplannen, GPX-samenvattingen en statistieken | `npm run dev:sportapp` | `npm run build:sportapp` |
+| SIDEQUEST | Persoonlijke doelen, gewoontes, quests, punten en streaks | `npm run dev:sidequest` | `npm run build:sidequest` |
 
-Licentie: bewust geen (alle rechten voorbehouden), herbeoordeling gepland — [ADR 0012](docs/adr/0012-licentie.md).
+## Vereisten
 
-## Apps
+- Node.js 24 LTS of nieuwer en npm 11.
+- Een moderne browser met IndexedDB. Internet of een account is niet nodig na installatie.
 
-| App | Status | Waarvoor |
-|---|---|---|
-| **Samen Thuis** | Bestaand | Huishouden, financiën, beleggen, boodschappen, voorraad, woning, gezamenlijke planning |
-| **Coach** | Bestaand | Voetbalteambeheer: spelers, aanwezigheid, trainingen, wedstrijden, tactiek |
-| **Dashboard Hub** | Gepland | Startpunt: apps, meldingen, account en toegang, technische status |
-| **Sportapp** | Gepland | Persoonlijke sport, training, voeding, lichaam, herstel, groepen, lokale AI-coach |
-| **SIDEQUEST** | Gepland | Persoonlijke doelen, gewoontes, uitdagingen, quests, gamification |
+```sh
+npm ci
+npm run dev:hub       # http://localhost:5173
+npm run dev:sportapp  # http://localhost:5174
+npm run dev:sidequest # http://localhost:5175
+```
 
-Volledige definitie: [APP_REGISTRY.md](APP_REGISTRY.md).
+In de lokale Hub zijn Sportapp en SIDEQUEST gekoppeld aan respectievelijk poort 5174 en 5175. In een deployment kunnen de URL's worden ingesteld met `VITE_SPORTAPP_URL` en `VITE_SIDEQUEST_URL`, of via Hub → Instellingen. Publiceer elk project op een eigen Cloudflare Pages-origin.
 
-## In één oogopslag
+## Verifiëren
 
-- Bestaande apps blijven zoals ze zijn (vanilla JS); nieuwe apps in React + TypeScript + Tailwind.
-- Twee Supabase-projecten (gratis limiet): A = Samen Thuis + nieuwe persoonlijke apps (eigen schema per app), B = Coach.
-- Eén account voor de persoonlijke apps; Coach houdt eigen accounts.
-- RLS op alle data; koppelingen alleen via contracten met toestemming.
-- Alleen gratis diensten; AI lokaal (WebLLM/Ollama).
+```sh
+npm test
+npm run typecheck
+npm run build:hub
+npm run build:sportapp
+npm run build:sidequest
+npm run build:all
+npm run test:e2e
+```
+
+## Gegevens en privacy
+
+De Hub, Sportapp en SIDEQUEST gebruiken aparte IndexedDB-databases en app-ID's. Hub bewaart alleen Hub-instellingen, eigen snelkoppelingen en app-openingen; Sport- en SIDEQUEST-data worden niet ingelezen of gekopieerd. Iedere app biedt een eigen gevalideerde JSON-back-up en herstel na bevestiging. Er is geen automatische upload. Supabase/Auth zijn bewust niet aangesloten: de lokale applicaties zijn volledig bruikbaar zonder accounts, en de bestaande beveiligings- en autorisatiepoort voor gedeelde auth is nog open.
+
+GPX-bestanden worden lokaal geparseerd. Alleen route-naam, starttijd, duur, afstand en een SHA-256-vingerafdruk voor dubbele import worden bewaard; GPS-punten niet. FIT- en TCX-import, accountgebonden synchronisatie en groepsfuncties zijn niet geïmplementeerd.
 
 ## Documentatie
 
-| Document | Inhoud |
-|---|---|
-| [REPO_ANALYSIS.md](REPO_ANALYSIS.md) | Fase 1–3: analyse bestaande repo's, risico's, hergebruik |
-| [DECISIONS.md](DECISIONS.md) | Genomen en openstaande besluiten |
-| [docs/adr/](docs/adr/) | Architecture Decision Records (0001–0019) |
-| [docs/hub/HUB_DESIGN.md](docs/hub/HUB_DESIGN.md) | Ontwerp Dashboard Hub (in principe goedgekeurd) en [plan H-PR1](docs/hub/H-PR1_PLAN.md) |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Doelarchitectuur en kernkeuzes |
-| [APP_REGISTRY.md](APP_REGISTRY.md) | Welke apps bestaan en waarvoor |
-| [DATA_OWNERSHIP.md](DATA_OWNERSHIP.md) | Wie is eigenaar van welke gegevens |
-| [DATABASE_DESIGN.md](DATABASE_DESIGN.md) | Schema's, tabellen, RLS, conventies |
-| [AUTHENTICATION.md](AUTHENTICATION.md) | Accounts, rollen, gedeelde accountlaag |
-| [SECURITY.md](SECURITY.md) | Bevindingen, maatregelen, back-ups |
-| [INTEGRATIONS.md](INTEGRATIONS.md) | Koppelingen tussen apps |
-| [API_CATALOG.md](API_CATALOG.md) | Alle externe diensten en bibliotheken |
-| [API_LIMITS.md](API_LIMITS.md) | Limieten en bewaking |
-| [TESTING.md](TESTING.md) | Teststrategie en CI |
-| [DEPLOYMENT.md](DEPLOYMENT.md) | Uitrol en databasewijzigingen |
-| [DEVELOPMENT_ROADMAP.md](DEVELOPMENT_ROADMAP.md) | Gefaseerde planning |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Werkwijze voor mensen en AI-assistenten |
-| [CLAUDE.md](CLAUDE.md) | Vaste regels voor AI-codeassistenten |
-| [CHANGELOG.md](CHANGELOG.md) | Wijzigingen |
+- [Audit en implementatiestatus](docs/implementation-audit.md)
+- [Architectuur](ARCHITECTURE.md) en [gegevensdomeinen](DATA_OWNERSHIP.md)
+- [Deployment en tests](DEPLOYMENT.md), [API-/afhankelijkhedeninventaris](API_CATALOG.md), [licenties/audit](THIRD_PARTY_LICENSES.md)
+- [Supabase-readiness](docs/supabase-readiness.md)
+- [Roadmap](DEVELOPMENT_ROADMAP.md)
+- [SIDEQUEST-gebruikershandleiding](apps/sidequest/docs/USER_GUIDE.md)
 
-## Bestaande repositories
-
-- <https://github.com/kesga44-jpg/Samen-thuis>
-- <https://github.com/kesga44-jpg/Coach>
+Samen Thuis en Coach blijven ongewijzigd en blijven eigenaar van hun bestaande functies en gegevens.
