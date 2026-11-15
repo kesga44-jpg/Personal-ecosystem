@@ -1,7 +1,7 @@
 # App-register
 
-Enige bron van waarheid voor welke apps bestaan. Een app die hier niet staat, wordt niet gebouwd.
-De Hub leest een machineleesbare kopie hiervan (`apps/hub/src/registry.json`) die in CI tegen dit document wordt gecontroleerd.
+Register en eigenaargrenzen voor het ecosysteem. Een app die hier niet staat, wordt niet gebouwd.
+De huidige Hub gebruikt nog een vaste lokale appnavigatie; automatische register-sync en controle in CI zijn vervolgwerk.
 
 ## Overzicht
 
@@ -9,9 +9,11 @@ De Hub leest een machineleesbare kopie hiervan (`apps/hub/src/registry.json`) di
 |---|---|---|---|---|---|---|
 | `samen-thuis` | Samen Thuis | Bestaand, in productie | `kesga44-jpg/Samen-thuis` | A | `public` + buckets `sport-training`, `profile-photos` | Huishouden, financiën, **beleggen**, boodschappen, voorraad, woning, planning, huishoud-challenges en beloningen |
 | `coach` | Coach | Bestaand, in productie | `kesga44-jpg/Coach` | B | `coach_data_auth` + bucket `vc2` | Clubs, teams, spelers, aanwezigheid, trainingen, wedstrijden, teamstatistieken, tactiek |
-| `hub` | Dashboard Hub | Gepland | `personal-ecosystem/apps/hub` | A | `hub` | App-overzicht, meldingen, account- en toegangsbeheer, technische status |
-| `sport` | Sportapp | Gepland | `personal-ecosystem/apps/sport` | A | `sport` + bucket `sport-media` | Persoonlijke sport, training, voeding, lichaamsanalyse, herstel, groepen, klassementen, persoonlijke AI-coach |
-| `sidequest` | SIDEQUEST | Gepland | `personal-ecosystem/apps/sidequest` | A | `quest` | Persoonlijke doelen, gewoontes, uitdagingen, quests, gamification, voortgang |
+| `hub` | Dashboard Hub | MVP lokaal | `kesga44-jpg/Personal-ecosystem/apps/hub` | Niet aangesloten | Lokale IndexedDB | App-links, eigen snelkoppelingen, Hub-appopeningen en lokale status |
+| `sport` | Sportapp | MVP lokaal | `kesga44-jpg/Personal-ecosystem/apps/sportapp` | Niet aangesloten | Lokale IndexedDB | Activiteiten, trainingsplannen, GPX-samenvattingen en basisstatistieken |
+| `sidequest` | SIDEQUEST | MVP lokaal | `kesga44-jpg/Personal-ecosystem/apps/sidequest` | Niet aangesloten | Lokale IndexedDB | Persoonlijke doelen, gewoontes, streaks, quests en reproduceerbare punten |
+
+De schema's `hub`, `sport`, `quest` en eventuele buckets zijn alleen ontworpen; er is geen runtime Supabase-verbinding/migratie in de MVP. Toekomstige functies uit de volgende paragrafen blijven roadmap, niet geïmplementeerde functionaliteit.
 
 **Niet in het register, en niet gepland:** Warehouse OS.
 

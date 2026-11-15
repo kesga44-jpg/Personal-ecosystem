@@ -6,7 +6,11 @@ Formaat: [Keep a Changelog](https://keepachangelog.com/nl/1.1.0/). Versies volge
 
 ### Toegevoegd
 
-- Ontwerp: analyse, functioneel en technisch ontwerp, roadmap en besluiten S-1 t/m S-14 (`docs/sidequest/SIDEQUEST_DESIGN.md`). Status: voorgesteld.
-- Eerste versie van de app-documentatie: README, ARCHITECTURE, DATABASE_DESIGN, API_CATALOG, SECURITY, TESTING, DEPLOYMENT, USER_GUIDE, CHANGELOG, CLAUDE.
+- Local-first React-app met eigen IndexedDB-namespace, dashboard, doelen, dagelijkse/wekelijkse gewoontes, streaks en quests.
+- Transparante, deterministische puntenberekening: 5 punten per habitcheck en ingestelde reward bij voltooiing.
+- Appgebonden export/herstel en eigen PWA-build.
 
-Geen code, geen migraties, geen deployment.
+### Beperkingen
+
+- Geen login, cloudsync, Supabase-migratie, groepen, AI of productie-deployment.
+- Het ontwerp in `docs/sidequest/SIDEQUEST_DESIGN.md` blijft richtinggevend voor vervolgfasen; alleen de beschreven MVP-functies zijn nu aanwezig.

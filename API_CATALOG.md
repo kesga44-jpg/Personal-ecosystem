@@ -82,3 +82,23 @@ Regel: geen bibliotheken van een CDN in nieuwe apps; alles via npm, gebundeld en
 4. Privacy: welke gegevens verlaten het apparaat? Nooit gezondheidsgegevens.
 5. Limieten in [API_LIMITS.md](API_LIMITS.md); uitvalalternatief bepaald.
 6. Keys alleen als Supabase-secret of GitHub-secret, nooit in frontend of repo.
+
+## 7. Werkende MVP: integratie-inventaris
+
+De drie apps in deze repository gebruiken nu geen externe API. Een lege status betekent niet dat een dienst is geconfigureerd of getest. Privacyrisico's hieronder gelden alleen als een integratie later expliciet wordt toegevoegd.
+
+| API/dienst | Applicatie | Functie | Voordeel | Gratis account nodig? | API-key nodig? | Privacyrisico | Alternatief |
+|---|---|---|---|---|---|---|---|
+| IndexedDB (browser) | Hub, Sportapp, SIDEQUEST | Lokale opslag, export en herstel | Geen account/netwerk; domeinen per database gescheiden | Nee | Nee | Apparaatverlies of browserdata wissen; lokale data niet versleuteld | Appgebonden JSON-back-up |
+| GPX (ingebouwde XML/SHA-256 APIs) | Sportapp | Lokale route-samenvatting en dubbele-importcontrole | Geen parserdependency, upload of account | Nee | Nee | GPS-data is gevoelig, maar punten verlaten de browser niet en worden niet opgeslagen | Handmatige activiteit |
+| `fit-file-parser` 6.2.9 (kandidaat, niet gebruikt) | Sportapp | FIT-bestand lokaal parsen | MIT; ArrayBuffer/browser-documentatie in README; npm-registry versie/licentie/modified gecontroleerd 15-11-2026 | Nee | Nee | FIT bevat GPS- en gezondheidsdata; client-side parsing vereist | GPX / handmatige registratie |
+| `tcx-js` 1.0.1 (niet aanbevolen) | Sportapp | TCX/XML-parsing | MIT | Nee | Nee | Bestanden kunnen GPS-/gezondheidsdata bevatten | Browser `DOMParser` met DTD/entity-afwijzing of handmatige registratie |
+| Supabase Auth/Database/Storage (niet geconfigureerd) | Hub, Sportapp, SIDEQUEST | Optionele accountauth en synchronisatie, schema's `hub`/`sport`/`quest` | Bestaande architectuur beoogt gedeelde accounts | Ja, gratis project (geen nieuw project in deze MVP) | Publishable key voor client; nooit service-role key | Upload persoonlijke data; vereist RLS/isolatiebewijs en expliciete consent | Lokale modus en appgebonden back-up |
+| Open-Meteo (niet geïntegreerd) | Sportapp, mogelijk later | Weer bij buitenactiviteit | Geen account of key voor niet-commercieel gebruik volgens bestaande catalogus | Nee | Nee | Locatie-/verzoekmetadata naar externe dienst | Weer niet tonen |
+| Open Food Facts (niet geïntegreerd) | Sportapp | Voedingsproductinfo | Open databron | Nee | Nee | Barcode/productverzoek naar externe dienst; geen gezondheidsprofiel meesturen | Handmatige invoer |
+| RDW / CBS / PDOK (niet geïntegreerd) | Geen nieuwe appfunctie vastgesteld | Open Nederlandse datasets | Geen account/key voorzien in bestaande catalogus | Nee | Nee | Verzoekmetadata | Lokale handmatige invoer |
+| Frankfurter (niet geïntegreerd) | Geen | Geen concrete MVP-functie | Niet nodig | Nee | Nee | Geen | Niet integreren zonder concrete valutafunctie |
+| Sportlink (niet geïntegreerd) | Geen | Geen geverifieerde rechtmatige toegang vastgesteld | Niet nodig | Onbekend | Onbekend | Mogelijke account-/teamdata | Geen koppeling |
+| Ollama / WebLLM (niet geïntegreerd) | Geen | Optionele lokale AI, later | Kernfuncties werken regelgebaseerd zonder AI | Nee | Nee | Modeldownloads/devicecapaciteit; geen externe AI-API gebruikt | Regels en lokale berekeningen |
+
+`fit-file-parser` is kandidaat voor een volgende aparte import-PR; afhankelijkheden/licentie/onderhoud zijn hier gedocumenteerd, niet als runtime-dependency toegevoegd. `tcx-js` heeft volgens de npm-registry geen recente publicatie (2022), daarom is er geen TCX-dependency opgenomen. Verifieer voorwaarden en browsergedrag opnieuw bij implementatie. Geen API-rate-limits van toepassing op de huidige MVP omdat er geen netwerk-API wordt aangeroepen.

@@ -7,6 +7,16 @@ Twee soorten eigendom:
 
 ## 1. Bron van waarheid per gegevensdomein
 
+### Huidige implementatie in deze monorepo
+
+| App | Lokale bron van waarheid | Wat de Hub leest |
+|---|---|---|
+| Hub | IndexedDB `personal-ecosystem-hub`; kleine weergave-/URL-voorkeuren in localStorage | Eigen appopeningen en snelkoppelingen |
+| Sportapp | IndexedDB `personal-ecosystem-sport` | Niets; geen training- of statistiekkopie |
+| SIDEQUEST | IndexedDB `personal-ecosystem-sidequest` | Niets; geen doelen, checks, punten of streakkopie |
+
+Deze lokale databases vervangen of lezen de bestaande opslag van Samen Thuis/Coach niet. Er is geen automatische upload. De tabellen/schema's hieronder zijn de gewenste toekomstige gedeelde backend en zijn niet aangemaakt.
+
 | Domein | Eigenaar-app | Opslag | Lezers buiten eigenaar |
 |---|---|---|---|
 | Huishouden, taken, routines, planning | Samen Thuis | `public.household_state` (versleuteld) | Geen |

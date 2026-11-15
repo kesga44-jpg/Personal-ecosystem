@@ -1,72 +1,65 @@
 # Deployment
 
-## 1. Omgevingen
+## Lokale ontwikkeling
 
-| Omgeving | Frontend | Database | Doel |
-|---|---|---|---|
-| Lokaal | `npm run dev` per app | Supabase CLI (`supabase start`, Docker) of lokale PostgreSQL | Ontwikkelen, tests |
-| Preview | Cloudflare Pages preview per PR | **Lokale/geseede** data of project A met testaccounts — nooit echte data aanpassen | Review |
-| Productie | Cloudflare Pages (`main`) | Project A | Gebruik |
-
-Er is geen apart stagingproject: Supabase Free staat maar 2 projecten toe en beide zijn in gebruik. Daarom zwaar leunen op lokale Supabase en tests.
-
-Samen Thuis en Coach houden hun huidige werkwijze (GitHub Pages, beta-repo voor Samen Thuis volgens `INSTALLATIE_BETA.md`).
-
-## 2. Frontend deployen (nieuwe apps)
-
-1. PR naar `main` → CI groen → review → merge.
-2. Cloudflare Pages bouwt per app met eigen build-commando en root:
-
-| Project | Root | Build | Output |
-|---|---|---|---|
-| `hub` | `/` | `npm ci && npm run build -w apps/hub` | `apps/hub/dist` |
-| `sport` | `/` | `npm ci && npm run build -w apps/sport` | `apps/sport/dist` |
-| `sidequest` | `/` | `npm ci && npm run build -w apps/sidequest` | `apps/sidequest/dist` |
-
-3. Build watch paths per project (`apps/<app>/**`, `packages/**`) zodat alleen geraakte apps opnieuw bouwen.
-4. Omgevingsvariabelen: alleen `VITE_SUPABASE_URL` en `VITE_SUPABASE_PUBLISHABLE_KEY`.
-5. Terugdraaien: in Cloudflare Pages een eerdere deployment activeren.
-
-Alternatief (als B-5 = GitHub Pages): deploy via `actions/deploy-pages` per app-repo.
-
-## 3. Database wijzigen (project A)
-
-Niets uitvoeren zonder akkoord. Procedure per migratie:
-
-1. Migratie + rollback + tests in PR; CI groen.
-2. Controleer dat de versie niet botst met `Samen-thuis/supabase/migrations`.
-3. Draai de back-upworkflow (database + opslag, [ADR 0010](docs/adr/0010-backup-database-en-opslag.md)) en wacht op een geslaagde hersteltest van precies die back-up.
-3a. Voeg het groene isolatierapport (ISO-1 t/m ISO-11, [ADR 0001](docs/adr/0001-supabase-project-a-schema-isolatie.md)) toe aan de PR; ISO-12 volgt na uitvoering.
-4. Bekijk de huidige migratiestatus: `supabase migration list --linked`. Samen Thuis voert migraties tot nu toe uit via de SQL Editor; de CLI-geschiedenis kan dus leeg of onvolledig zijn. **Gebruik `supabase db push` pas als die geschiedenis is uitgezocht**; tot dan wordt de migratie handmatig in de SQL Editor uitgevoerd, net als bij Samen Thuis.
-5. Uitvoeren buiten gebruikstijden.
-6. Supabase Security Advisor controleren (ISO-12) en export bij de PR voegen.
-7. Rooktest met testaccount.
-8. Vastleggen in [CHANGELOG.md](CHANGELOG.md).
-
-Rollback: het rollbackbestand verwijdert alleen eigen objecten. Data die al is geschreven gaat daarbij verloren; daarom eerst de export.
-
-Eenmalige configuratie (na akkoord): schema's `hub`, `sport`, `quest` toevoegen aan *Exposed schemas* in project A.
-
-## 4. Edge Functions
+Vereist Node.js 24 LTS of nieuwer en npm 11:
 
 ```sh
-supabase functions deploy <naam>          # JWT-verificatie AAN (standaard)
-supabase secrets set NAAM=waarde
+npm ci
+npm run dev:hub        # localhost:5173
+npm run dev:sportapp   # localhost:5174
+npm run dev:sidequest  # localhost:5175
 ```
 
-`--no-verify-jwt` is verboden voor nieuwe functies.
+Elke workspace heeft een eigen Vite entrypoint, manifest, icon, service worker en build. Routes gebruiken root-base `/`; `_redirects` levert de app-shell voor rechtstreekse SPA-routes. `npm run build:all` maakt alle drie `dist/`-mappen. Er zijn geen secrets of Supabase-variabelen nodig om te bouwen.
 
-## 5. Versiebeheer
+## Cloudflare Pages
 
-- Semantic Versioning per app (`apps/<app>/package.json`).
-- Versie zichtbaar in de app (Instellingen) en gemeld aan `hub.app_heartbeats`.
-- Service worker: nieuwe versie wordt pas actief na bevestiging door gebruiker ("Nieuwe versie beschikbaar — vernieuwen"), zodat lopende invoer niet verloren gaat.
+Maak drie Pages-projecten aan die alle naar deze repository verwijzen; publicatie wordt niet door deze wijziging gestart.
 
-## 6. Checklist vóór productie
+| Pages-project | Root directory | Build command | Build output directory | Eigen Pages-config |
+|---|---|---|---|---|
+| `personal-ecosystem-hub` | `/` | `npm ci && npm run build:hub` | `apps/hub/dist` | `apps/hub/wrangler.jsonc` |
+| `personal-ecosystem-sportapp` | `/` | `npm ci && npm run build:sportapp` | `apps/sportapp/dist` | `apps/sportapp/wrangler.jsonc` |
+| `personal-ecosystem-sidequest` | `/` | `npm ci && npm run build:sidequest` | `apps/sidequest/dist` | `apps/sidequest/wrangler.jsonc` |
 
-- [ ] CI groen, inclusief RLS-tests
-- [ ] CHANGELOG bijgewerkt
-- [ ] Geen nieuwe externe host zonder update van CSP en [API_CATALOG.md](API_CATALOG.md)
-- [ ] Getest op telefoon, tablet en laptop
-- [ ] Offline-start getest
-- [ ] Export gemaakt bij databasewijziging
+Gebruik per project watch paths voor de bijbehorende `apps/<app>/**` plus `packages/**`. Gebruik eigen origins, niet subpaden op één origin. `_redirects` bevat de SPA-fallback; `_headers` bevat basisheaders/CSP. De service worker precachet alleen gegenereerde app-shellbestanden; er is geen runtime cache voor persoonlijke gegevens.
+
+Stel na het aanmaken van de daadwerkelijke Pages-projectnamen de URL's in via Hub → Instellingen of via `VITE_SPORTAPP_URL` en `VITE_SIDEQUEST_URL` in de Hub-build. Laat variabelen leeg wanneer de lokale URLs volstaan. `VITE_*`-waarden zijn publiek; plaats er nooit geheimen in. De apps gebruiken momenteel geen Supabase-client, authentificatie, keys of netwerk-API's.
+
+Deploy met Cloudflare Pages UI of vanuit de repository na installatie van Wrangler volgens de eigen Cloudflare-accountconfiguratie, bijvoorbeeld:
+
+```sh
+npx wrangler pages deploy apps/hub/dist --project-name personal-ecosystem-hub
+npx wrangler pages deploy apps/sportapp/dist --project-name personal-ecosystem-sportapp
+npx wrangler pages deploy apps/sidequest/dist --project-name personal-ecosystem-sidequest
+```
+
+Deze voorbeelden publiceren alleen wanneer je ze zelf uitvoert. Geen productie- of previewdeploy is door deze PR gestart. De account/projectnamen zijn nog niet geverifieerd.
+
+## PWA en browsergrenzen
+
+- Hub, Sportapp en SIDEQUEST hebben ieder een eigen manifest en updatebare service worker.
+- Browserinstellingen bieden installatieprompt op ondersteunde browsers. Op iOS/iPadOS gebruik je Safari → Deel → Zet op beginscherm; push en WebGPU zijn niet nodig.
+- Alleen de statische shell wordt gecachet. IndexedDB-data en backups vallen buiten de service-worker-cache.
+- Browseropslag is niet versleuteld; apparaatbeveiliging en een veilige back-uplocatie blijven nodig.
+- De apps zijn niet op fysieke iOS-/Android-apparaten getest in deze wijziging. Safari kan IndexedDB/PWA-opslag opruimen; maak regelmatig exports.
+
+## Supabase/database
+
+Niets is gekoppeld of gemigreerd. Er zijn geen SQL-migraties, productieclients of secrets. De bestaande schema's `hub`, `sport`, `quest` blijven een ontwerp totdat ADR 0013/AUTH- en ISO-isolatiepoorten zijn gehaald, een herstelbare backup is geverifieerd en er afzonderlijk expliciet akkoord is. Productiedata wordt niet benaderd.
+
+## Checks vóór een toekomstige release
+
+```sh
+npm run typecheck
+npm test
+npm run build:all
+npm run test:e2e
+```
+
+- [ ] Echte afzonderlijke Pages-projecten en app-URL's geconfigureerd
+- [ ] Offline herstart en updateprompt op desktop en Android gecontroleerd
+- [ ] PWA-installatie/gegevensbehoud op iOS/iPadOS fysiek gecontroleerd
+- [ ] Gebruiker heeft per app een export en getest herstelbestand
+- [ ] Geen Supabase-migratie zonder aparte goedkeuring, hersteltest en isolatierapport

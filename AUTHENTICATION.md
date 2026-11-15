@@ -89,3 +89,7 @@ Autorisatie gebeurt **altijd in de database** (RLS en RPC-controles). De UI verb
 | Ecosysteem-admin | — | Nee | Nee | — | Nee | Nee | Nee |
 | `anon` | Nee | Nee | Nee | Nee | Nee | Nee (na fase-1-fix R1) | Nee |
 | SIDEQUEST (app) namens gebruiker | `activity_events` met consent | Nee | — | — | — | — | — |
+
+## 8. Huidige MVP-status nieuwe apps
+
+Hub, Sportapp en SIDEQUEST hebben geen accountflow, Supabase-client, auth token of remote databaseverbinding. Ze starten in lokale modus en vragen geen registratie. De paragrafen hierboven beschrijven de toekomstige architectuur; authenticatie en dataovergang blijven geblokkeerd totdat de voorwaarden uit ADR 0013 en de roadmap zijn getest en afzonderlijk goedgekeurd.

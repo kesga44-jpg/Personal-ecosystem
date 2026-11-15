@@ -1,140 +1,23 @@
-# Ontwikkelroadmap
+# Vervolgroadmap Personal Ecosystem
 
-Elke fase start pas na akkoord op de vorige, met één uitzondering: F2 mag parallel aan F1 lopen (besluit H-1, 2026-11-07), uitsluitend voor de nieuwe Hub en de nieuwe monorepo. Elke fase heeft meetbare eindcriteria.
-Volgorde: eerst de bestaande apps veilig, dan het fundament, dan pas nieuwe functionaliteit.
+## Status na de applicatie-MVP
 
-```mermaid
-gantt
-  dateFormat YYYY-MM
-  axisFormat %b %Y
-  section Fundament
-  F0 Ontwerp en akkoord           :f0, 2026-11, 1M
-  F1 Veiligheid bestaande apps    :f1, after f0, 1M
-  F2 Monorepo en Hub MVP          :f2, after f0, 1M
-  section Nieuwe apps
-  F3 Hub accounts en meldingen    :f3, after f1 f2, 1M
-  F4 Sportapp volledig functioneel :f4, after f3, 3M
-  F4b Poort G-SPORT               :f4b, after f4, 1M
-  F5 SIDEQUEST MVP                :f5, after f3, 1M
-  F6 Koppelingen, groepen, AI     :f6, after f5, 2M
-  section Samen Thuis
-  F7 Beleggen in Samen Thuis      :f7, after f3, 2M
-```
+De huidige PR levert drie afzonderlijke, lokaal werkende apps met IndexedDB, back-up/herstel, GPX-import en basis-PWA. Geen Supabase-migratie, accountmigratie, externe API of productie-deployment is uitgevoerd. Fasen zijn zelfstandige vervolg-PR's; productie- en databasehandelingen vereisen afzonderlijk akkoord.
 
-De tijdsindicatie gaat uit van werken in vrije tijd met AI-assistenten; het is geen toezegging.
+| Fase | Doel en concrete functies | Afhankelijkheden / API's | Account / sleutel | Risico's | Tests | Acceptatiecriteria |
+|---|---|---|---|---|---|---|
+| **1. Applicatiefundament en werkende MVP — geleverd** | Hub, Sportapp en SIDEQUEST; eigen routes, domeinmodellen en build; activiteiten, trainingsplannen, doelen, gewoontes, quests, punten | React, TypeScript, Vite, Tailwind, lokale browser-API's | Geen | Browsercompatibiliteit; ongecommitte opslag blijft apparaatspecifiek | Typecheck, domain/storage unit tests, 3 Chromium-routes, 3 app builds | Alle apps starten zonder account/API en behouden appgrenzen |
+| **2. Lokale opslag, export/import en PWA-verfijning** | Domeinmigraties met echte upgradefixtures; appgebonden export/herstelvalidatie; installatieprompts, offline-/update-UX; optionele lokale encryptie alleen na beoordeling | IndexedDB; browser install APIs | Geen | Back-upbestand is onversleuteld; browser kan data opruimen; geen eigen cryptografie | Upgrade/back-up regressie, offline E2E, 375/768/1280 layout, iOS/Android fysieke apparaten | Restore weigert verkeerde app/versie zonder writes; installatie en offline-start aantoonbaar op ondersteunde browsers |
+| **3. Supabase-authenticatie, schema's, RPC's en RLS** | Auth-adapter per app, schema's `hub`/`sport`/`quest`, RPC-contracten en RLS; geen productiegegevens | Supabase Auth/Postgres/Storage; lokaal Supabase/CI | Bestaande project A; publishable key in deployment indien akkoord; nooit service-role in browser | Gedeelde auth, gevoelige data, project A heeft Samen Thuis; vereist B-13/AUTH-1–10/ISO-bewijs en herstelbare backup | Eigenaar/andere gebruiker/anon RLS; schema-isolatie ISO; RPC idempotentie; rollback | Alle isolatie- en auth-poorten groen en eigenaar heeft migraties apart goedgekeurd |
+| **4. Synchronisatie en veilige gegevensovergang** | Opt-in lokaal→account kopiëren, mapping, conflictpreview, herstelpunt, expliciete toestemming, idempotente sync en conflictkeuze | Supabase RPC + local IndexedDB | Zelfde vereisten als fase 3 | Verlies/overschrijven van lokale data; dubbele mutaties; account mismatch | Offline queue, twee apparaten, retry, conflict, restore, weigering/cancel | Nooit automatische overschrijving; gebruiker kan voor/na-data zien en kiezen |
+| **5. Sport-import, analyses en statistieken** | FIT-import met parser; TCX-import na keuze parser of streng gevalideerde browser-DOMParser; periodetrends, trainingsdoelen en diepere analyses | `fit-file-parser` MIT kandidaat; TCX-keuze opnieuw verifiëren; geen Strava/Garmin | Geen API-account/key | Onbetrouwbare bestanden, GPS/gezondheidsdata, parser supply-chain | Fixtures voor formaatfouten/duplicaten, import-preview, statistiekregels en browserbestanden | FIT/TCX preview vóór opslag; geen ruwe uploads; imports idempotent |
+| **6. SIDEQUEST-uitbreidingen en gamification** | Questtemplates, mijlpalen, beloningen, badges, pauzes, historieweergaven; eventueel wekelijkse streakregels verfijnen | Lokale berekeningen eerst; geen externe dienst | Geen | Puntenmisbruik of straf door streakgedrag; delen raakt huishouddomein | Dubbel afvinken, weekgrenzen/tijdzones, puntenledger, herstel/archiveren | Punten zijn reproduceerbaar en nooit willekeurig; huishoudchallenges blijven uitsluitend Samen Thuis |
+| **7. Hub-integraties en persoonlijke overzichten** | Alleen minimale, expliciet toegestane voortgangscontracten; integratiestatus; appnotificaties; geen directe query in eigenaar-appdatabases | `hub.notify()`, `sport.activity_events`, `quest.summary_for_me()` na schema/RLS-goedkeuring | Supabase Auth; geen nieuwe externe API-key | Metadata kan gevoelige info lekken; cross-schema autorisatie | Contracttests, consent intrekken, RLS en data-minimalisatie | Hub toont uitsluitend geaggregeerde data waarvoor een getest contract en actuele toestemming bestaan |
+| **8. Optionele AI-functionaliteit** | Eerst lokale regels; eventueel WebLLM browser of Ollama; uitvoer alleen na controle/bevestiging | WebLLM/WebGPU of lokale Ollama; modellen/licentie per model controleren | Geen betaald account of externe API-key | Modeldownloads, apparaatcapaciteit, hallucinerende adviezen; geen gezondheidsdata extern | Offline/fallback, outputvalidatie, privacy/no-network tests | Kernfuncties volledig bruikbaar zonder AI; AI opt-in, lokaal en niet automatisch opgeslagen |
 
-## F0 — Ontwerp en akkoord (nu)
+### Integratievoorwaarden
 
-- Deze documentatieset.
-- Besluiten B-1 t/m B-12 in [DECISIONS.md](DECISIONS.md).
-- Ontbrekende informatie aanvullen (origins, anon-status, databasegebruik, Coach-gebruikers).
-
-**Klaar als:** alle besluiten genomen en vastgelegd als ADR.
-
-## F1 — Veiligheid, back-ups en basis bestaande apps
-
-Volgens ADR 0011: elke regel is **één afzonderlijke PR** (of één afzonderlijke databasehandeling), elk pas na jouw goedkeuring van het voorstel. Geen nieuwe functies. Back-ups komen eerst, zodat elke latere wijziging herstelbaar is.
-
-| PR | Wijziging | Repo | Risico | Afhankelijk van |
-|---|---|---|---|---|
-| PR-1 ✅ goedgekeurd om te maken | CI-workflow die alleen de bestaande tests draait | Samen Thuis | Laag | — |
-| PR-2 ✅ goedgekeurd om te maken | CI-workflow die alleen de bestaande tests draait | Coach | Laag | — |
-| PR-3 ⏸ wacht op ontwerpgoedkeuring | Back-up database + opslag, versleuteld, met hersteltests (ADR 0010, ADR 0014) | Nieuwe privé-repo `ecosystem-backups` | Laag (alleen lezen) | Akkoord ADR 0014 (K-1 t/m K-4), onderzoek V1–V3, aparte goedkeuring databasewijzigingen |
-| — | Eerste handmatige hersteloefening | Lokaal | Laag | PR-3 |
-| PR-4 | pdf.js 3.11.174 → 4.10.38 | Coach | Laag–middel (API v3→v4) | PR-2 |
-| PR-5 | SheetJS upgraden + SRI, exact pinnen | Coach | Laag–middel | PR-2 |
-| PR-6 | SheetJS upgraden + SRI, exact pinnen (incl. tesseract.js) | Samen Thuis | Laag–middel | PR-1 |
-| PR-7 | BrainyQuote-script verwijderen; lokale citaten | Samen Thuis | Laag | PR-1 |
-| PR-8 | Edge Functions: JWT aan, CORS-allowlist, invoerlimieten | Samen Thuis | Middel (app moet token meesturen) | PR-1 |
-| PR-9 | Coach-backend verifiëren (tabel, RLS) + SQL-test naar Samen Thuis-patroon | Coach | Laag | PR-2 |
-| PR-10 | Coach: bucket `vc2` naar Auth-RLS | Coach | Middel | PR-9, PR-3 |
-| PR-11 | Coach: AI-endpoint beperken / spelersnamen niet meesturen (R9) | Coach | Laag | PR-2 |
-| DB-1 | Fase-3-script anon-intrekking uitvoeren op project A (R1) | Samen Thuis-database | Middel | Beide gebruikers op accountsync; verse back-up met geslaagde hersteltest |
-| PR-12 | Opruimen verouderde bestanden (`js/`, oude CSS, leeg `index.ts`) en achterhaalde documentatie | Samen Thuis | Laag | PR-1 |
-
-**Klaar als:** CI groen in beide repo's; eerste automatische én handmatige hersteltest geslaagd (database + bestanden); R1–R9 opgelost of bewust geaccepteerd.
-
-## F2 — Monorepo en Hub MVP (zonder database) — parallel aan F1 (H-1)
-
-Ontwerp en PR-indeling: [docs/hub/HUB_DESIGN.md § 12](docs/hub/HUB_DESIGN.md).
-
-**Start pas** als de eigenaar de repository `personal-ecosystem` en de GitHub-koppeling heeft geregeld (H-7). Tot dan alleen ontwerp en lokale voorbereiding.
-
-**Grenzen (H-1, V-3, V-4):** uitsluitend de nieuwe Hub en de nieuwe monorepo. Geen wijzigingen aan Samen Thuis, Coach, bestaande repositories, databases, Supabase-configuratie of productieomgevingen. Vóór H-PR1 aantonen dat monorepo en CI niets bestaands raken ([docs/hub/H-PR1_PLAN.md](docs/hub/H-PR1_PLAN.md)).
-
-- H-PR0 documentatie importeren; H-PR1 monorepo-basis en CI; H-PR2 `packages/ui`; H-PR3 `packages/core` + `registry.json`; H-PR4–H-PR8 Hub (tegels, favorieten/volgorde/recent/widgets/eigen snelkoppelingen lokaal, status A/B, instellingen, PWA + CSP + e2e); H-PR9 documentatie en Cloudflare Pages-configuratie (project aanmaken doet de eigenaar).
-- Afhankelijkheden zod en lucide-react alleen in de PR waar ze nodig zijn, met licentiecontrole (H-8).
-- Na elke PR een rapport; de eigenaar merget (V-5).
-
-**Klaar als:** Hub installeerbaar op telefoon/tablet/laptop, Lighthouse PWA- en toegankelijkheidscontroles zonder fouten, CI groen.
-
-## F3 — Hub: accounts, toegang en meldingen
-
-**Geblokkeerd tot:** F1 afgerond, en B-13 aantoonbaar opgelost: AUTH-1 t/m AUTH-10 groen ([HUB_DESIGN § 8.2](docs/hub/HUB_DESIGN.md)) en ADR 0013 beoordeeld (V-1). Geen F3-migratie daarvoor.
-
-- CI-job `isolation` met het volledige isolatiebewijs ISO-1 t/m ISO-18 (ADR 0001 en ADR 0013) plus AUTH-1 t/m AUTH-10, draaiend op Samen Thuis-migraties + ecosysteem-migraties.
-- App-gebonden sessies en verplichte TOTP (ADR 0013, als goedgekeurd).
-- Poort: geen nieuwe app live vóór de Samen Thuis-PR voor ISO-17 is gemerged (aparte goedkeuring).
-- Migratie schema `hub` (apps, roles, consents, notifications, audit, heartbeats, voorkeuren, snelkoppelingen) + RLS-tests. Uitvoering op project A alleen met groen isolatierapport, herstelbare back-up en expliciet akkoord vooraf (V-5).
-- Inloggen: afzonderlijk per app met lange sessie (ADR 0017); bij goedkeuring van ADR 0013 met app-gebonden sessies en verplichte TOTP.
-- Accountbeheer: profiel tonen, wachtwoord wijzigen, TOTP, sessies, overal uitloggen. **Geen** data-export en **geen** account verwijderen (V-2, ADR 0019).
-- Meldingencentrum (in-app).
-- Werkruimtes als laatste onderdeel (ADR 0016).
-- Niet in F3: herinneringen (ADR 0018).
-- Spike OAuth 2.1 (documentatie + lokaal prototype, niets in Supabase configureren) mag al tijdens F2 (ADR 0017).
-
-**Klaar als:** RLS- en AUTH-tests dekken alle `hub`-tabellen en -functies; jij en Daphne kunnen inloggen; meldingen werken in-app.
-
-## Later — Accountverwijdering, data-export en gegevensbehoud
-
-Eerst een afzonderlijk ontwerp (verwijderen per app versus account, gevolgen voor Samen Thuis, export, bewaartermijnen, herstel, tests) met afzonderlijke goedkeuring (ADR 0019).
-
-## F4 — Sportapp MVP
-
-- Schema `sport` (profiel, oefeningen, schema's, sessies, sets, metingen, herstel) + RLS-tests.
-- Trainingsregistratie offline-first; handmatige GPX/FIT/TCX-import (samenvatting, ADR 0009).
-- Volledige pariteit met Samen Thuis Sport & Training, inclusief bibliotheek met privébestanden (zie pariteitstabel ADR 0002).
-- Herhaalbare, idempotente import uit Samen Thuis-back-up (I-6) en bestanden (I-6b) met automatisch reconciliatierapport.
-- Regelgebaseerde coach (logica uit `sportcoach-core.js`, herschreven in TypeScript met dezelfde scenario's als referentietests).
-- Samen Thuis Sport & Training blijft **volledig in gebruik**; geen freeze in deze fase.
-
-**Klaar als:** een week training registreren zonder netwerk en later synchroniseren werkt; pariteitstabel ADR 0002 volledig groen.
-
-## F4b — Poort G-SPORT (overgang)
-
-- Kees en Daphne importeren ieder het eigen profiel; reconciliatierapport toont 0 verschillen of alleen geaccepteerde afwijkingen; steekproef gedaan; akkoord vastgelegd.
-- Daarna, als **apart besluit**: voorstel feature freeze + link "Open in Sportapp" in Samen Thuis (losse PR, ADR 0011). Samen Thuis-data wordt nooit automatisch verwijderd.
-
-**Klaar als:** G-SPORT gehaald en freeze-besluit genomen (akkoord of uitgesteld).
-
-## F5 — SIDEQUEST MVP
-
-- Schema `quest` (doelen, gewoontes, checks, quests, stappen, XP-logboek, badges) + RLS-tests.
-- Gewoontes afvinken met streaks; quests met handmatige stappen; XP en levels.
-- Hub-tegel met tellers (I-7).
-
-**Klaar als:** dubbel afvinken levert nooit dubbel XP (getest offline en op twee apparaten).
-
-## F6 — Koppelingen, groepen, voeding, AI, push
-
-- I-5 Sport → SIDEQUEST met toestemmingsscherm in Hub.
-- Sportgroepen en klassementen met opt-in per metriek.
-- Gedeelde uitdagingen in SIDEQUEST.
-- Voeding via Open Food Facts (barcodescan met camera).
-- Lokale AI-coach met WebLLM (alleen als WebGPU beschikbaar; anders regelgebaseerd).
-- Web Push via Hub.
-
-**Klaar als:** intrekken van toestemming stopt koppeling direct; groepsleden kunnen aantoonbaar (test) geen privédata zien.
-
-## F7 — Beleggen en vermogensbeheer (in Samen Thuis)
-
-- Ontwerp in de Samen Thuis-repo: posities, transacties, waardering, vermogensoverzicht, koppeling met bestaand budgetveld `investing`.
-- Koersdata alleen uit een gratis, verifieerbare bron of handmatige invoer. Nog geen bron gekozen.
-- Geen advies- of handelsfunctie.
-
-**Klaar als:** eigen ADR in Samen Thuis; module met tests; geen afhankelijkheid van betaalde data.
-
-## Doorlopend
-
-- Maandelijks: limieten controleren ([API_LIMITS.md](API_LIMITS.md)), Dependabot-PR's verwerken.
-- Per kwartaal: hersteltest back-up, review van API-voorwaarden.
+- API-/bibliotheekinventaris en status: [API_CATALOG.md](API_CATALOG.md). De huidige MVP gebruikt geen externe API.
+- Cloudflare Pages configuratie is aanwezig, maar projectnamen/production-URL's moeten door de eigenaar worden aangemaakt en ingevuld.
+- FIT parserkandidaat: `fit-file-parser` 6.2.9, MIT, browser/ArrayBuffer parsing; onderzochte npm-metadata 15 november 2026. TCX `tcx-js` 1.0.1 is MIT maar lang niet onderhouden; niet toevoegen zonder nieuwe onderhouds-/securityreview.
+- Externe sportdiensten Strava/Garmin, betaalde API's en betaalde AI blijven uitgesloten.
