@@ -8,7 +8,7 @@ Besluitronde 1 afgerond op 7 november 2026. Elk besluit is vastgelegd als ADR in
 | B-2 | Sportapp ↔ Samen Thuis Sport & Training | ✅ Aangepast akkoord | **Geen** feature freeze tot Sportapp volledig functioneel is én de dataoverdracht is gecontroleerd (poort G-SPORT). Freeze daarna als apart besluit | [0002](docs/adr/0002-sport-overgang-zonder-vroege-freeze.md) |
 | B-3 | SIDEQUEST ↔ huishoud-challenges | ✅ Akkoord | — | [0003](docs/adr/0003-sidequest-vs-huishoud-challenges.md) |
 | B-4 | Hub-meldingen ↔ Inbox | ✅ Akkoord | — | [0004](docs/adr/0004-meldingen-hub-naast-inbox.md) |
-| B-5 | Hosting | ✅ Akkoord | Cloudflare Pages, afzonderlijke deployments | [0005](docs/adr/0005-hosting-cloudflare-pages.md) |
+| B-5 | Hosting | ✅ Akkoord | Cloudflare Workers met statische assets, afzonderlijke deployments en origins | [0005](docs/adr/0005-hosting-cloudflare-pages.md) |
 | B-6 | Repostructuur | ✅ Akkoord | Eén monorepo, afzonderlijke deployments | [0006](docs/adr/0006-monorepo.md) |
 | B-7 | Gedeelde accountlaag | ✅ Akkoord onder voorwaarden | Gedeelde authenticatie, strikte gegevensisolatie | [0007](docs/adr/0007-gedeelde-authenticatie.md) |
 | B-8 | AI | ✅ Akkoord | Regelgebaseerd eerst, lokale AI optioneel, geen betaalde externe AI-API's | [0008](docs/adr/0008-ai-regelgebaseerd-eerst.md) |

@@ -7,7 +7,7 @@
 
 - Repo `personal-ecosystem` met `apps/hub`, `apps/sport`, `apps/sidequest`, `packages/*`, `supabase/`, documentatie.
 - npm-workspaces; één lockfile.
-- Elke app eigen build, eigen Cloudflare Pages-project, eigen versie en changelogsectie.
+- Elke app eigen build, eigen Cloudflare-project, eigen versie en changelogsectie. De aanvulling bij ADR 0005 vervangt Pages door Workers met statische assets.
 - Build watch paths: een app wordt alleen opnieuw gebouwd als `apps/<app>/**` of `packages/**` wijzigt.
 - Een wijziging in `packages/*` vereist dat de tests van **alle** apps slagen.
 

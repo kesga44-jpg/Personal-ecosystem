@@ -11,7 +11,7 @@ npm run dev:sportapp   # localhost:5174
 npm run dev:sidequest  # localhost:5175
 ```
 
-Elke workspace heeft een eigen Vite entrypoint, manifest, icon, service worker en build. Routes gebruiken root-base `/`; `_redirects` levert de app-shell voor rechtstreekse SPA-routes. `npm run build:all` maakt alle drie `dist/`-mappen. Er zijn geen secrets of Supabase-variabelen nodig om te bouwen.
+Elke workspace heeft een eigen Vite entrypoint, manifest, icon, service worker en build. Routes gebruiken root-base `/`. `npm run build:all` maakt alle drie `dist/`-mappen. Er zijn geen secrets of Supabase-variabelen nodig om te bouwen.
 
 ## Publieke landingspagina
 
@@ -21,29 +21,21 @@ De pagina gebruikt alleen lokale scripts en stylesheets. De Content Security Pol
 
 De huidige GitHub Pages-bron is de repository-root. Daardoor blijven Markdown-documenten ook via Pages bereikbaar totdat de publicatiescope in een afzonderlijke, goedgekeurde stap wordt beperkt. De repository is publiek; een Pages-scopewijziging maakt bronbestanden niet privé. Er is met deze landingspagina geen Pages-instelling of deployment aangepast.
 
-## Cloudflare Pages
+## Cloudflare Workers met statische assets
 
-Maak drie Pages-projecten aan die alle naar deze repository verwijzen; publicatie wordt niet door deze wijziging gestart.
+Stel in elk bestaand project onder **Settings → Build** de root directory leeg in (repository-root). De commando's gebruiken de vastgepinde lokale Wrangler-versie uit de lockfile.
 
-| Pages-project | Root directory | Build command | Build output directory | Eigen Pages-config |
-|---|---|---|---|---|
-| `personal-ecosystem-hub` | `/` | `npm ci && npm run build:hub` | `apps/hub/dist` | `apps/hub/wrangler.jsonc` |
-| `personal-ecosystem-sportapp` | `/` | `npm ci && npm run build:sportapp` | `apps/sportapp/dist` | `apps/sportapp/wrangler.jsonc` |
-| `personal-ecosystem-sidequest` | `/` | `npm ci && npm run build:sidequest` | `apps/sidequest/dist` | `apps/sidequest/wrangler.jsonc` |
+| Project | Build command | Deploy command |
+|---|---|---|
+| `pe-hub` | `npm ci && npm run build:hub` | `npx wrangler deploy --config apps/hub/wrangler.jsonc` |
+| `pe-sportapp` | `npm ci && npm run build:sportapp` | `npx wrangler deploy --config apps/sportapp/wrangler.jsonc` |
+| `pe-sidequest` | `npm ci && npm run build:sidequest` | `npx wrangler deploy --config apps/sidequest/wrangler.jsonc` |
 
-Gebruik per project watch paths voor de bijbehorende `apps/<app>/**` plus `packages/**`. Gebruik eigen origins, niet subpaden op één origin. `_redirects` bevat de SPA-fallback; `_headers` bevat basisheaders/CSP. De service worker precachet alleen gegenereerde app-shellbestanden; er is geen runtime cache voor persoonlijke gegevens.
+Stel voor alle projecten de **build variable** `NODE_VERSION=24` in. Stel daarnaast uitsluitend voor `pe-hub` de build variables `VITE_SPORTAPP_URL=https://pe-sportapp.kesga44.workers.dev` en `VITE_SIDEQUEST_URL=https://pe-sidequest.kesga44.workers.dev` in. Dit zijn geen runtime variables; `VITE_*`-waarden zijn publiek en mogen geen geheimen bevatten. Hub-instellingen kunnen de links ook lokaal aanpassen. De apps gebruiken momenteel geen Supabase-client, authenticatie, keys of netwerk-API's.
 
-Stel na het aanmaken van de daadwerkelijke Pages-projectnamen de URL's in via Hub → Instellingen of via `VITE_SPORTAPP_URL` en `VITE_SIDEQUEST_URL` in de Hub-build. Laat variabelen leeg wanneer de lokale URLs volstaan. `VITE_*`-waarden zijn publiek; plaats er nooit geheimen in. De apps gebruiken momenteel geen Supabase-client, authentificatie, keys of netwerk-API's.
+Elke configuratie gebruikt `./dist` relatief aan het eigen `wrangler.jsonc` en `assets.not_found_handling: "single-page-application"`. `_redirects` wordt voor deze Workers niet gebruikt; `_headers` bevat de beveiligingsheaders en CSP. In de lokale Wrangler-preview gaven diepe links de app-shell met status 200. Ook een ontbrekend bestand onder `/assets/` gaf status 200 met `index.html`, niet 404; dit is een bewust geaccepteerde beperking. De service worker precachet alleen gegenereerde app-shellbestanden; er is geen runtimecache voor persoonlijke gegevens.
 
-Deploy met Cloudflare Pages UI of vanuit de repository na installatie van Wrangler volgens de eigen Cloudflare-accountconfiguratie, bijvoorbeeld:
-
-```sh
-npx wrangler pages deploy apps/hub/dist --project-name personal-ecosystem-hub
-npx wrangler pages deploy apps/sportapp/dist --project-name personal-ecosystem-sportapp
-npx wrangler pages deploy apps/sidequest/dist --project-name personal-ecosystem-sidequest
-```
-
-Deze voorbeelden publiceren alleen wanneer je ze zelf uitvoert. Geen productie- of previewdeploy is door deze PR gestart. De account/projectnamen zijn nog niet geverifieerd.
+De deploycommando's publiceren als Cloudflare ze uitvoert; deze wijziging voert geen productie- of previewdeploy uit. De werkelijke Cloudflare-instellingen en publieke adressen zijn niet door deze PR geverifieerd.
 
 ## PWA en browsergrenzen
 
@@ -63,10 +55,11 @@ Niets is gekoppeld of gemigreerd. Er zijn geen SQL-migraties, productieclients o
 npm run typecheck
 npm test
 npm run build:all
+npm run check:dist
 npm run test:e2e
 ```
 
-- [ ] Echte afzonderlijke Pages-projecten en app-URL's geconfigureerd
+- [ ] Afzonderlijke Workers-projecten en app-URL's geconfigureerd en publiek gecontroleerd
 - [ ] Offline herstart en updateprompt op desktop en Android gecontroleerd
 - [ ] PWA-installatie/gegevensbehoud op iOS/iPadOS fysiek gecontroleerd
 - [ ] Gebruiker heeft per app een export en getest herstelbestand

@@ -1,10 +1,12 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { rejectSharpModules } from '../../packages/build-check/no-sharp';
 
 export default defineConfig({
   base: '/',
   plugins: [
+    rejectSharpModules(),
     react(),
     VitePWA({
       registerType: 'prompt',

@@ -17,6 +17,8 @@ Elke app in de monorepo krijgt een eigen sectie zodra die bestaat. Bestaande app
 
 ### Gewijzigd
 
+- Cloudflare-configuratie voor Hub, Sportapp en SIDEQUEST omgezet naar bestaande Workers met statische assets en eigen origins; Wrangler 4.162.0 is vastgepinde deploy-tooling. Verouderde Pages-redirects verwijderd; SPA-fallback loopt via Workers.
+- Licentiebesluiten voor MIT-0 en de begrensde Sharp/libvips-devuitzondering vastgelegd; buildcontrole toegevoegd om Sharp/libvips uit app-output te houden. Een volledige CI-licentiecontrole volgt afzonderlijk.
 - 2026-11-07 — Besluitronde 1 verwerkt (B-1 t/m B-12). ADR 0001–0012 toegevoegd.
   - B-1/B-7: isolatiebewijs ISO-1 t/m ISO-12 als harde voorwaarde voor migraties op project A; restrisico gedeelde authenticatie beschreven.
   - B-2: geen feature freeze in Samen Thuis vóór poort G-SPORT (pariteit + gecontroleerde overdracht); import herhaalbaar; bestandsoverdracht I-6b.

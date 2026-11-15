@@ -14,3 +14,7 @@
 
 - Nieuw account bij Cloudflare (gratis). Toegang tot de monorepo via de Cloudflare GitHub-app, beperkt tot die ene repo.
 - Fallback bij uitval of voorwaardenwijziging: GitHub Pages per app (met gedeelde-originrisico) — vastgelegd in DEPLOYMENT.md.
+
+## Aanvulling 2026-11-15 — besluit eigenaar
+
+De drie apps gebruiken de bestaande Cloudflare Workers-projecten met statische assets in plaats van Cloudflare Pages. Iedere app behoudt een afzonderlijke origin en deployment; Samen Thuis en Coach blijven ongewijzigd. De Pages-limieten hierboven zijn niet geverifieerd voor Workers. De repositoryconfiguratie start zelf geen deployment.
