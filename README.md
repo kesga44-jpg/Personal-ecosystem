@@ -2,6 +2,8 @@
 
 Een local-first platform met drie zelfstandig te bouwen webapps:
 
+[Publieke startpagina](https://kesga44-jpg.github.io/Personal-ecosystem/) · De documentatie en ontwikkelaarsinformatie staan in deze README en de documenten hieronder.
+
 | App | Eigenaar van | Starten | Productiebuild |
 |---|---|---|---|
 | Hub | Startpagina, app-links, eigen snelkoppelingen en app-openingen | `npm run dev:hub` | `npm run build:hub` |
