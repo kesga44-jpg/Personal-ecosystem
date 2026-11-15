@@ -47,22 +47,15 @@ Volledige onderbouwing in [REPO_ANALYSIS.md](REPO_ANALYSIS.md#technische-risicos
 
 ### Frontend
 
-Content Security Policy (via `_headers` op Cloudflare Pages):
+De huidige apps gebruiken de volgende Content Security Policy in hun Cloudflare Pages `_headers`-bestanden:
 
 ```
-default-src 'self';
-script-src 'self';
-style-src 'self';
-img-src 'self' data: blob: https://<project-a>.supabase.co;
-connect-src 'self' https://<project-a>.supabase.co wss://<project-a>.supabase.co https://api.open-meteo.com https://world.openfoodfacts.org;
-worker-src 'self' blob:;
-frame-ancestors 'none';
-base-uri 'self';
-form-action 'self';
+default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';
+img-src 'self' data: blob:; connect-src 'self'; object-src 'none';
+base-uri 'self'; frame-ancestors 'none'
 ```
 
-Aanvullend: `Referrer-Policy: strict-origin-when-cross-origin`, `X-Content-Type-Options: nosniff`, `Permissions-Policy` met alleen benodigde rechten (camera voor barcodescan in Sportapp).
-WebLLM downloadt modellen van externe hosts; die hosts worden pas aan `connect-src` toegevoegd als B-8 is goedgekeurd.
+Inline styles worden momenteel door React-layouts gebruikt; scripts zijn self-hosted en `connect-src` staat geen externe API's toe. Voeg externe hosts alleen toe bij een afzonderlijk beoordeelde integratie en werk dan het exacte `_headers`-beleid bij. Verder gelden `Referrer-Policy: strict-origin-when-cross-origin`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` en een `Permissions-Policy` die camera, microfoon en geolocatie weigert.
 
 ### Secrets
 

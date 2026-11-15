@@ -8,7 +8,7 @@ Elke app in de monorepo krijgt een eigen sectie zodra die bestaat. Bestaande app
 ### Toegevoegd
 
 - Werkende local-first MVP voor Hub, Sportapp en SIDEQUEST met npm workspaces, React/TypeScript/Vite/Tailwind, eigen IndexedDB-opslag, PWA-assets, Cloudflare Pages-configuratie, domein-/storage-/Chromium-tests en per-app builds.
-- Gerichte kwaliteitscontroles voor GPX-import, appgebonden back-upherstel, opslagfouten en offline PWA-gedrag van alle drie apps; zie `TESTING.md`.
+- Gerichte kwaliteitscontroles voor GPX-import, appgebonden back-upherstel, IndexedDB-foutafhandeling en offline PWA-gedrag van alle drie apps; zie `TESTING.md`.
 - Sportactiviteiten/trainingen/statistieken, lokale GPX-preview/validatie/dubbelimportcontrole; SIDEQUEST doelen, gewoontes, streaks, quests en reproduceerbare punten; Hub appnavigatie, lokale snelkoppelingen, opslagstatus en eigen activiteitenlijst.
 - Repository-audit, concrete API-/parserinventaris, implementatiestatus en gefaseerde roadmap bijgewerkt. Geen Supabase, Coach, Samen Thuis, productie of betaalde dienst gewijzigd.
 - 2026-11-07 — Eerste versie van de ecosysteemdocumentatie (fase 0): analyse van `Samen-thuis@0fa9583` en `Coach@a713834`, architectuurvoorstel, gegevenseigendom, databaseontwerp, authenticatie, beveiliging, integraties, API-catalogus en -limieten, testen, deployment, roadmap, bijdrageregels en `CLAUDE.md`.

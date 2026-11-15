@@ -76,6 +76,19 @@ describe('app-local IndexedDB', () => {
     database.close();
   });
 
+  it('surfaces IndexedDB write failures and can still write afterward', async () => {
+    const database = await openLocalDatabase(config);
+    await expect(database.put('items', {
+      id: 'uncloneable',
+      callback: () => undefined
+    })).rejects.toThrow();
+    await expect(database.list('items')).resolves.toEqual([]);
+
+    await database.put('items', { id: 'valid', title: 'Still available' });
+    await expect(database.list('items')).resolves.toEqual([{ id: 'valid', title: 'Still available' }]);
+    database.close();
+  });
+
   it('reports failed writes and refreshes exactly once after a successful retry', async () => {
     const database = await openLocalDatabase(config);
     const errors: string[] = [];

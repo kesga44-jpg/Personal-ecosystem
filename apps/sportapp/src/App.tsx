@@ -271,6 +271,7 @@ function ActivitiesPage({
   async function readGpx(file?: File) {
     if (!file) return;
     setImportError('');
+    setPreview(null);
     try {
       if (!file.name.toLowerCase().endsWith('.gpx')) throw new Error('Kies een bestand met de extensie .gpx.');
       if (file.size > 10 * 1024 * 1024) throw new Error('GPX-bestanden mogen maximaal 10 MB groot zijn.');
@@ -607,7 +608,12 @@ function SettingsPage({
   }, [database]);
 
   async function exportData() {
-    downloadJson('sportapp-backup.json', await database.exportData());
+    setRestoreError('');
+    try {
+      downloadJson('sportapp-backup.json', await database.exportData());
+    } catch (cause) {
+      setRestoreError(cause instanceof Error ? `Back-up kon niet worden geëxporteerd: ${cause.message}` : 'Back-up kon niet worden geëxporteerd.');
+    }
   }
 
   async function importData(file?: File) {

@@ -76,6 +76,23 @@ function transactionDone(transaction: IDBTransaction): Promise<void> {
   });
 }
 
+async function runTransaction<T>(transaction: IDBTransaction, action: () => Promise<T>): Promise<T> {
+  const done = transactionDone(transaction);
+  try {
+    const result = await action();
+    await done;
+    return result;
+  } catch (error) {
+    try {
+      transaction.abort();
+    } catch {
+      // The transaction may already have aborted after a failed request.
+    }
+    await done.catch(() => undefined);
+    throw error;
+  }
+}
+
 function parseExport(config: LocalDatabaseConfig, input: unknown): LocalExport {
   if (!input || typeof input !== 'object') {
     throw new Error('The selected backup is not a valid data file.');
@@ -159,42 +176,41 @@ export async function openLocalDatabase(config: LocalDatabaseConfig): Promise<Lo
     async list<T extends RecordValue>(store: string): Promise<T[]> {
       assertStore(store);
       const transaction = database.transaction(store, 'readonly');
-      const done = transactionDone(transaction);
-      const records = await requestResult(transaction.objectStore(store).getAll()) as T[];
-      await done;
-      return records;
+      return runTransaction(transaction, async () =>
+        await requestResult(transaction.objectStore(store).getAll()) as T[]
+      );
     },
     async put<T extends RecordValue>(store: string, value: T): Promise<void> {
       assertStore(store);
       const transaction = database.transaction(store, 'readwrite');
-      const done = transactionDone(transaction);
-      await requestResult(transaction.objectStore(store).put(value));
-      await done;
+      await runTransaction(transaction, async () => {
+        await requestResult(transaction.objectStore(store).put(value));
+      });
     },
     async remove(store: string, id: string): Promise<void> {
       assertStore(store);
       const transaction = database.transaction(store, 'readwrite');
-      const done = transactionDone(transaction);
-      await requestResult(transaction.objectStore(store).delete(id));
-      await done;
+      await runTransaction(transaction, async () => {
+        await requestResult(transaction.objectStore(store).delete(id));
+      });
     },
     async exportData(): Promise<LocalExport> {
       const transaction = database.transaction([...config.stores], 'readonly');
-      const done = transactionDone(transaction);
-      const stores: Record<string, RecordValue[]> = {};
-      await Promise.all(
-        config.stores.map(async (store) => {
-          stores[store] = await requestResult(transaction.objectStore(store).getAll()) as RecordValue[];
-        })
-      );
-      await done;
-      return {
-        format: 'personal-ecosystem-local-data',
-        appId: config.appId,
-        schemaVersion: config.version,
-        exportedAt: new Date().toISOString(),
-        stores
-      };
+      return runTransaction(transaction, async () => {
+        const stores: Record<string, RecordValue[]> = {};
+        await Promise.all(
+          config.stores.map(async (store) => {
+            stores[store] = await requestResult(transaction.objectStore(store).getAll()) as RecordValue[];
+          })
+        );
+        return {
+          format: 'personal-ecosystem-local-data',
+          appId: config.appId,
+          schemaVersion: config.version,
+          exportedAt: new Date().toISOString(),
+          stores
+        };
+      });
     },
     validateRestore(input: unknown): void {
       parseExport(config, input);
@@ -202,23 +218,13 @@ export async function openLocalDatabase(config: LocalDatabaseConfig): Promise<Lo
     async restore(input: unknown): Promise<void> {
       const backup = parseExport(config, input);
       const transaction = database.transaction([...config.stores], 'readwrite');
-      const done = transactionDone(transaction);
-      try {
+      await runTransaction(transaction, async () => {
         for (const store of config.stores) {
           const objectStore = transaction.objectStore(store);
           await requestResult(objectStore.clear());
           await Promise.all(backup.stores[store]!.map((record) => requestResult(objectStore.put(record))));
         }
-        await done;
-      } catch (error) {
-        try {
-          transaction.abort();
-        } catch {
-          // The transaction may already have aborted after the failed request.
-        }
-        await done.catch(() => undefined);
-        throw error;
-      }
+      });
     },
     close(): void {
       database.close();

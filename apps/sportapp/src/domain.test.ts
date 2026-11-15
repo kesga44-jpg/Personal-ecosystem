@@ -26,9 +26,9 @@ describe('sport domain', () => {
     expect(parseGpx(gpx, 'run.gpx')).toMatchObject({
       name: 'Morning run',
       startedAt: '2026-11-15T08:00:00.000Z',
-      durationMinutes: 10,
-      distanceKm: 0.1112
+      durationMinutes: 10
     });
+    expect(parseGpx(gpx, 'run.gpx').distanceKm).toBeCloseTo(0.1112, 4);
     expect(() => parseGpx('<!DOCTYPE x><gpx/>', 'bad.gpx')).toThrow('onveilige');
     expect(() => parseGpx('<gpx/>', 'empty.gpx')).toThrow('minimaal twee punten');
     expect(() => parseGpx(
@@ -56,27 +56,33 @@ describe('sport domain', () => {
     }
   });
 
-  it('adds segment distances without connecting separate segments', () => {
+  it('adds distances across multiple tracks and segments without bridging them', () => {
     const gpx = `<gpx>
-      <trk><trkseg>
+      <trk>
+      <trkseg>
         <trkpt lat="52" lon="5"><time>2026-11-15T08:00:00Z</time></trkpt>
         <trkpt lat="52.001" lon="5"><time>2026-11-15T08:10:00Z</time></trkpt>
-      </trkseg></trk>
-      <trk><trkseg>
+      </trkseg>
+      <trkseg>
         <trkpt lat="53" lon="6"><time>2026-11-15T08:20:00Z</time></trkpt>
         <trkpt lat="53.001" lon="6"><time>2026-11-15T08:30:00Z</time></trkpt>
+      </trkseg>
+      </trk>
+      <trk><trkseg>
+        <trkpt lat="54" lon="7"><time>2026-11-15T08:40:00Z</time></trkpt>
+        <trkpt lat="54.001" lon="7"><time>2026-11-15T08:50:00Z</time></trkpt>
       </trkseg></trk>
     </gpx>`;
     expect(parseGpx(gpx, 'segments.gpx')).toMatchObject({
       startedAt: '2026-11-15T08:00:00.000Z',
-      durationMinutes: 30,
-      distanceKm: 0.2224
+      durationMinutes: 50
     });
+    expect(parseGpx(gpx, 'segments.gpx').distanceKm).toBeCloseTo(0.3336, 4);
   });
 
   it('keeps short positive GPX distances valid for backup export', () => {
     const preview = parseGpx(
-      '<gpx><trkseg><trkpt lat="52" lon="5"><time>2026-11-15T08:00:00Z</time></trkpt><trkpt lat="52.00001" lon="5"><time>2026-11-15T08:01:00Z</time></trkpt></trkseg></gpx>',
+      '<gpx><trkseg><trkpt lat="52" lon="5"><time>2026-11-15T08:00:00Z</time></trkpt><trkpt lat="52.000000001" lon="5"><time>2026-11-15T08:01:00Z</time></trkpt></trkseg></gpx>',
       'short.gpx'
     );
     const activity: Activity = {

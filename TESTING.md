@@ -17,10 +17,10 @@ npm run test:e2e
 
 | Niveau | Bestanden/flows | Wat wordt getest |
 |---|---|---|
-| Unit — opslag | `packages/storage/src/index.test.ts` | App-namespace, lege en gevulde export, backup-/schema-/recordvalidatie, corrupte JSON, rollback bij transactiefout, foutmelding en succesvolle opslagretry |
-| Unit — Sportapp | `apps/sportapp/src/domain.test.ts` | Stats, GPX-coördinaten/tijdstempels, segmentafstand, tijdsvolgorde en activiteitvalidatie |
+| Unit — opslag | `packages/storage/src/index.test.ts` | App-namespace, lege en gevulde export, backup-/schema-/recordvalidatie, corrupte JSON, rollback bij transactiefout, IndexedDB-writefout, foutmelding en succesvolle opslagretry |
+| Unit — Sportapp | `apps/sportapp/src/domain.test.ts` | Stats, GPX-coördinaten/tijdstempels, meerdere tracks en segmenten, tijdsvolgorde en activiteitvalidatie |
 | Unit — SIDEQUEST | `apps/sidequest/src/domain.test.ts` | Dagelijkse/wekelijkse streak, periodechecks, deterministische punten, progressievalidatie |
-| Chromium E2E | `tests/e2e/apps.spec.ts` | Basisflows en fout-/retrygedrag in alle apps; voor Hub, Sportapp en SIDEQUEST elk manifest, actieve service worker, SPA-routefallback, offline herladen en lokale basisactie |
+| Chromium E2E | `tests/e2e/apps.spec.ts` | Basisflows en fout-/retrygedrag in alle apps, stale GPX-preview blokkeren; voor Hub, Sportapp en SIDEQUEST elk manifest, actieve service worker, SPA-routefallback, offline herladen en lokale basisactie |
 | Build/type | Per app + root | TypeScript strict typecheck en afzonderlijke productiebuilds voor alle drie apps |
 
 Er zijn nog geen volledige componenttests per scherm, coverage-drempel, axe/a11y-suite, cross-browserrun of FIT/TCX-importtests. Fysieke PWA-installatie en offline gebruik op iOS/iPadOS en Android zijn niet getest en blijven vervolgwerk.

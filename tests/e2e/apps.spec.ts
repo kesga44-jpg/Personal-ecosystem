@@ -93,6 +93,28 @@ test('a failed GPX save keeps its preview and a retry stores one activity', asyn
   await expect(page.getByText('GPX-import: Retry route')).toHaveCount(1);
 });
 
+test('choosing an invalid GPX does not leave a stale preview available to import', async ({ page }) => {
+  await page.goto('http://127.0.0.1:4174/activiteiten');
+  const fileInput = page.getByLabel('Kies .gpx-bestand');
+  await fileInput.setInputFiles({
+    name: 'valid.gpx',
+    mimeType: 'application/gpx+xml',
+    buffer: Buffer.from(`<gpx><trkseg>
+      <trkpt lat="52" lon="5"><time>2026-11-15T08:00:00Z</time></trkpt>
+      <trkpt lat="52.001" lon="5"><time>2026-11-15T08:10:00Z</time></trkpt>
+    </trkseg></gpx>`)
+  });
+  await expect(page.getByRole('button', { name: 'Importeer activiteit' })).toBeVisible();
+
+  await fileInput.setInputFiles({
+    name: 'invalid.gpx',
+    mimeType: 'application/gpx+xml',
+    buffer: Buffer.from('<gpx/>')
+  });
+  await expect(page.getByText(/minimaal twee punten/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Importeer activiteit' })).toHaveCount(0);
+});
+
 test('a failed manual activity save retains form fields for retry', async ({ page }) => {
   await page.goto('http://127.0.0.1:4174/activiteiten');
   await page.getByRole('button', { name: '＋ Toevoegen' }).click();

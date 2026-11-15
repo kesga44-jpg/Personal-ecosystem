@@ -231,7 +231,7 @@ export function parseGpx(content: string, fileName: string): GpxPreview {
     name: name.slice(0, 100),
     startedAt: firstTime,
     durationMinutes,
-    distanceKm: Math.round(distanceKm * 10_000) / 10_000
+    distanceKm
   };
 }
 
