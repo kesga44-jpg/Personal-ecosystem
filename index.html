@@ -7,7 +7,7 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'"
     >
-    <meta name="description" content="Een local-first ecosysteem met drie zelfstandige apps.">
+    <meta name="description" content="Een startpagina voor vijf zelfstandige apps.">
     <title>Personal Ecosystem</title>
     <link rel="stylesheet" href="./landing.css">
     <script src="./app-urls.js" defer></script>
@@ -19,12 +19,32 @@
         <p class="eyebrow">PERSONAL ECOSYSTEM</p>
         <h1>Jouw apps. Jouw gegevens.</h1>
         <p class="intro">
-          Drie zelfstandige apps die lokaal in je browser werken. Geen account nodig
-          en je gegevens blijven op je apparaat.
+          Vijf zelfstandige apps: drie werken lokaal zonder account, en twee bestaande
+          apps gebruiken een account.
         </p>
       </header>
 
       <section class="apps" aria-label="Apps">
+        <article class="app-card" data-app-card="samen-thuis">
+          <div class="app-mark" aria-hidden="true">T</div>
+          <h2>Samen Thuis</h2>
+          <p class="description">
+            Organiseer je huishouden, planning en financiën.
+          </p>
+          <p class="status">Bestaande app · met account</p>
+          <a class="open-button" href="https://kesga44-jpg.github.io/Samen-thuis/" target="_blank" rel="noopener noreferrer">Openen</a>
+        </article>
+
+        <article class="app-card" data-app-card="coach">
+          <div class="app-mark" aria-hidden="true">C</div>
+          <h2>Coach</h2>
+          <p class="description">
+            Beheer teams, trainingen en wedstrijden.
+          </p>
+          <p class="status">Bestaande app · met account</p>
+          <a class="open-button" href="https://kesga44-jpg.github.io/Coach/" target="_blank" rel="noopener noreferrer">Openen</a>
+        </article>
+
         <article class="app-card" data-app-card="hub">
           <div class="app-mark" aria-hidden="true">H</div>
           <h2>Hub</h2>
@@ -66,7 +86,7 @@
       </section>
 
       <footer class="footer">
-        <p>Je gegevens blijven in de browser van je eigen apparaat.</p>
+        <p>De drie nieuwe apps bewaren gegevens lokaal op je apparaat.</p>
         <a href="https://github.com/kesga44-jpg/Personal-ecosystem#readme">Documentatie</a>
       </footer>
     </main>

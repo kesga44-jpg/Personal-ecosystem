@@ -4,6 +4,8 @@ Een local-first platform met drie zelfstandig te bouwen webapps:
 
 [Publieke startpagina](https://kesga44-jpg.github.io/Personal-ecosystem/) · De documentatie en ontwikkelaarsinformatie staan in deze README en de documenten hieronder.
 
+De startpagina linkt ook naar de bestaande apps Samen Thuis en Coach, die een account gebruiken. De drie nieuwe apps hieronder werken lokaal zonder account; hun knoppen blijven uitgeschakeld totdat hun eigen online URL's zijn ingesteld.
+
 | App | Eigenaar van | Starten | Productiebuild |
 |---|---|---|---|
 | Hub | Startpagina, app-links, eigen snelkoppelingen en app-openingen | `npm run dev:hub` | `npm run build:hub` |

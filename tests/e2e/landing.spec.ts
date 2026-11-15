@@ -17,9 +17,21 @@ for (const width of [375, 768, 1280]) {
       /default-src 'none'; script-src 'self'; style-src 'self'/
     );
     await expect(page.locator('script[src^="http"]')).toHaveCount(0);
-    await expect(page.locator('[data-app-card]')).toHaveCount(3);
+    await expect(page.locator('[data-app-card]')).toHaveCount(5);
     await expect(page.getByText('Lokaal, geen account nodig', { exact: true })).toHaveCount(3);
+    await expect(page.getByText('Bestaande app · met account', { exact: true })).toHaveCount(2);
     await expect(page.getByRole('link', { name: 'Documentatie' })).toBeVisible();
+
+    for (const [appId, url] of [
+      ['samen-thuis', 'https://kesga44-jpg.github.io/Samen-thuis/'],
+      ['coach', 'https://kesga44-jpg.github.io/Coach/']
+    ]) {
+      const link = page.locator(`[data-app-card="${appId}"]`).getByRole('link', { name: 'Openen' });
+      await expect(link).toBeVisible();
+      await expect(link).toHaveAttribute('href', url);
+      await expect(link).toHaveAttribute('target', '_blank');
+      await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    }
 
     for (const appId of appIds) {
       await expect(page.locator(`[data-app-card="${appId}"]`).getByRole('button', { name: 'Openen' })).toBeDisabled();
@@ -54,6 +66,24 @@ test('configured app links use distinct HTTPS origins', async ({ page }) => {
     const card = page.locator(`[data-app-card="${appId}"]`);
     await expect(card.getByRole('link', { name: 'Openen' })).toHaveAttribute('href', `https://${host}/`);
     await expect(card.locator('[data-app-link-status]')).toBeEmpty();
+  }
+});
+
+test('existing apps open their configured URLs in separate tabs', async ({ page, context }) => {
+  for (const [appId, url] of [
+    ['samen-thuis', 'https://kesga44-jpg.github.io/Samen-thuis/'],
+    ['coach', 'https://kesga44-jpg.github.io/Coach/']
+  ]) {
+    await context.route(url, (route) => route.fulfill({ contentType: 'text/html', body: '<title>App</title>' }));
+    await page.goto(landingUrl);
+    const [popup] = await Promise.all([
+      page.waitForEvent('popup'),
+      page.locator(`[data-app-card="${appId}"]`).getByRole('link', { name: 'Openen' }).click()
+    ]);
+    await expect(popup).toHaveURL(url);
+    expect(await popup.evaluate(() => window.opener)).toBeNull();
+    await popup.close();
+    await context.unroute(url);
   }
 });
 
