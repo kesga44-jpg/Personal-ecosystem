@@ -13,6 +13,14 @@ npm run dev:sidequest  # localhost:5175
 
 Elke workspace heeft een eigen Vite entrypoint, manifest, icon, service worker en build. Routes gebruiken root-base `/`; `_redirects` levert de app-shell voor rechtstreekse SPA-routes. `npm run build:all` maakt alle drie `dist/`-mappen. Er zijn geen secrets of Supabase-variabelen nodig om te bouwen.
 
+## Publieke landingspagina
+
+De GitHub Pages-root gebruikt `index.html` als Nederlandstalige startpagina. App-links staan in `app-urls.js`; laat de URL leeg totdat de app een eigen HTTPS-origin heeft. De pagina houdt Openen uitgeschakeld zolang een URL ontbreekt en weigert ongeldige links of origins die met een andere app worden gedeeld.
+
+De pagina gebruikt alleen lokale scripts en stylesheets. De Content Security Policy staat in een `meta`-element omdat GitHub Pages geen configureerbare response-headers biedt. Browsers ondersteunen `frame-ancestors` niet vanuit een CSP-meta-element; die headerbescherming kan op GitHub Pages dus niet worden afgedwongen. De pagina laadt geen externe scripts of gegevens.
+
+De huidige GitHub Pages-bron is de repository-root. Daardoor blijven Markdown-documenten ook via Pages bereikbaar totdat de publicatiescope in een afzonderlijke, goedgekeurde stap wordt beperkt. De repository is publiek; een Pages-scopewijziging maakt bronbestanden niet privé. Er is met deze landingspagina geen Pages-instelling of deployment aangepast.
+
 ## Cloudflare Pages
 
 Maak drie Pages-projecten aan die alle naar deze repository verwijzen; publicatie wordt niet door deze wijziging gestart.
