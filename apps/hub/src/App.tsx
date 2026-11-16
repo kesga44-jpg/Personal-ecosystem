@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { BrowserRouter, Link, Route, Routes, useNavigate } from 'react-router-dom';
 import { downloadJson, formatDate, newId } from '@ecosystem/core';
 import { openLocalDatabase, parseLocalBackup, runStorageAction as performStorageAction, type LocalDatabase } from '@ecosystem/storage';
@@ -51,6 +51,13 @@ const navigation = [
   { to: '/instellingen', label: 'Instellingen', icon: '⚙' }
 ];
 
+/** Als dashboardmodule staan Sport en SIDEQUEST al in de modulewisselaar (ADR 0020). */
+const embeddedNavigation = [
+  { to: '/', label: 'Overzicht', icon: '⌂' },
+  { to: '/activiteiten', label: 'App-openingen', icon: '◷' },
+  { to: '/instellingen', label: 'Instellingen', icon: '⚙' }
+];
+
 const localHubPort = Number(window.location.port);
 const localAppBasePort = localHubPort === 4173 ? 4174 : 5174;
 const initialPreferences: HubPreferences = {
@@ -81,9 +88,11 @@ export interface AppProps {
   moduleLinks?: ModuleLink[];
   /** Vaste adressen van Sport en SIDEQUEST als modules op dezelfde origin (ADR 0020). Overschrijft de instellingen. */
   moduleUrls?: { sport: string; sidequest: string };
+  /** Vervangt de startpagina, bijvoorbeeld door het widgetdashboard van Personal Ecosystem. */
+  home?: ReactNode;
 }
 
-function App({ basename = '/', moduleLinks = [], moduleUrls }: AppProps = {}) {
+function App({ basename = '/', moduleLinks = [], moduleUrls, home }: AppProps = {}) {
   const [database, setDatabase] = useState<LocalDatabase | null>(null);
   const [launches, setLaunches] = useState<AppLaunch[]>([]);
   const [shortcuts, setShortcuts] = useState<Shortcut[]>([]);
@@ -189,9 +198,9 @@ function App({ basename = '/', moduleLinks = [], moduleUrls }: AppProps = {}) {
 
   return (
     <BrowserRouter basename={basename}>
-      <AppFrame appName="Personal Ecosystem" appMark="P" navigation={navigation} moduleLinks={moduleLinks}>
+      <AppFrame appName="Personal Ecosystem" appMark="P" navigation={moduleUrls ? embeddedNavigation : navigation} moduleLinks={moduleLinks}>
         <Routes>
-          <Route path="/" element={<HomePage preferences={shownPreferences} shortcuts={shortcuts} launches={launches} storageLabel={storageLabel} error={error} onOpen={openApp} />} />
+          <Route path="/" element={home ?? <HomePage preferences={shownPreferences} shortcuts={shortcuts} launches={launches} storageLabel={storageLabel} error={error} onOpen={openApp} />} />
           <Route path="/apps/sportapp" element={<AppInfoPage appId="sportapp" appName="Sportapp" url={shownPreferences.sportUrl} onOpen={openApp} error={error} />} />
           <Route path="/apps/sidequest" element={<AppInfoPage appId="sidequest" appName="SIDEQUEST" url={shownPreferences.sidequestUrl} onOpen={openApp} error={error} />} />
           <Route path="/activiteiten" element={<ActivityPage launches={launches} />} />

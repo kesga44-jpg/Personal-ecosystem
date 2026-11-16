@@ -20,7 +20,7 @@ Na [ADR 0020](docs/adr/0020-een-app-met-modules.md) draaien alle modules in éé
 | Voeding | IndexedDB `personal-ecosystem-voeding` | Dashboard: alleen of er vandaag iets is ingevuld |
 | Dagboek & stemming | IndexedDB `personal-ecosystem-dagboek` | Dashboard: alleen of er vandaag iets is ingevuld. Geen inhoud van notities |
 
-Elk leescontract staat in `packages/core`, geeft alleen de genoemde velden terug en heeft unit-tests. Nieuwe contracten vereisen een update van deze tabel.
+Elk leescontract staat in `apps/ecosystem/src/dashboard/summary.ts` (eerder gepland in `packages/core`; die package mag geen apps importeren), geeft alleen de genoemde samenvattingen terug en heeft unit-tests. Het dashboard opent de databases van Sport en SIDEQUEST alleen om te lezen. Nieuwe contracten vereisen een update van deze tabel.
 
 Deze lokale databases vervangen of lezen de bestaande opslag van Samen Thuis/Coach niet. Er is geen automatische upload. De tabellen/schema's hieronder zijn de gewenste toekomstige gedeelde backend en zijn niet aangemaakt.
 

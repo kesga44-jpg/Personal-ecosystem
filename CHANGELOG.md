@@ -7,6 +7,8 @@ Elke app in de monorepo krijgt een eigen sectie zodra die bestaat. Bestaande app
 
 ### Toegevoegd
 
+- PR 2: widgetdashboard in Personal Ecosystem (Vandaag, Beweging deze week, Streaks, Punten, Weer, Gewoontes-heatmap, Back-up, Apps) met verbergen en herschikken per apparaat; lichte SVG-grafieken zonder externe bibliotheek (staaf, lijn, sparkline, heatmap, voortgangsring) met schermlezer-tabellen; Open-Meteo-weer met afgeronde locatie en trainingsadvies; ontwerplaag met tokens, donkere modus voor nieuwe onderdelen en grotere aanraakdoelen. Dashboardnavigatie zonder dubbele links.
+- ADR 0021: eigen account met e-mail, wachtwoord en verplichte TOTP; inhoud eind-tot-eind versleuteld in de browser; poorten P-1 t/m P-6 vóór livegang. Besluiten B-21 en B-22. Alleen ontwerp; geen databasewijziging.
 - Personal Ecosystem (`apps/ecosystem`, PR 1 van ADR 0020): één app met de modules Dashboard (`/`), Sport (`/sport`) en SIDEQUEST (`/quest`), elk lazy geladen, met modulewisselaar en eigen IndexedDB per module. Centrale back-up op `/back-up` met controlegetal; herstel controleert eerst alles en accepteert ook losse back-ups van de oude apps. Verhuismelding in de oude Sportapp en SIDEQUEST. Landingspagina toont één kaart "Personal Ecosystem". `preview_urls` uitgezet in alle Workers-configuraties.
 - 2026-11-16 — ADR 0020: Hub, Sportapp en SIDEQUEST worden één app met modules; nieuwe modules Lichaam & gezondheid, Voeding en Dagboek & stemming. Register, gegevenseigendom, besluiten (B-17 t/m B-20), roadmap en `CLAUDE.md` bijgewerkt. Alleen documentatie.
 - Links op de publieke startpagina naar Samen Thuis en Coach en actieve app-links voor Hub, Sportapp en SIDEQUEST.

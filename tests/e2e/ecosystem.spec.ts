@@ -13,7 +13,7 @@ function collectErrors(page: Page): string[] {
 }
 
 for (const [path, text] of [
-  ['/', /Welkom/],
+  ['/', /^Goede(nacht|morgen|middag|navond)/],
   ['/instellingen', 'Instellingen'],
   ['/sport', 'Sport, op jouw manier.'],
   ['/sport/activiteiten', 'Activiteiten'],
@@ -44,13 +44,63 @@ test('modulewisselaar opent Sport en SIDEQUEST op dezelfde origin', async ({ pag
   await expect(page).toHaveURL(`${base}/quest/gewoontes`);
 });
 
-test('dashboardtegel opent Sport in hetzelfde tabblad', async ({ page }) => {
+test('dashboardwidget opent Sport in hetzelfde tabblad', async ({ page }) => {
   await page.goto(base);
-  const link = page.getByRole('link', { name: 'Open Sportapp ↗' });
-  await expect(link).toHaveAttribute('href', `${base}/sport`);
+  const link = page.getByRole('link', { name: '↗ Sport' });
+  await expect(link).toHaveAttribute('href', '/sport');
   await expect(link).not.toHaveAttribute('target', '_blank');
   await link.click();
   await expect(page).toHaveURL(`${base}/sport`);
+});
+
+test('widgetdashboard toont samenvattingen uit Sport en SIDEQUEST', async ({ page }) => {
+  await page.goto(`${base}/sport/activiteiten`);
+  await page.getByRole('button', { name: '＋ Toevoegen' }).click();
+  await page.getByLabel('Duur (minuten)').fill('35');
+  await page.getByRole('button', { name: /Activiteit opslaan/ }).click();
+  await expect(page.getByText('35 min').first()).toBeVisible();
+
+  await page.goto(base);
+  const sportWidget = page.locator('.widget').filter({ has: page.getByRole('heading', { name: 'Beweging deze week' }) });
+  await expect(sportWidget.locator('.widget-stat')).toContainText('35');
+  await expect(sportWidget.getByRole('img', { name: /Beweegminuten per dag/ })).toBeVisible();
+  await expect(page.getByText('Nog geen dagelijkse gewoontes')).toBeVisible();
+  await expect(page.getByText('35 min bewogen vandaag')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Back-up' })).toBeVisible();
+});
+
+test('widgets aanpassen: verbergen blijft bewaard', async ({ page }) => {
+  await page.goto(base);
+  await page.getByRole('button', { name: 'Widgets aanpassen' }).click();
+  const points = page.locator('.widget').filter({ has: page.getByRole('heading', { name: 'Punten' }) });
+  await points.getByRole('button', { name: 'Verbergen' }).click();
+  await page.getByRole('button', { name: 'Klaar' }).click();
+  await expect(page.getByRole('heading', { name: 'Punten' })).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Punten' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Streaks' })).toBeVisible();
+});
+
+test('weerwidget gebruikt Open-Meteo met afgeronde locatie', async ({ page }) => {
+  const requested: string[] = [];
+  await page.route('https://geocoding-api.open-meteo.com/**', (route) => {
+    requested.push(route.request().url());
+    return route.fulfill({ json: { results: [{ name: 'Utrecht', latitude: 52.090737, longitude: 5.12142, admin1: 'Utrecht', country: 'Nederland' }] } });
+  });
+  await page.route('https://api.open-meteo.com/**', (route) => {
+    requested.push(route.request().url());
+    return route.fulfill({ json: { current: { temperature_2m: 12.3, weather_code: 2, wind_speed_10m: 14 }, daily: { temperature_2m_max: [14], temperature_2m_min: [6], precipitation_probability_max: [10] } } });
+  });
+  await page.goto(base);
+  const weather = page.locator('.widget').filter({ has: page.getByRole('heading', { name: 'Weer' }) });
+  await weather.getByLabel('Plaats voor het weer').fill('Utrecht');
+  await weather.getByRole('button', { name: 'Zoeken' }).click();
+  await weather.getByRole('button', { name: 'Utrecht, Utrecht, Nederland' }).click();
+  await expect(weather.locator('.widget-stat')).toContainText('12°');
+  await expect(weather.getByText('Prima weer om buiten te trainen.')).toBeVisible();
+  await expect(weather.getByRole('link', { name: 'Open-Meteo.com' })).toBeVisible();
+  const forecast = requested.find((url) => url.startsWith('https://api.open-meteo.com'))!;
+  expect(new URL(forecast).searchParams.get('latitude')).toBe('52.09');
 });
 
 for (const width of [375, 768, 1280]) {
