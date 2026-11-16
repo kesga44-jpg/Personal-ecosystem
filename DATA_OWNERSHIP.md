@@ -16,11 +16,11 @@ Na [ADR 0020](docs/adr/0020-een-app-met-modules.md) draaien alle modules in éé
 | Dashboard | IndexedDB `personal-ecosystem-hub`; weergavevoorkeuren in localStorage | Niets |
 | Sport | IndexedDB `personal-ecosystem-sport` | Dashboard: aantallen, totale duur en afstand per periode. SIDEQUEST (alleen als de koppeling aan staat): ID, datum, sporttype en duur per activiteit |
 | SIDEQUEST | IndexedDB `personal-ecosystem-sidequest` | Dashboard: aantallen, streaks, punten |
-| Lichaam & gezondheid | IndexedDB `personal-ecosystem-lichaam` | Sport-coach: laatste slaap- en hersteltrend. Dashboard: alleen of er vandaag iets is ingevuld |
+| Lichaam & gezondheid | IndexedDB `personal-ecosystem-lichaam` (stores `days`, `profile`) | Dashboard: alleen of er vandaag iets is ingevuld (`lichaamFilledToday`; het dashboard houdt alleen datums vast). Later, apart besluit: Sport-coach leest laatste slaap- en hersteltrend |
 | Voeding | IndexedDB `personal-ecosystem-voeding` | Dashboard: alleen of er vandaag iets is ingevuld |
 | Dagboek & stemming | IndexedDB `personal-ecosystem-dagboek` | Dashboard: alleen of er vandaag iets is ingevuld. Geen inhoud van notities |
 
-Elk leescontract staat in `apps/ecosystem/src/dashboard/summary.ts` (eerder gepland in `packages/core`; die package mag geen apps importeren), geeft alleen de genoemde samenvattingen terug en heeft unit-tests. Het dashboard opent de databases van Sport en SIDEQUEST alleen om te lezen. Nieuwe contracten vereisen een update van deze tabel.
+Elk leescontract staat in `apps/ecosystem/src/dashboard/summary.ts` (eerder gepland in `packages/core`; die package mag geen apps importeren), geeft alleen de genoemde samenvattingen terug en heeft unit-tests. Het dashboard opent de databases van Sport, SIDEQUEST en Lichaam alleen om te lezen. Nieuwe contracten vereisen een update van deze tabel.
 
 Deze lokale databases vervangen of lezen de bestaande opslag van Samen Thuis/Coach niet. Er is geen automatische upload. De tabellen/schema's hieronder zijn de gewenste toekomstige gedeelde backend en zijn niet aangemaakt.
 
