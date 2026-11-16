@@ -9,7 +9,7 @@ De huidige Hub gebruikt nog een vaste lokale appnavigatie; automatische register
 |---|---|---|---|---|---|---|
 | `samen-thuis` | Samen Thuis | Bestaand, in productie | `kesga44-jpg/Samen-thuis` | A | `public` + buckets `sport-training`, `profile-photos` | Huishouden, financiën, **beleggen**, boodschappen, voorraad, woning, planning, huishoud-challenges en beloningen |
 | `coach` | Coach | Bestaand, in productie | `kesga44-jpg/Coach` | B | `coach_data_auth` + bucket `vc2` | Clubs, teams, spelers, aanwezigheid, trainingen, wedstrijden, teamstatistieken, tactiek |
-| `ecosystem` | Personal Ecosystem | In ombouw (ADR 0020) | `kesga44-jpg/Personal-ecosystem/apps/ecosystem` | Niet aangesloten | Lokale IndexedDB per module | Eén app met de modules hieronder; centrale back-up |
+| `ecosystem` | Personal Ecosystem | Gebouwd (PR 1); live na omzetten `pe-hub` in Cloudflare | `kesga44-jpg/Personal-ecosystem/apps/ecosystem` | Niet aangesloten | Lokale IndexedDB per module | Eén app met de modules hieronder; centrale back-up |
 | `hub` | Dashboard (module) | MVP lokaal | `kesga44-jpg/Personal-ecosystem/apps/hub` | Niet aangesloten | Lokale IndexedDB | App-links, eigen snelkoppelingen, Hub-appopeningen en lokale status |
 | `sport` | Sportapp | MVP lokaal | `kesga44-jpg/Personal-ecosystem/apps/sportapp` | Niet aangesloten | Lokale IndexedDB | Activiteiten, trainingsplannen, GPX-samenvattingen en basisstatistieken |
 | `sidequest` | SIDEQUEST | MVP lokaal | `kesga44-jpg/Personal-ecosystem/apps/sidequest` | Niet aangesloten | Lokale IndexedDB | Persoonlijke doelen, gewoontes, streaks, quests en reproduceerbare punten |

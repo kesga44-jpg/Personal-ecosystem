@@ -21,6 +21,8 @@ npm run test:e2e
 | Unit — Sportapp | `apps/sportapp/src/domain.test.ts` | Stats, GPX-coördinaten/tijdstempels, meerdere tracks en segmenten, tijdsvolgorde en activiteitvalidatie |
 | Unit — SIDEQUEST | `apps/sidequest/src/domain.test.ts` | Dagelijkse/wekelijkse streak, periodechecks, deterministische punten, progressievalidatie |
 | Chromium E2E | `tests/e2e/apps.spec.ts` | Basisflows en fout-/retrygedrag in alle apps, stale GPX-preview blokkeren; voor Hub, Sportapp en SIDEQUEST elk manifest, actieve service worker, SPA-routefallback, offline herladen en lokale basisactie |
+| Unit — Personal Ecosystem | `apps/ecosystem/src/*.test.ts` | Pad → module, modulelinks, centrale back-up (controlegetal, alles-of-niets-validatie, import van losse back-ups), gescheiden databasenamen per module |
+| Chromium E2E — Personal Ecosystem | `tests/e2e/ecosystem.spec.ts` | Alle modules en deep links laden zonder consolefouten, modulewisselaar, dashboardtegel opent module in hetzelfde tabblad, 375/768/1280 px zonder horizontaal scrollen, back-up exporteren/aangepast bestand weigeren/herstellen, offline herstart, verhuismelding in oude Sportapp en SIDEQUEST |
 | Build/type | Per app + root | TypeScript strict typecheck en afzonderlijke productiebuilds voor alle drie apps |
 
 Er zijn nog geen volledige componenttests per scherm, coverage-drempel, axe/a11y-suite, cross-browserrun of FIT/TCX-importtests. Fysieke PWA-installatie en offline gebruik op iOS/iPadOS en Android zijn niet getest en blijven vervolgwerk.
