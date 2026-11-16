@@ -13,7 +13,8 @@ import {
   LoadingState,
   PageHeader,
   PwaInstallButton,
-  StatusPill
+  StatusPill,
+  type ModuleLink
 } from '@ecosystem/ui';
 import {
   calculateHabitStreak,
@@ -28,7 +29,7 @@ import {
   type Quest
 } from './domain';
 
-const databaseConfig = {
+export const databaseConfig = {
   appId: 'sidequest',
   databaseName: 'personal-ecosystem-sidequest',
   version: 1,
@@ -56,7 +57,14 @@ function todayKey(): string {
   return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
 }
 
-function App() {
+export interface AppProps {
+  /** Pad waaronder de app draait; '/' als losse app, bijv. '/sport' als module (ADR 0020). */
+  basename?: string;
+  /** Links naar de andere modules; leeg als losse app. */
+  moduleLinks?: ModuleLink[];
+}
+
+function App({ basename = '/', moduleLinks = [] }: AppProps = {}) {
   const [database, setDatabase] = useState<LocalDatabase | null>(null);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [habits, setHabits] = useState<Habit[]>([]);
@@ -116,8 +124,8 @@ function App() {
   if (!database) return <main className="main-content"><ErrorBanner message={error || 'Lokale opslag is niet beschikbaar.'} /></main>;
 
   return (
-    <BrowserRouter>
-      <AppFrame appName="SIDEQUEST" appMark="✦" navigation={navigation}>
+    <BrowserRouter basename={basename}>
+      <AppFrame appName="SIDEQUEST" appMark="✦" navigation={navigation} moduleLinks={moduleLinks}>
         <Routes>
           <Route path="/" element={<Dashboard goals={goals} habits={habits} checks={checks} quests={quests} error={error} />} />
           <Route
