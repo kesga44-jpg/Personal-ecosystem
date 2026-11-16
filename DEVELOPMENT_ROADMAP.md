@@ -1,5 +1,28 @@
 # Vervolgroadmap Personal Ecosystem
 
+## Planning na ADR 0020 (2026-11-16)
+
+Volgorde van de eerstvolgende PR's. Elke PR is één onderwerp, met tests en documentatie; de eigenaar merget. De fasetabel hieronder blijft de lange termijn (o.a. Supabase en sync).
+
+| # | PR | Inhoud |
+|---|---|---|
+| 0 | Documentatie | ADR 0020, register, gegevenseigendom, besluiten, deze planning |
+| 1 | Samenvoegen | Eén app `apps/ecosystem` met modules Dashboard, Sport en SIDEQUEST; centrale back-up; import van oude back-ups; verhuismelding op oude adressen; `preview_urls: false` |
+| 2 | Dashboard | Vandaag-overzicht, streaks, weekvolume, tellers per module, weekreview, back-upherinnering |
+| 3 | Sport | Krachttraining: oefeningenbibliotheek, schema's, sets/herhalingen/gewicht, records |
+| 4 | Sport | Duursport: FIT/TCX-import, tempo- en hartslagzones, weekvolume; kaart pas na controle tegelvoorwaarden |
+| 5 | Sport | Doelen en planning: weekdoelen, trainingskalender |
+| 6 | Sport | Regelgebaseerde coach (logica herschreven in TypeScript; Samen Thuis blijft ongewijzigd) |
+| 7 | SIDEQUEST | Quest-stappen, categorieën, deadlines |
+| 8 | SIDEQUEST | Levels en badges |
+| 9 | SIDEQUEST | Statistieken en kalender-heatmap |
+| 10 | Koppeling | Sport → SIDEQUEST-punten, standaard uit |
+| 11 | Nieuw | Lichaam & gezondheid |
+| 12 | Nieuw | Voeding met Open Food Facts en barcodescan |
+| 13 | Nieuw | Dagboek & stemming |
+| 14 | Herinneringen | Binnen de app, alleen eigen module-items (ADR 0018); web-push apart besluit |
+
+
 ## Status na de applicatie-MVP
 
 De huidige PR levert drie afzonderlijke, lokaal werkende apps met IndexedDB, back-up/herstel, GPX-import en basis-PWA. Geen Supabase-migratie, accountmigratie, externe API of productie-deployment is uitgevoerd. Fasen zijn zelfstandige vervolg-PR's; productie- en databasehandelingen vereisen afzonderlijk akkoord.
