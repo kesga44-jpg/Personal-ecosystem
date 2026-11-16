@@ -47,7 +47,7 @@ export async function assertNoSharpInDist(root: string): Promise<void> {
   for (const directory of sharpPackages) {
     for (const file of await filesIn(directory, true)) hashes.add(await digest(file));
   }
-  for (const app of ['hub', 'sportapp', 'sidequest']) {
+  for (const app of ['hub', 'sportapp', 'sidequest', 'ecosystem']) {
     const dist = join(root, 'apps', app, 'dist');
     if (!(await stat(join(dist, 'index.html'))).isFile()) {
       throw new Error(`Missing index.html in ${dist}`);
