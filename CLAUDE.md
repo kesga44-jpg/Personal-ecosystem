@@ -42,6 +42,7 @@ Deze regels gelden in elke repository van het persoonlijke ecosysteem (Samen Thu
 
 - Samen Thuis Sport & Training is **niet** bevroren. Niets eraan uitschakelen, verbergen of doorverwijzen tot poort G-SPORT is gehaald én de eigenaar apart akkoord heeft gegeven (`docs/adr/0002-…`).
 - Wijzigingen in Samen Thuis of Coach: eerst een voorstel (doel, bestanden, risico, testplan) ter goedkeuring; daarna één PR per onderwerp; nooit zelf mergen (`docs/adr/0011-…`).
+- Een app-wijziging die een nieuwe databasemigratie nodig heeft, gaat pas live als die migratie in productie is uitgevoerd en gecontroleerd. Schakel een bestaande route (bijv. sync) nooit uit voordat de vervangende route in productie werkt.
 
 ## 3. Code (nieuwe apps)
 

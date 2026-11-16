@@ -9,11 +9,18 @@ Twee soorten eigendom:
 
 ### Huidige implementatie in deze monorepo
 
-| App | Lokale bron van waarheid | Wat de Hub leest |
+Na [ADR 0020](docs/adr/0020-een-app-met-modules.md) draaien alle modules in één app op één origin. Elke module schrijft alleen in de eigen database.
+
+| Module | Lokale bron van waarheid | Wat andere modules mogen lezen (leescontract) |
 |---|---|---|
-| Hub | IndexedDB `personal-ecosystem-hub`; kleine weergave-/URL-voorkeuren in localStorage | Eigen appopeningen en snelkoppelingen |
-| Sportapp | IndexedDB `personal-ecosystem-sport` | Niets; geen training- of statistiekkopie |
-| SIDEQUEST | IndexedDB `personal-ecosystem-sidequest` | Niets; geen doelen, checks, punten of streakkopie |
+| Dashboard | IndexedDB `personal-ecosystem-hub`; weergavevoorkeuren in localStorage | Niets |
+| Sport | IndexedDB `personal-ecosystem-sport` | Dashboard: aantallen, totale duur en afstand per periode. SIDEQUEST (alleen als de koppeling aan staat): ID, datum, sporttype en duur per activiteit |
+| SIDEQUEST | IndexedDB `personal-ecosystem-sidequest` | Dashboard: aantallen, streaks, punten |
+| Lichaam & gezondheid | IndexedDB `personal-ecosystem-lichaam` | Sport-coach: laatste slaap- en hersteltrend. Dashboard: alleen of er vandaag iets is ingevuld |
+| Voeding | IndexedDB `personal-ecosystem-voeding` | Dashboard: alleen of er vandaag iets is ingevuld |
+| Dagboek & stemming | IndexedDB `personal-ecosystem-dagboek` | Dashboard: alleen of er vandaag iets is ingevuld. Geen inhoud van notities |
+
+Elk leescontract staat in `packages/core`, geeft alleen de genoemde velden terug en heeft unit-tests. Nieuwe contracten vereisen een update van deze tabel.
 
 Deze lokale databases vervangen of lezen de bestaande opslag van Samen Thuis/Coach niet. Er is geen automatische upload. De tabellen/schema's hieronder zijn de gewenste toekomstige gedeelde backend en zijn niet aangemaakt.
 

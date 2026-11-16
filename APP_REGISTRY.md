@@ -9,15 +9,21 @@ De huidige Hub gebruikt nog een vaste lokale appnavigatie; automatische register
 |---|---|---|---|---|---|---|
 | `samen-thuis` | Samen Thuis | Bestaand, in productie | `kesga44-jpg/Samen-thuis` | A | `public` + buckets `sport-training`, `profile-photos` | Huishouden, financiën, **beleggen**, boodschappen, voorraad, woning, planning, huishoud-challenges en beloningen |
 | `coach` | Coach | Bestaand, in productie | `kesga44-jpg/Coach` | B | `coach_data_auth` + bucket `vc2` | Clubs, teams, spelers, aanwezigheid, trainingen, wedstrijden, teamstatistieken, tactiek |
-| `hub` | Dashboard Hub | MVP lokaal | `kesga44-jpg/Personal-ecosystem/apps/hub` | Niet aangesloten | Lokale IndexedDB | App-links, eigen snelkoppelingen, Hub-appopeningen en lokale status |
+| `ecosystem` | Personal Ecosystem | In ombouw (ADR 0020) | `kesga44-jpg/Personal-ecosystem/apps/ecosystem` | Niet aangesloten | Lokale IndexedDB per module | Eén app met de modules hieronder; centrale back-up |
+| `hub` | Dashboard (module) | MVP lokaal | `kesga44-jpg/Personal-ecosystem/apps/hub` | Niet aangesloten | Lokale IndexedDB | App-links, eigen snelkoppelingen, Hub-appopeningen en lokale status |
 | `sport` | Sportapp | MVP lokaal | `kesga44-jpg/Personal-ecosystem/apps/sportapp` | Niet aangesloten | Lokale IndexedDB | Activiteiten, trainingsplannen, GPX-samenvattingen en basisstatistieken |
 | `sidequest` | SIDEQUEST | MVP lokaal | `kesga44-jpg/Personal-ecosystem/apps/sidequest` | Niet aangesloten | Lokale IndexedDB | Persoonlijke doelen, gewoontes, streaks, quests en reproduceerbare punten |
+| `lichaam` | Lichaam & gezondheid (module) | Gepland (ADR 0020) | `apps/ecosystem` | Niet aangesloten | IndexedDB `personal-ecosystem-lichaam` | Gewicht, omvang, rusthartslag, slaap, herstel |
+| `voeding` | Voeding (module) | Gepland (ADR 0020) | `apps/ecosystem` | Niet aangesloten | IndexedDB `personal-ecosystem-voeding` | Persoonlijke inname en voedingswaarden; geen weekmenu of boodschappen |
+| `dagboek` | Dagboek & stemming (module) | Gepland (ADR 0020) | `apps/ecosystem` | Niet aangesloten | IndexedDB `personal-ecosystem-dagboek` | Privé-dagnotities, stemming en energie |
 
 De schema's `hub`, `sport`, `quest` en eventuele buckets zijn alleen ontworpen; er is geen runtime Supabase-verbinding/migratie in de MVP. Toekomstige functies uit de volgende paragrafen blijven roadmap, niet geïmplementeerde functionaliteit.
 
 **Niet in het register, en niet gepland:** Warehouse OS.
 
 ## Per app
+
+> **Sinds [ADR 0020](docs/adr/0020-een-app-met-modules.md) (2026-11-16)** worden Hub, Sportapp en SIDEQUEST modules van één app `ecosystem` op één origin. Voeding en lichaamsmetingen verhuizen van de Sportapp naar eigen modules. De paden `apps/hub`, `apps/sportapp` en `apps/sidequest` blijven bestaan tot de overgang in ADR 0020 § 5 is afgerond.
 
 ### Samen Thuis (`samen-thuis`)
 
@@ -57,3 +63,5 @@ De schema's `hub`, `sport`, `quest` en eventuele buckets zijn alleen ontworpen; 
 1. Eerst een ADR in `docs/adr/` die aantoont dat de functionaliteit niet in een bestaande app past.
 2. Toevoegen aan dit register en aan [DATA_OWNERSHIP.md](DATA_OWNERSHIP.md).
 3. Akkoord van de eigenaar (Kees).
+
+Een nieuwe **module** binnen Personal Ecosystem volgt dezelfde drie stappen; de ADR kan kort zijn, maar moet de afbakening ten opzichte van Samen Thuis en de bestaande modules vastleggen.

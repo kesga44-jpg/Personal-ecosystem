@@ -18,3 +18,7 @@
 ## Aanvulling 2026-11-15 — besluit eigenaar
 
 De drie apps gebruiken de bestaande Cloudflare Workers-projecten met statische assets in plaats van Cloudflare Pages. Iedere app behoudt een afzonderlijke origin en deployment; Samen Thuis en Coach blijven ongewijzigd. De Pages-limieten hierboven zijn niet geverifieerd voor Workers. De repositoryconfiguratie start zelf geen deployment.
+
+## Aanvulling 2026-11-16 — ADR 0020
+
+Voor Hub, Sportapp en SIDEQUEST is de eigen origin per app vervangen door één app met modules op één origin (`pe-hub`). Zie [ADR 0020](0020-een-app-met-modules.md). Samen Thuis en Coach blijven ongewijzigd.
