@@ -8,6 +8,7 @@ npm audit --audit-level=high
 npm run typecheck
 npm test
 npm run build:all
+npm run check:dist
 npm run test:e2e
 ```
 
@@ -18,10 +19,12 @@ npm run test:e2e
 | Niveau | Bestanden/flows | Wat wordt getest |
 |---|---|---|
 | Unit — opslag | `packages/storage/src/index.test.ts` | App-namespace, lege en gevulde export, backup-/schema-/recordvalidatie, corrupte JSON, rollback bij transactiefout, IndexedDB-writefout, foutmelding en succesvolle opslagretry |
+| Unit — ecosystem | `apps/ecosystem/src/modules/**` | Verplaatste domeintests, back-upchecksum, validatie vóór herstel en scheiding van databasenaam |
 | Unit — Sportapp | `apps/sportapp/src/domain.test.ts` | Stats, GPX-coördinaten/tijdstempels, meerdere tracks en segmenten, tijdsvolgorde en activiteitvalidatie |
 | Unit — SIDEQUEST | `apps/sidequest/src/domain.test.ts` | Dagelijkse/wekelijkse streak, periodechecks, deterministische punten, progressievalidatie |
-| Chromium E2E | `tests/e2e/apps.spec.ts` | Basisflows en fout-/retrygedrag in alle apps, stale GPX-preview blokkeren; voor Hub, Sportapp en SIDEQUEST elk manifest, actieve service worker, SPA-routefallback, offline herladen en lokale basisactie |
-| Build/type | Per app + root | TypeScript strict typecheck en afzonderlijke productiebuilds voor alle drie apps |
+| Chromium E2E | `tests/e2e/apps.spec.ts` | Basisflows en fout-/retrygedrag; module- en deeplinks, responsieve layouts, offline herstart en verhuismeldingen; legacy PWA-flows blijven getest |
+| Chromium E2E | `tests/e2e/landing.spec.ts` | Eén Personal Ecosystem-kaart plus Samen Thuis en Coach; HTTPS- en origincontrole behouden |
+| Build/type | Per app + root | TypeScript strict typecheck en productiebuilds van de drie overgangsapps en ecosystem |
 
 Er zijn nog geen volledige componenttests per scherm, coverage-drempel, axe/a11y-suite, cross-browserrun of FIT/TCX-importtests. Fysieke PWA-installatie en offline gebruik op iOS/iPadOS en Android zijn niet getest en blijven vervolgwerk.
 

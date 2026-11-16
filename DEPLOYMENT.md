@@ -6,16 +6,17 @@ Vereist Node.js 24 LTS of nieuwer en npm 11:
 
 ```sh
 npm ci
+npm run dev:ecosystem  # localhost:5176
 npm run dev:hub        # localhost:5173
 npm run dev:sportapp   # localhost:5174
 npm run dev:sidequest  # localhost:5175
 ```
 
-Elke workspace heeft een eigen Vite entrypoint, manifest, icon, service worker en build. Routes gebruiken root-base `/`. `npm run build:all` maakt alle drie `dist/`-mappen. Er zijn geen secrets of Supabase-variabelen nodig om te bouwen.
+Elke workspace heeft een eigen Vite entrypoint, manifest, icon, service worker en build. Personal Ecosystem gebruikt de routes `/`, `/sport/*`, `/quest/*` en `/instellingen`. `npm run build:all` maakt de drie overgangsbuilds en de ecosystem-build. Er zijn geen secrets of Supabase-variabelen nodig om te bouwen.
 
 ## Publieke landingspagina
 
-De GitHub Pages-root gebruikt `index.html` als Nederlandstalige startpagina. De vaste links naar Samen Thuis en Coach openen hun bestaande GitHub Pages-pagina's in een nieuw tabblad. Ze delen de GitHub Pages-origin met de landingspagina; er worden geen scripts of gegevens van die apps geladen. Dit verandert de bestaande origin-isolatie niet. Links voor Hub, Sportapp en SIDEQUEST staan in `app-urls.js`; laat de URL leeg totdat de app een eigen HTTPS-origin heeft. De pagina houdt Openen uitgeschakeld zolang een URL ontbreekt en weigert ongeldige links of origins die met een andere nieuwe app of de landingspagina worden gedeeld.
+De GitHub Pages-root gebruikt `index.html` als Nederlandstalige startpagina. De vaste links naar Samen Thuis en Coach openen hun bestaande GitHub Pages-pagina's in een nieuw tabblad. Ze delen de GitHub Pages-origin met de landingspagina; er worden geen scripts of gegevens van die apps geladen. De kaart Personal Ecosystem linkt naar `https://pe-hub.kesga44.workers.dev`. App-links moeten HTTPS gebruiken en mogen de landingspagina-origin niet delen.
 
 De pagina gebruikt alleen lokale scripts en stylesheets. De Content Security Policy staat in een `meta`-element omdat GitHub Pages geen configureerbare response-headers biedt. Browsers ondersteunen `frame-ancestors` niet vanuit een CSP-meta-element; die headerbescherming kan op GitHub Pages dus niet worden afgedwongen. De pagina laadt geen externe scripts of gegevens.
 
@@ -27,11 +28,20 @@ Stel in elk bestaand project onder **Settings → Build** de root directory leeg
 
 | Project | Build command | Deploy command |
 |---|---|---|
-| `pe-hub` | `npm ci && npm run build:hub` | `npx wrangler deploy --config apps/hub/wrangler.jsonc` |
+| `pe-hub` (tot overgang) | `npm ci && npm run build:hub` | `npx wrangler deploy --config apps/hub/wrangler.jsonc` |
 | `pe-sportapp` | `npm ci && npm run build:sportapp` | `npx wrangler deploy --config apps/sportapp/wrangler.jsonc` |
 | `pe-sidequest` | `npm ci && npm run build:sidequest` | `npx wrangler deploy --config apps/sidequest/wrangler.jsonc` |
 
-Stel voor alle projecten de **build variable** `NODE_VERSION=24` in. Stel daarnaast uitsluitend voor `pe-hub` de build variables `VITE_SPORTAPP_URL=https://pe-sportapp.kesga44.workers.dev` en `VITE_SIDEQUEST_URL=https://pe-sidequest.kesga44.workers.dev` in. Dit zijn geen runtime variables; `VITE_*`-waarden zijn publiek en mogen geen geheimen bevatten. Hub-instellingen kunnen de links ook lokaal aanpassen. De apps gebruiken momenteel geen Supabase-client, authenticatie, keys of netwerk-API's.
+Stel voor de bestaande projecten de **build variable** `NODE_VERSION=24` in. Tot de overgang heeft alleen de oude `pe-hub`-build de publieke build variables `VITE_SPORTAPP_URL=https://pe-sportapp.kesga44.workers.dev` en `VITE_SIDEQUEST_URL=https://pe-sidequest.kesga44.workers.dev` nodig. De ecosystem-build gebruikt die variables niet; de eigenaar kan ze na de overgang verwijderen. De apps gebruiken geen Supabase-client, authenticatie, keys of netwerk-API's.
+
+Na merge van PR 1 configureert de eigenaar de bestaande Cloudflare Worker `pe-hub` voor de nieuwe app:
+
+```sh
+npm ci && npm run build:ecosystem
+npx wrangler deploy --config apps/ecosystem/wrangler.jsonc
+```
+
+Dit vervangt voor `pe-hub` de oude build- en deploycommando's. De Cloudflare-instellingen worden niet door deze wijziging aangepast.
 
 Elke configuratie gebruikt `./dist` relatief aan het eigen `wrangler.jsonc` en `assets.not_found_handling: "single-page-application"`. `_redirects` wordt voor deze Workers niet gebruikt; `_headers` bevat de beveiligingsheaders en CSP. In de lokale Wrangler-preview gaven diepe links de app-shell met status 200. Ook een ontbrekend bestand onder `/assets/` gaf status 200 met `index.html`, niet 404; dit is een bewust geaccepteerde beperking. De service worker precachet alleen gegenereerde app-shellbestanden; er is geen runtimecache voor persoonlijke gegevens.
 
@@ -39,7 +49,7 @@ De deploycommando's publiceren als Cloudflare ze uitvoert; deze wijziging voert 
 
 ## PWA en browsergrenzen
 
-- Hub, Sportapp en SIDEQUEST hebben ieder een eigen manifest en updatebare service worker.
+- Personal Ecosystem heeft één manifest en service worker. De drie overgangsapps houden hun eigen manifest en service worker.
 - Browserinstellingen bieden installatieprompt op ondersteunde browsers. Op iOS/iPadOS gebruik je Safari → Deel → Zet op beginscherm; push en WebGPU zijn niet nodig.
 - Alleen de statische shell wordt gecachet. IndexedDB-data en backups vallen buiten de service-worker-cache.
 - Browseropslag is niet versleuteld; apparaatbeveiliging en een veilige back-uplocatie blijven nodig.

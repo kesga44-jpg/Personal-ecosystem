@@ -9,10 +9,10 @@ De huidige Hub gebruikt nog een vaste lokale appnavigatie; automatische register
 |---|---|---|---|---|---|---|
 | `samen-thuis` | Samen Thuis | Bestaand, in productie | `kesga44-jpg/Samen-thuis` | A | `public` + buckets `sport-training`, `profile-photos` | Huishouden, financiën, **beleggen**, boodschappen, voorraad, woning, planning, huishoud-challenges en beloningen |
 | `coach` | Coach | Bestaand, in productie | `kesga44-jpg/Coach` | B | `coach_data_auth` + bucket `vc2` | Clubs, teams, spelers, aanwezigheid, trainingen, wedstrijden, teamstatistieken, tactiek |
-| `ecosystem` | Personal Ecosystem | In ombouw (ADR 0020) | `kesga44-jpg/Personal-ecosystem/apps/ecosystem` | Niet aangesloten | Lokale IndexedDB per module | Eén app met de modules hieronder; centrale back-up |
-| `hub` | Dashboard (module) | MVP lokaal | `kesga44-jpg/Personal-ecosystem/apps/hub` | Niet aangesloten | Lokale IndexedDB | App-links, eigen snelkoppelingen, Hub-appopeningen en lokale status |
-| `sport` | Sportapp | MVP lokaal | `kesga44-jpg/Personal-ecosystem/apps/sportapp` | Niet aangesloten | Lokale IndexedDB | Activiteiten, trainingsplannen, GPX-samenvattingen en basisstatistieken |
-| `sidequest` | SIDEQUEST | MVP lokaal | `kesga44-jpg/Personal-ecosystem/apps/sidequest` | Niet aangesloten | Lokale IndexedDB | Persoonlijke doelen, gewoontes, streaks, quests en reproduceerbare punten |
+| `ecosystem` | Personal Ecosystem | In gebruik na deploy | `kesga44-jpg/Personal-ecosystem/apps/ecosystem` | Niet aangesloten | Lokale IndexedDB per module | Dashboard, Sport, SIDEQUEST; centrale back-up |
+| `hub` | Dashboard (module) | Overgangsapp | `kesga44-jpg/Personal-ecosystem/apps/hub` | Niet aangesloten | Lokale IndexedDB | Bestaande Hub-data, snelkoppelingen en app-openingen |
+| `sport` | Sportapp | Overgangsapp | `kesga44-jpg/Personal-ecosystem/apps/sportapp` | Niet aangesloten | Lokale IndexedDB | Sportdata; bevat een verhuismelding en export |
+| `sidequest` | SIDEQUEST | Overgangsapp | `kesga44-jpg/Personal-ecosystem/apps/sidequest` | Niet aangesloten | Lokale IndexedDB | SIDEQUEST-data; bevat een verhuismelding en export |
 | `lichaam` | Lichaam & gezondheid (module) | Gepland (ADR 0020) | `apps/ecosystem` | Niet aangesloten | IndexedDB `personal-ecosystem-lichaam` | Gewicht, omvang, rusthartslag, slaap, herstel |
 | `voeding` | Voeding (module) | Gepland (ADR 0020) | `apps/ecosystem` | Niet aangesloten | IndexedDB `personal-ecosystem-voeding` | Persoonlijke inname en voedingswaarden; geen weekmenu of boodschappen |
 | `dagboek` | Dagboek & stemming (module) | Gepland (ADR 0020) | `apps/ecosystem` | Niet aangesloten | IndexedDB `personal-ecosystem-dagboek` | Privé-dagnotities, stemming en energie |

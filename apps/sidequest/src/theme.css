@@ -3,3 +3,7 @@
   --accent-dark: #61458b;
   --accent-soft: #f0ebf7;
 }
+
+.migration-banner { position: sticky; top: 0; z-index: 30; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 20px; padding: 14px; background: #f0ebf7; border: 1px solid #d6c9e8; border-radius: 12px; }
+.migration-banner span { flex: 1 1 280px; }
+.migration-banner a { font-weight: 650; }

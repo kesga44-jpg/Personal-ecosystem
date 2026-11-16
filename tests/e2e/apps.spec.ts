@@ -195,6 +195,88 @@ test('Hub keeps shortcut values after a failed save and retries without duplicat
   await expect(page.getByText('Retry shortcut')).toHaveCount(1);
 });
 
+test('legacy apps show the migration notice and preserve their export button', async ({ page }) => {
+  for (const [origin, destination] of [
+    ['http://127.0.0.1:4174', 'https://pe-hub.kesga44.workers.dev/sport'],
+    ['http://127.0.0.1:4175', 'https://pe-hub.kesga44.workers.dev/quest']
+  ]) {
+    await page.goto(origin);
+    await expect(page.getByText('Deze app is verhuisd naar Personal Ecosystem. Exporteer je gegevens en importeer ze daar.')).toBeVisible();
+    const link = page.getByRole('link', { name: /Open .* in Personal Ecosystem/ });
+    await expect(link).toHaveAttribute('href', destination);
+    await expect(page.getByRole('button', { name: 'Exporteer gegevens' })).toBeVisible();
+    const download = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Exporteer gegevens' }).click();
+    await expect(await download).toBeTruthy();
+  }
+});
+
+test('ecosystem modules, deep links, navigation and responsive layouts load without console errors', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  page.on('pageerror', (error) => errors.push(error.message));
+
+  for (const [route, heading] of [
+    ['/', /Welkom/],
+    ['/sport', 'Sport, op jouw manier.'],
+    ['/quest', 'Jouw volgende quest.'],
+    ['/instellingen', 'Instellingen'],
+    ['/sport/activiteiten', 'Activiteiten'],
+    ['/quest/doelen', 'Doelen']
+  ] as const) {
+    const response = await page.goto(`http://127.0.0.1:4177${route}`);
+    expect(response?.status()).toBe(200);
+    await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
+    if (route === '/instellingen') await expect(page.getByRole('heading', { name: 'Centrale back-up', exact: true })).toBeVisible();
+  }
+
+  await page.goto('http://127.0.0.1:4177/');
+  await page.getByRole('link', { name: 'Sport', exact: true }).click();
+  await expect(page).toHaveURL('http://127.0.0.1:4177/sport');
+  await expect(page.getByRole('heading', { name: 'Sport, op jouw manier.' })).toBeVisible();
+  await page.getByRole('link', { name: 'SIDEQUEST', exact: true }).click();
+  await expect(page).toHaveURL('http://127.0.0.1:4177/quest');
+  await expect(page.getByRole('heading', { name: 'Jouw volgende quest.' })).toBeVisible();
+  await page.goto('http://127.0.0.1:4177/');
+  await page.getByRole('link', { name: 'Open Sport →' }).click();
+  await expect(page).toHaveURL('http://127.0.0.1:4177/sport');
+  await page.goto('http://127.0.0.1:4177/activiteiten');
+  await expect(page.getByText('Sportapp', { exact: true })).toBeVisible();
+
+  for (const width of [375, 768, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+    expect(overflow).toBe(false);
+  }
+  expect(errors).toEqual([]);
+});
+
+test('ecosystem PWA reloads an existing deep link offline', async ({ page, context }) => {
+  const origin = 'http://127.0.0.1:4177';
+  const response = await page.goto(`${origin}/quest/doelen`);
+  expect(response?.status()).toBe(200);
+  await expect(page.getByRole('heading', { name: 'Doelen', exact: true })).toBeVisible();
+  const manifestResponse = await page.request.get(`${origin}/manifest.webmanifest`);
+  expect(manifestResponse.status()).toBe(200);
+  const manifest: { name?: string; start_url?: string } = await manifestResponse.json();
+  expect(manifest.name).toBe('Personal Ecosystem');
+  expect(manifest.start_url).toBe('/');
+  await expect.poll(async () => page.evaluate(async () => {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    return registrations.some((registration) => registration.active?.state === 'activated');
+  })).toBe(true);
+
+  await page.reload();
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+  await context.setOffline(true);
+  const offlineResponse = await page.reload();
+  expect(offlineResponse?.status()).toBe(200);
+  await expect(page.getByRole('heading', { name: 'Doelen', exact: true })).toBeVisible();
+  await context.setOffline(false);
+});
+
 const pwaApps = [
   { name: 'Hub', origin: 'http://127.0.0.1:4173', route: '/activiteiten', heading: 'Activiteiten' },
   { name: 'Sportapp', origin: 'http://127.0.0.1:4174', route: '/activiteiten', heading: 'Activiteiten' },

@@ -110,6 +110,14 @@ function App() {
   return (
     <BrowserRouter>
       <AppFrame appName="Sportapp" appMark="S" navigation={navigation}>
+        <div className="migration-banner" role="region" aria-label="Verhuisbericht">
+          <span>Deze app is verhuisd naar Personal Ecosystem. Exporteer je gegevens en importeer ze daar.</span>
+          <Button onClick={async () => {
+            try { downloadJson('sportapp-backup.json', await database.exportData()); }
+            catch (cause) { setError(cause instanceof Error ? cause.message : 'Back-up kon niet worden geëxporteerd.'); }
+          }}>Exporteer gegevens</Button>
+          <a href="https://pe-hub.kesga44.workers.dev/sport" target="_blank" rel="noopener noreferrer">Open Sport in Personal Ecosystem</a>
+        </div>
         <Routes>
           <Route
             path="/"

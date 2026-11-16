@@ -1,16 +1,17 @@
 # Personal Ecosystem
 
-Een local-first platform met drie zelfstandig te bouwen webapps:
+Een local-first app met Dashboard, Sport en SIDEQUEST als modules. De bestaande losse apps blijven tijdens de overgang beschikbaar:
 
 [Publieke startpagina](https://kesga44-jpg.github.io/Personal-ecosystem/) · De documentatie en ontwikkelaarsinformatie staan in deze README en de documenten hieronder.
 
-De startpagina linkt ook naar de bestaande apps Samen Thuis en Coach, die een account gebruiken. De drie nieuwe apps hieronder werken lokaal zonder account; hun knoppen blijven uitgeschakeld totdat hun eigen online URL's zijn ingesteld.
+De startpagina linkt naar Personal Ecosystem en naar Samen Thuis en Coach. Personal Ecosystem werkt lokaal zonder account; de oude losse apps blijven tijdelijk beschikbaar voor gegevensoverdracht.
 
 | App | Eigenaar van | Starten | Productiebuild |
 |---|---|---|---|
-| Hub | Startpagina, app-links, eigen snelkoppelingen en app-openingen | `npm run dev:hub` | `npm run build:hub` |
-| Sportapp | Sportactiviteiten, trainingsplannen, GPX-samenvattingen en statistieken | `npm run dev:sportapp` | `npm run build:sportapp` |
-| SIDEQUEST | Persoonlijke doelen, gewoontes, quests, punten en streaks | `npm run dev:sidequest` | `npm run build:sidequest` |
+| Personal Ecosystem | Dashboard, Sport en SIDEQUEST op één origin | `npm run dev:ecosystem` | `npm run build:ecosystem` |
+| Hub (overgangsapp) | Oude Hub-installaties en gegevens | `npm run dev:hub` | `npm run build:hub` |
+| Sportapp (overgangsapp) | Oude Sportapp-installaties en gegevens | `npm run dev:sportapp` | `npm run build:sportapp` |
+| SIDEQUEST (overgangsapp) | Oude SIDEQUEST-installaties en gegevens | `npm run dev:sidequest` | `npm run build:sidequest` |
 
 ## Vereisten
 
@@ -19,18 +20,20 @@ De startpagina linkt ook naar de bestaande apps Samen Thuis en Coach, die een ac
 
 ```sh
 npm ci
+npm run dev:ecosystem # http://localhost:5176
 npm run dev:hub       # http://localhost:5173
 npm run dev:sportapp  # http://localhost:5174
 npm run dev:sidequest # http://localhost:5175
 ```
 
-In de lokale Hub zijn Sportapp en SIDEQUEST gekoppeld aan respectievelijk poort 5174 en 5175. In een deployment kunnen de URL's worden ingesteld met `VITE_SPORTAPP_URL` en `VITE_SIDEQUEST_URL`, of via Hub → Instellingen. De drie Cloudflare Workers gebruiken statische assets en elk een eigen origin; zie [DEPLOYMENT.md](DEPLOYMENT.md) voor de buildinstellingen.
+Personal Ecosystem gebruikt de paden `/`, `/sport/*`, `/quest/*` en `/instellingen`. Dashboard, Sport en SIDEQUEST behouden hun bestaande IndexedDB-databases. `/instellingen` biedt een centrale back-up; losse bestaande back-ups blijven importeerbaar. Zie [DEPLOYMENT.md](DEPLOYMENT.md) voor de Cloudflare-configuratie na de overgang.
 
 ## Verifiëren
 
 ```sh
 npm test
 npm run typecheck
+npm run build:ecosystem
 npm run build:hub
 npm run build:sportapp
 npm run build:sidequest
@@ -41,7 +44,7 @@ npm run test:e2e
 
 ## Gegevens en privacy
 
-De Hub, Sportapp en SIDEQUEST gebruiken aparte IndexedDB-databases en app-ID's. Hub bewaart alleen Hub-instellingen, eigen snelkoppelingen en app-openingen; Sport- en SIDEQUEST-data worden niet ingelezen of gekopieerd. Iedere app biedt een eigen gevalideerde JSON-back-up en herstel na bevestiging. Er is geen automatische upload. Supabase/Auth zijn bewust niet aangesloten: de lokale applicaties zijn volledig bruikbaar zonder accounts, en de bestaande beveiligings- en autorisatiepoort voor gedeelde auth is nog open.
+Dashboard, Sport en SIDEQUEST gebruiken de bestaande, aparte IndexedDB-databases en app-ID's. De centrale back-up houdt de gegevens per module gescheiden; herstel valideert de complete invoer vóór het schrijven. Oude losse back-ups blijven importeerbaar. Er is geen automatische upload. Supabase/Auth zijn bewust niet aangesloten.
 
 GPX-bestanden worden lokaal geparseerd. Alleen route-naam, starttijd, duur, afstand en een SHA-256-vingerafdruk voor dubbele import worden bewaard; GPS-punten niet. FIT- en TCX-import, accountgebonden synchronisatie en groepsfuncties zijn niet geïmplementeerd.
 

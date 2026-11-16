@@ -7,6 +7,8 @@ Elke app in de monorepo krijgt een eigen sectie zodra die bestaat. Bestaande app
 
 ### Toegevoegd
 
+- Personal Ecosystem-app met lazy geladen Dashboard-, Sport- en SIDEQUEST-modules, behoud van de bestaande IndexedDB-databases, centrale JSON-back-up/herstel en verhuismeldingen voor de oude Sportapp en SIDEQUEST.
+- Eén Personal Ecosystem-kaart op de landingspagina en bijgewerkte build-, test- en deploydocumentatie voor de overgang naar `pe-hub`.
 - 2026-11-16 — ADR 0020: Hub, Sportapp en SIDEQUEST worden één app met modules; nieuwe modules Lichaam & gezondheid, Voeding en Dagboek & stemming. Register, gegevenseigendom, besluiten (B-17 t/m B-20), roadmap en `CLAUDE.md` bijgewerkt. Alleen documentatie.
 - Links op de publieke startpagina naar Samen Thuis en Coach en actieve app-links voor Hub, Sportapp en SIDEQUEST.
 - Nederlandstalige publieke landingspagina met lokale CSP, configureerbare app-links en mobiele layouts; app-URLs blijven leeg totdat afzonderlijke origins zijn geverifieerd.

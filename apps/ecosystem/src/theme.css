@@ -1,0 +1,69 @@
+:root {
+  --accent: #397d71;
+  --accent-dark: #2d675d;
+  --accent-soft: #eaf3f1;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  color: #e4e9ec;
+  background: #172027;
+}
+
+:root[data-theme='dark'] body { color: #e4e9ec; background: #172027; }
+:root[data-theme='dark'] .sidebar,
+:root[data-theme='dark'] .card,
+:root[data-theme='dark'] .app-tile { background: #202b34; border-color: #35414a; }
+:root[data-theme='dark'] .brand,
+:root[data-theme='dark'] h1,
+:root[data-theme='dark'] .metric-value,
+:root[data-theme='dark'] .item-title,
+:root[data-theme='dark'] .card-heading h2,
+:root[data-theme='dark'] .app-tile strong { color: #edf2f4; }
+:root[data-theme='dark'] .nav-link { color: #aab6bd; }
+:root[data-theme='dark'] .nav-link.active { color: #8bc7ba; background: #29413f; }
+:root[data-theme='dark'] .page-description,
+:root[data-theme='dark'] .metric-label,
+:root[data-theme='dark'] .item-subtitle,
+:root[data-theme='dark'] .sidebar-foot { color: #a1adb4; }
+:root[data-theme='dark'] .field input,
+:root[data-theme='dark'] .field select,
+:root[data-theme='dark'] .field textarea { color: #edf2f4; background: #1b252d; border-color: #43515a; }
+:root[data-theme='dark'] .mobile-nav { background: rgb(32 43 52 / 96%); border-color: #35414a; }
+:root[data-theme='dark'] .mobile-nav-link { color: #aab6bd; }
+:root[data-theme='dark'] .mobile-nav-link.active { color: #8bc7ba; }
+
+.mobile-nav { overflow-x: auto; }
+.side-nav { overflow-y: auto; }
+.ecosystem-shell[data-module='sport'] { --accent: #315b87; --accent-dark: #23476e; --accent-soft: #eaf0f8; }
+.ecosystem-shell[data-module='quest'] { --accent: #7556a5; --accent-dark: #61458b; --accent-soft: #f0ebf7; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    color: #e4e9ec;
+    background: #172027;
+  }
+  :root:not([data-theme='light']) body { color: #e4e9ec; background: #172027; }
+  :root:not([data-theme='light']) .sidebar,
+  :root:not([data-theme='light']) .card,
+  :root:not([data-theme='light']) .app-tile { background: #202b34; border-color: #35414a; }
+  :root:not([data-theme='light']) .brand,
+  :root:not([data-theme='light']) h1,
+  :root:not([data-theme='light']) .metric-value,
+  :root:not([data-theme='light']) .item-title,
+  :root:not([data-theme='light']) .card-heading h2,
+  :root:not([data-theme='light']) .app-tile strong { color: #edf2f4; }
+  :root:not([data-theme='light']) .nav-link { color: #aab6bd; }
+  :root:not([data-theme='light']) .nav-link.active { color: #8bc7ba; background: #29413f; }
+  :root:not([data-theme='light']) .page-description,
+  :root:not([data-theme='light']) .metric-label,
+  :root:not([data-theme='light']) .item-subtitle,
+  :root:not([data-theme='light']) .sidebar-foot { color: #a1adb4; }
+  :root:not([data-theme='light']) .field input,
+  :root:not([data-theme='light']) .field select,
+  :root:not([data-theme='light']) .field textarea { color: #edf2f4; background: #1b252d; border-color: #43515a; }
+  :root:not([data-theme='light']) .mobile-nav { background: rgb(32 43 52 / 96%); border-color: #35414a; }
+  :root:not([data-theme='light']) .mobile-nav-link { color: #aab6bd; }
+  :root:not([data-theme='light']) .mobile-nav-link.active { color: #8bc7ba; }
+}

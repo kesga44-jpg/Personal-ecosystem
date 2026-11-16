@@ -1,36 +1,34 @@
 const appUrls = window.PERSONAL_ECOSYSTEM_APP_URLS;
 const usedOrigins = new Set([window.location.origin]);
 
-for (const card of document.querySelectorAll('[data-app-card]')) {
-  const appId = card.getAttribute('data-app-card');
-  const configuredUrl = appUrls[appId];
+const card = document.querySelector('[data-app-card="ecosystem"]');
+if (card) {
+  const configuredUrl = appUrls.ecosystem;
   const button = card.querySelector('[data-app-open]');
   const status = card.querySelector('[data-app-link-status]');
 
-  if (typeof configuredUrl !== 'string' || configuredUrl.trim() === '') {
-    continue;
-  }
+  if (typeof configuredUrl === 'string' && configuredUrl.trim() !== '') {
+    let destination;
+    try {
+      destination = new URL(configuredUrl);
+    } catch {
+      status.textContent = 'De app-link is niet veilig ingesteld.';
+    }
 
-  let destination;
-  try {
-    destination = new URL(configuredUrl);
-  } catch {
-    status.textContent = 'De app-link is niet veilig ingesteld.';
-    continue;
+    if (destination) {
+      if (destination.protocol !== 'https:' || usedOrigins.has(destination.origin)) {
+        status.textContent = 'De app-link is niet veilig ingesteld.';
+      } else {
+        const link = document.createElement('a');
+        link.className = button.className;
+        link.href = destination.href;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = button.textContent;
+        button.replaceWith(link);
+        status.textContent = '';
+        usedOrigins.add(destination.origin);
+      }
+    }
   }
-
-  if (destination.protocol !== 'https:' || usedOrigins.has(destination.origin)) {
-    status.textContent = 'De app-link is niet veilig ingesteld.';
-    continue;
-  }
-
-  const link = document.createElement('a');
-  link.className = button.className;
-  link.href = destination.href;
-  link.target = '_blank';
-  link.rel = 'noopener noreferrer';
-  link.textContent = button.textContent;
-  button.replaceWith(link);
-  status.textContent = '';
-  usedOrigins.add(destination.origin);
 }

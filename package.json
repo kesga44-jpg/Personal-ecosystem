@@ -10,13 +10,15 @@
     "packages/*"
   ],
   "scripts": {
+    "dev:ecosystem": "npm run dev -w @ecosystem/ecosystem",
     "dev:hub": "npm run dev -w @ecosystem/hub",
     "dev:sportapp": "npm run dev -w @ecosystem/sportapp",
     "dev:sidequest": "npm run dev -w @ecosystem/sidequest",
+    "build:ecosystem": "npm run build -w @ecosystem/ecosystem",
     "build:hub": "npm run build -w @ecosystem/hub",
     "build:sportapp": "npm run build -w @ecosystem/sportapp",
     "build:sidequest": "npm run build -w @ecosystem/sidequest",
-    "build:all": "npm run build:hub && npm run build:sportapp && npm run build:sidequest",
+    "build:all": "npm run build:hub && npm run build:sportapp && npm run build:sidequest && npm run build:ecosystem",
     "check:dist": "node packages/build-check/check-dist.ts",
     "test": "vitest run",
     "test:watch": "vitest",

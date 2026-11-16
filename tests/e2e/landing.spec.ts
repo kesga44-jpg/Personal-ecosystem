@@ -1,8 +1,6 @@
 import { expect, test } from '@playwright/test';
 
 const landingUrl = 'http://127.0.0.1:4176/';
-const appIds = ['hub', 'sportapp', 'sidequest'];
-
 for (const width of [375, 768, 1280]) {
   test(`public landing page fits a ${width}px viewport`, async ({ page }) => {
     const requestOrigins = new Set<string>();
@@ -17,8 +15,8 @@ for (const width of [375, 768, 1280]) {
       /default-src 'none'; script-src 'self'; style-src 'self'/
     );
     await expect(page.locator('script[src^="http"]')).toHaveCount(0);
-    await expect(page.locator('[data-app-card]')).toHaveCount(5);
-    await expect(page.getByText('Lokaal, geen account nodig', { exact: true })).toHaveCount(3);
+    await expect(page.locator('[data-app-card]')).toHaveCount(3);
+    await expect(page.getByText('Lokaal, geen account nodig', { exact: true })).toHaveCount(1);
     await expect(page.getByText('Bestaande app · met account', { exact: true })).toHaveCount(2);
     await expect(page.getByRole('link', { name: 'Documentatie' })).toBeVisible();
 
@@ -33,11 +31,7 @@ for (const width of [375, 768, 1280]) {
       await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     }
 
-    for (const [appId, url] of [
-      ['hub', 'https://pe-hub.kesga44.workers.dev/'],
-      ['sportapp', 'https://pe-sportapp.kesga44.workers.dev/'],
-      ['sidequest', 'https://pe-sidequest.kesga44.workers.dev/']
-    ]) {
+    for (const [appId, url] of [['ecosystem', 'https://pe-hub.kesga44.workers.dev/']]) {
       const link = page.locator(`[data-app-card="${appId}"]`).getByRole('link', { name: 'Openen' });
       await expect(link).toBeVisible();
       await expect(link).toHaveAttribute('href', url);
@@ -59,18 +53,12 @@ test('configured app links use distinct HTTPS origins', async ({ page }) => {
   await page.route(`${landingUrl}app-urls.js`, (route) => route.fulfill({
     contentType: 'text/javascript',
     body: `window.PERSONAL_ECOSYSTEM_APP_URLS = {
-      hub: 'https://hub.example.com/',
-      sportapp: 'https://sport.example.com/',
-      sidequest: 'https://sidequest.example.com/'
+      ecosystem: 'https://ecosystem.example.com/'
     };`
   }));
   await page.goto(landingUrl);
 
-  for (const [appId, host] of [
-    ['hub', 'hub.example.com'],
-    ['sportapp', 'sport.example.com'],
-    ['sidequest', 'sidequest.example.com']
-  ]) {
+  for (const [appId, host] of [['ecosystem', 'ecosystem.example.com']]) {
     const card = page.locator(`[data-app-card="${appId}"]`);
     await expect(card.getByRole('link', { name: 'Openen' })).toHaveAttribute('href', `https://${host}/`);
     await expect(card.getByRole('link', { name: 'Openen' })).toHaveAttribute('rel', 'noopener noreferrer');
@@ -100,18 +88,12 @@ test('rejects app links that reuse an origin', async ({ page }) => {
   await page.route(`${landingUrl}app-urls.js`, (route) => route.fulfill({
     contentType: 'text/javascript',
     body: `window.PERSONAL_ECOSYSTEM_APP_URLS = {
-      hub: 'https://shared.example.com/',
-      sportapp: 'https://shared.example.com/sportapp/',
-      sidequest: ''
+      ecosystem: 'http://127.0.0.1:4176/'
     };`
   }));
   await page.goto(landingUrl);
 
-  const hubCard = page.locator('[data-app-card="hub"]');
-  await expect(hubCard.getByRole('link', { name: 'Openen' })).toHaveAttribute('href', 'https://shared.example.com/');
-  await expect(hubCard.locator('[data-app-link-status]')).toBeEmpty();
-
-  const sportCard = page.locator('[data-app-card="sportapp"]');
-  await expect(sportCard.getByRole('button', { name: 'Openen' })).toBeDisabled();
-  await expect(sportCard.locator('[data-app-link-status]')).toHaveText('De app-link is niet veilig ingesteld.');
+  const ecosystemCard = page.locator('[data-app-card="ecosystem"]');
+  await expect(ecosystemCard.getByRole('button', { name: 'Openen' })).toBeDisabled();
+  await expect(ecosystemCard.locator('[data-app-link-status]')).toHaveText('De app-link is niet veilig ingesteld.');
 });

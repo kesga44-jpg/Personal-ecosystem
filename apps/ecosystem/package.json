@@ -1,0 +1,19 @@
+{
+  "name": "@ecosystem/ecosystem",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5176",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 4176"
+  },
+  "dependencies": {
+    "@ecosystem/core": "*",
+    "@ecosystem/storage": "*",
+    "@ecosystem/ui": "*",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-router-dom": "^7.8.2"
+  }
+}
