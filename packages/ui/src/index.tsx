@@ -7,15 +7,25 @@ export interface NavigationItem {
   icon: string;
 }
 
+/** Link naar een andere module van Personal Ecosystem (volledige paginanavigatie, ADR 0020). */
+export interface ModuleLink {
+  href: string;
+  label: string;
+  icon: string;
+  active: boolean;
+}
+
 export function AppFrame({
   appName,
   appMark,
   navigation,
+  moduleLinks = [],
   children
 }: PropsWithChildren<{
   appName: string;
   appMark: string;
   navigation: NavigationItem[];
+  moduleLinks?: ModuleLink[];
 }>) {
   return (
     <div className="app-frame">
@@ -24,6 +34,7 @@ export function AppFrame({
           <span className="brand-mark">{appMark}</span>
           <span>{appName}</span>
         </a>
+        {moduleLinks.length > 0 && <ModuleSwitcher links={moduleLinks} />}
         <nav className="side-nav" aria-label={`${appName} navigatie`}>
           {navigation.map((item) => (
             <NavLink
@@ -44,6 +55,7 @@ export function AppFrame({
           <span className="brand-mark">{appMark}</span>
           <strong>{appName}</strong>
         </header>
+        {moduleLinks.length > 0 && <ModuleSwitcher links={moduleLinks} compact />}
         {children}
       </main>
       <nav className="mobile-nav" aria-label="Hoofdnavigatie">
@@ -54,6 +66,32 @@ export function AppFrame({
           </NavLink>
         ))}
       </nav>
+    </div>
+  );
+}
+
+function ModuleSwitcher({ links, compact = false }: { links: ModuleLink[]; compact?: boolean }) {
+  return (
+    <nav className={`module-switcher${compact ? ' module-switcher-compact' : ''}`} aria-label="Modules">
+      {links.map((link) => (
+        <a key={link.href} href={link.href} className={`module-link${link.active ? ' active' : ''}`} aria-current={link.active ? 'page' : undefined}>
+          <span aria-hidden="true">{link.icon}</span>
+          {link.label}
+        </a>
+      ))}
+    </nav>
+  );
+}
+
+/** Melding in de oude losse apps dat de app is verhuisd (ADR 0020 § 5). */
+export function MovedNotice({ appName, targetUrl, settingsHref = '/instellingen' }: { appName: string; targetUrl: string; settingsHref?: string }) {
+  return (
+    <div className="moved-notice" role="status">
+      <strong>{appName} is verhuisd naar Personal Ecosystem.</strong>
+      <span>
+        Exporteer je gegevens via <a href={settingsHref}>Instellingen</a> en importeer ze daar.{' '}
+        <a href={targetUrl} rel="noopener noreferrer">Open Personal Ecosystem →</a>
+      </span>
     </div>
   );
 }
