@@ -13,7 +13,8 @@ import {
   LoadingState,
   PageHeader,
   PwaInstallButton,
-  StatusPill
+  StatusPill,
+  type ModuleLink
 } from '@ecosystem/ui';
 import {
   calculateSportStats,
@@ -28,7 +29,7 @@ import {
   type Training
 } from './domain';
 
-const databaseConfig = {
+export const databaseConfig = {
   appId: 'sport',
   databaseName: 'personal-ecosystem-sport',
   version: 1,
@@ -54,7 +55,14 @@ function localDateTime(value?: string): string {
   return new Date(date.getTime() - offset).toISOString().slice(0, 16);
 }
 
-function App() {
+export interface AppProps {
+  /** Pad waaronder de app draait; '/' als losse app, bijv. '/sport' als module (ADR 0020). */
+  basename?: string;
+  /** Links naar de andere modules; leeg als losse app. */
+  moduleLinks?: ModuleLink[];
+}
+
+function App({ basename = '/', moduleLinks = [] }: AppProps = {}) {
   const [database, setDatabase] = useState<LocalDatabase | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [trainings, setTrainings] = useState<Training[]>([]);
@@ -108,8 +116,8 @@ function App() {
   if (!database) return <main className="main-content"><ErrorBanner message={error || 'Lokale opslag is niet beschikbaar.'} /></main>;
 
   return (
-    <BrowserRouter>
-      <AppFrame appName="Sportapp" appMark="S" navigation={navigation}>
+    <BrowserRouter basename={basename}>
+      <AppFrame appName="Sportapp" appMark="S" navigation={navigation} moduleLinks={moduleLinks}>
         <Routes>
           <Route
             path="/"
