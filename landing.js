@@ -27,6 +27,8 @@ for (const card of document.querySelectorAll('[data-app-card]')) {
   const link = document.createElement('a');
   link.className = button.className;
   link.href = destination.href;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
   link.textContent = button.textContent;
   button.replaceWith(link);
   status.textContent = '';

@@ -33,8 +33,16 @@ for (const width of [375, 768, 1280]) {
       await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     }
 
-    for (const appId of appIds) {
-      await expect(page.locator(`[data-app-card="${appId}"]`).getByRole('button', { name: 'Openen' })).toBeDisabled();
+    for (const [appId, url] of [
+      ['hub', 'https://pe-hub.kesga44.workers.dev/'],
+      ['sportapp', 'https://pe-sportapp.kesga44.workers.dev/'],
+      ['sidequest', 'https://pe-sidequest.kesga44.workers.dev/']
+    ]) {
+      const link = page.locator(`[data-app-card="${appId}"]`).getByRole('link', { name: 'Openen' });
+      await expect(link).toBeVisible();
+      await expect(link).toHaveAttribute('href', url);
+      await expect(link).toHaveAttribute('target', '_blank');
+      await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     }
 
     const hasHorizontalOverflow = await page.evaluate(
@@ -65,6 +73,7 @@ test('configured app links use distinct HTTPS origins', async ({ page }) => {
   ]) {
     const card = page.locator(`[data-app-card="${appId}"]`);
     await expect(card.getByRole('link', { name: 'Openen' })).toHaveAttribute('href', `https://${host}/`);
+    await expect(card.getByRole('link', { name: 'Openen' })).toHaveAttribute('rel', 'noopener noreferrer');
     await expect(card.locator('[data-app-link-status]')).toBeEmpty();
   }
 });

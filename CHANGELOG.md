@@ -7,7 +7,7 @@ Elke app in de monorepo krijgt een eigen sectie zodra die bestaat. Bestaande app
 
 ### Toegevoegd
 
-- Links op de publieke startpagina naar de bestaande apps Samen Thuis en Coach; de drie nieuwe apps blijven uitgeschakeld totdat hun eigen URL's bekend zijn.
+- Links op de publieke startpagina naar Samen Thuis en Coach en actieve app-links voor Hub, Sportapp en SIDEQUEST.
 - Nederlandstalige publieke landingspagina met lokale CSP, configureerbare app-links en mobiele layouts; app-URLs blijven leeg totdat afzonderlijke origins zijn geverifieerd.
 - Werkende local-first MVP voor Hub, Sportapp en SIDEQUEST met npm workspaces, React/TypeScript/Vite/Tailwind, eigen IndexedDB-opslag, PWA-assets, Cloudflare Pages-configuratie, domein-/storage-/Chromium-tests en per-app builds.
 - Gerichte kwaliteitscontroles voor GPX-import, appgebonden back-upherstel, IndexedDB-foutafhandeling en offline PWA-gedrag van alle drie apps; zie `TESTING.md`.
@@ -17,6 +17,7 @@ Elke app in de monorepo krijgt een eigen sectie zodra die bestaat. Bestaande app
 
 ### Gewijzigd
 
+- Hub-tegels voor Sportapp, SIDEQUEST, Samen Thuis en Coach openen hun eigen veilige externe link.
 - Cloudflare-configuratie voor Hub, Sportapp en SIDEQUEST omgezet naar bestaande Workers met statische assets en eigen origins; Wrangler 4.162.0 is vastgepinde deploy-tooling. Verouderde Pages-redirects verwijderd; SPA-fallback loopt via Workers.
 - Licentiebesluiten voor MIT-0 en de begrensde Sharp/libvips-devuitzondering vastgelegd; buildcontrole toegevoegd om Sharp/libvips uit app-output te houden. Een volledige CI-licentiecontrole volgt afzonderlijk.
 - 2026-11-07 — Besluitronde 1 verwerkt (B-1 t/m B-12). ADR 0001–0012 toegevoegd.
