@@ -58,6 +58,15 @@ Ontwerp: [docs/hub/HUB_DESIGN.md](docs/hub/HUB_DESIGN.md) — in principe goedge
 | V-5 | Na elke PR rapport; eigenaar merget; elke databasewijziging: isolatierapport, herstelbare back-up, expliciet akkoord vooraf |
 
 
+## Besluitronde 3 (2026-11-16)
+
+| # | Besluit | Uitkomst | Uitwerking | ADR |
+|---|---|---|---|---|
+| B-17 | Hub als dashboard | ✅ Akkoord | Hub, Sportapp en SIDEQUEST worden modules van één app op één origin; gegevens blijven per module gescheiden, lezen alleen via geteste leescontracten | [0020](docs/adr/0020-een-app-met-modules.md) |
+| B-18 | Nieuwe modules | ✅ Akkoord | Lichaam & gezondheid, Voeding, Dagboek & stemming; afbakening ten opzichte van Samen Thuis in ADR 0020 | [0020](docs/adr/0020-een-app-met-modules.md) |
+| B-19 | Uitbreidingen | ✅ Akkoord | Sport: krachttraining, duursport en import, doelen en planning, regelgebaseerde coach. SIDEQUEST: stappen en categorieën, levels en badges, statistieken, herinneringen. Volgorde in [DEVELOPMENT_ROADMAP.md](DEVELOPMENT_ROADMAP.md) | — |
+| B-20 | Samen Thuis-migratie `20261014_household_state_sync` | ⏸ Uitgesteld door eigenaar | Inventarisatie 2026-11-16 (alleen lezen): alleen deze migratie ontbreekt in project A; zonder deze migratie werkt de huishoudsync niet. Uitvoeren pas na back-up en expliciet akkoord | — |
+
 ## Ontbrekende informatie (nog steeds open)
 
 Zie [REPO_ANALYSIS.md § Ontbrekende informatie](REPO_ANALYSIS.md#ontbrekende-informatie-expliciet). Voor F1 zijn vooral nodig: punt 2 (anon-toegang ingetrokken?), 3 (Coach-backend), 4 (gedeployde Edge Functions) en 5 (database- en storagegebruik).
