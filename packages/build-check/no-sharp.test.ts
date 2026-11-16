@@ -19,12 +19,12 @@ describe('Sharp build protection', () => {
   it('rejects renamed copies of Sharp files in a build', async () => {
     root = await mkdtemp(join(tmpdir(), 'ecosystem-build-check-'));
     for (const dir of ['node_modules/sharp', 'node_modules/@img/sharp-libvips-test',
-      'apps/hub/dist', 'apps/sportapp/dist', 'apps/sidequest/dist']) {
+      'apps/hub/dist', 'apps/sportapp/dist', 'apps/sidequest/dist', 'apps/ecosystem/dist']) {
       await mkdir(join(root, dir), { recursive: true });
     }
     await writeFile(join(root, 'node_modules/sharp/source.js'), 'sharp source');
     await writeFile(join(root, 'node_modules/@img/sharp-libvips-test/library'), 'libvips binary');
-    for (const app of ['hub', 'sportapp', 'sidequest']) {
+    for (const app of ['hub', 'sportapp', 'sidequest', 'ecosystem']) {
       await writeFile(join(root, 'apps', app, 'dist', 'index.html'), 'app shell');
     }
     await expect(assertNoSharpInDist(root)).resolves.toBeUndefined();
