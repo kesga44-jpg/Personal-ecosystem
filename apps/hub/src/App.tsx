@@ -13,7 +13,8 @@ import {
   LoadingState,
   PageHeader,
   PwaInstallButton,
-  StatusPill
+  StatusPill,
+  type ModuleLink
 } from '@ecosystem/ui';
 import { isSafeUrl, validateHubBackup, type AppLaunch, type Shortcut } from './domain';
 
@@ -29,7 +30,7 @@ const externalAppUrls = {
   samenThuis: 'https://kesga44-jpg.github.io/Samen-thuis/',
   coach: 'https://kesga44-jpg.github.io/Coach/'
 };
-const databaseConfig = {
+export const databaseConfig = {
   appId: 'hub',
   databaseName: 'personal-ecosystem-hub',
   version: 1,
@@ -73,7 +74,16 @@ function readPreferences(): HubPreferences {
   };
 }
 
-function App() {
+export interface AppProps {
+  /** Pad waaronder de app draait; '/' als losse app, bijv. '/sport' als module (ADR 0020). */
+  basename?: string;
+  /** Links naar de andere modules; leeg als losse app. */
+  moduleLinks?: ModuleLink[];
+  /** Vaste adressen van Sport en SIDEQUEST als modules op dezelfde origin (ADR 0020). Overschrijft de instellingen. */
+  moduleUrls?: { sport: string; sidequest: string };
+}
+
+function App({ basename = '/', moduleLinks = [], moduleUrls }: AppProps = {}) {
   const [database, setDatabase] = useState<LocalDatabase | null>(null);
   const [launches, setLaunches] = useState<AppLaunch[]>([]);
   const [shortcuts, setShortcuts] = useState<Shortcut[]>([]);
@@ -129,8 +139,12 @@ function App() {
     }
   }
 
+  const shownPreferences: HubPreferences = moduleUrls
+    ? { ...preferences, sportUrl: moduleUrls.sport, sidequestUrl: moduleUrls.sidequest }
+    : preferences;
+
   async function openApp(appId: 'sportapp' | 'sidequest') {
-    const url = appId === 'sportapp' ? preferences.sportUrl : preferences.sidequestUrl;
+    const url = appId === 'sportapp' ? shownPreferences.sportUrl : shownPreferences.sidequestUrl;
     if (!database || !url) {
       setError('Stel eerst de app-URL in via Instellingen.');
       return;
@@ -174,12 +188,12 @@ function App() {
   if (!database) return <main className="main-content"><ErrorBanner message={error || 'Lokale opslag is niet beschikbaar.'} /></main>;
 
   return (
-    <BrowserRouter>
-      <AppFrame appName="Personal Ecosystem" appMark="P" navigation={navigation}>
+    <BrowserRouter basename={basename}>
+      <AppFrame appName="Personal Ecosystem" appMark="P" navigation={navigation} moduleLinks={moduleLinks}>
         <Routes>
-          <Route path="/" element={<HomePage preferences={preferences} shortcuts={shortcuts} launches={launches} storageLabel={storageLabel} error={error} onOpen={openApp} />} />
-          <Route path="/apps/sportapp" element={<AppInfoPage appId="sportapp" appName="Sportapp" url={preferences.sportUrl} onOpen={openApp} error={error} />} />
-          <Route path="/apps/sidequest" element={<AppInfoPage appId="sidequest" appName="SIDEQUEST" url={preferences.sidequestUrl} onOpen={openApp} error={error} />} />
+          <Route path="/" element={<HomePage preferences={shownPreferences} shortcuts={shortcuts} launches={launches} storageLabel={storageLabel} error={error} onOpen={openApp} />} />
+          <Route path="/apps/sportapp" element={<AppInfoPage appId="sportapp" appName="Sportapp" url={shownPreferences.sportUrl} onOpen={openApp} error={error} />} />
+          <Route path="/apps/sidequest" element={<AppInfoPage appId="sidequest" appName="SIDEQUEST" url={shownPreferences.sidequestUrl} onOpen={openApp} error={error} />} />
           <Route path="/activiteiten" element={<ActivityPage launches={launches} />} />
           <Route
             path="/instellingen"
@@ -272,13 +286,23 @@ export function HomePage({
   );
 }
 
+/** Links naar een module op dezelfde origin openen in hetzelfde tabblad; externe apps in een nieuw tabblad. */
+export function linkTarget(url: string): { target?: '_blank'; rel?: 'noopener noreferrer' } {
+  try {
+    if (new URL(url, window.location.href).origin === window.location.origin) return {};
+  } catch {
+    // Ongeldige URL: behandel als extern.
+  }
+  return { target: '_blank', rel: 'noopener noreferrer' };
+}
+
 function AppTile({ icon, title, description, url, onOpen }: { icon: string; title: string; description: string; url: string; onOpen?: () => void }) {
   return (
     <div className="app-tile">
       <span className="tile-icon">{icon}</span>
       <strong>{title}</strong>
       <p>{description}</p>
-      {url ? <><StatusPill tone="good">Beschikbaar</StatusPill><a className="button button-primary" style={{ marginTop: 14 }} href={url} target="_blank" rel="noopener noreferrer" onClick={onOpen}>Open {title} ↗</a></> : <><StatusPill tone="warning">URL niet ingesteld</StatusPill><Link className="text-button" to="/instellingen" style={{ marginTop: 8 }}>Stel URL in →</Link></>}
+      {url ? <><StatusPill tone="good">Beschikbaar</StatusPill><a className="button button-primary" style={{ marginTop: 14 }} href={url} {...linkTarget(url)} onClick={onOpen}>Open {title} ↗</a></> : <><StatusPill tone="warning">URL niet ingesteld</StatusPill><Link className="text-button" to="/instellingen" style={{ marginTop: 8 }}>Stel URL in →</Link></>}
     </div>
   );
 }
@@ -310,7 +334,7 @@ function AppInfoPage({
           <div className="list-item"><span>Toegang</span><span>{url || 'Niet beschikbaar; URL instellen via Instellingen'}</span></div>
           <div className="list-item"><span>Synchronisatie</span><span>Niet geconfigureerd</span></div>
         </div>
-        {url && <a className="button button-primary" style={{ marginTop: 16 }} href={url} target="_blank" rel="noopener noreferrer" onClick={() => void onOpen(appId)}>Open {appName} ↗</a>}
+        {url && <a className="button button-primary" style={{ marginTop: 16 }} href={url} {...linkTarget(url)} onClick={() => void onOpen(appId)}>Open {appName} ↗</a>}
       </Card>
     </div>
   );
