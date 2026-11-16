@@ -20,11 +20,29 @@ test('Hub opens the configured Sportapp and shows only Hub-owned activity', asyn
   await expect(page.getByText('Appdata blijft gescheiden')).toBeVisible();
 
   const sportPage = page.waitForEvent('popup');
-  await page.getByRole('button', { name: 'Open Sportapp' }).click();
+  await page.getByRole('link', { name: 'Open Sportapp ↗' }).click();
   const popup = await sportPage;
   await expect(popup).toHaveURL(/:4174\/$/);
   await expect(page.getByText('Sportapp geopend')).toBeVisible();
 });
+
+for (const [width, columns] of [[375, 1], [768, 2], [1280, 4]] as const) {
+  test(`Hub app links fit a ${width}px viewport`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/');
+
+    for (const name of ['Sportapp', 'SIDEQUEST', 'Samen Thuis', 'Coach']) {
+      await expect(page.getByRole('link', { name: `Open ${name} ↗` })).toBeVisible();
+    }
+
+    const layout = await page.locator('.grid-4').evaluate((element) => ({
+      columns: getComputedStyle(element).gridTemplateColumns.split(' ').length,
+      overflows: document.documentElement.scrollWidth > document.documentElement.clientWidth
+    }));
+    expect(layout.columns).toBe(columns);
+    expect(layout.overflows).toBe(false);
+  });
+}
 
 test('Sportapp records a manual activity and updates its statistics', async ({ page }) => {
   await page.goto('http://127.0.0.1:4174');

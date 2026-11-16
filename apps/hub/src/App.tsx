@@ -25,6 +25,10 @@ interface HubPreferences {
 }
 
 const preferenceKey = 'personal-ecosystem.hub.preferences';
+const externalAppUrls = {
+  samenThuis: 'https://kesga44-jpg.github.io/Samen-thuis/',
+  coach: 'https://kesga44-jpg.github.io/Coach/'
+};
 const databaseConfig = {
   appId: 'hub',
   databaseName: 'personal-ecosystem-hub',
@@ -132,7 +136,6 @@ function App() {
       return;
     }
     const appName = appId === 'sportapp' ? 'Sportapp' : 'SIDEQUEST';
-    window.open(url, '_blank', 'noopener,noreferrer');
     await performStorageAction(
       () => database.put('launches', { id: newId(), appId, appName, openedAt: new Date().toISOString() }),
       () => refresh(database),
@@ -202,7 +205,7 @@ function appUrlKey(appId: 'sportapp' | 'sidequest', preferences: HubPreferences)
   return appId === 'sportapp' ? preferences.sportUrl : preferences.sidequestUrl;
 }
 
-function HomePage({
+export function HomePage({
   preferences,
   shortcuts,
   launches,
@@ -226,15 +229,11 @@ function HomePage({
         title={`Welkom${name === 'daar' ? '' : `, ${name}`}.`}
         description="Je apps, snelkoppelingen en lokale status op één plek. Elke app houdt de eigen gegevens."
       />
-      <div className="grid grid-3">
+      <div className="grid grid-4">
         <AppTile icon="↗" title="Sportapp" description="Activiteiten, trainingen en sportgeschiedenis." url={appUrlKey('sportapp', preferences)} onOpen={() => void onOpen('sportapp')} />
         <AppTile icon="✦" title="SIDEQUEST" description="Persoonlijke doelen, gewoontes en quests." url={appUrlKey('sidequest', preferences)} onOpen={() => void onOpen('sidequest')} />
-        <div className="app-tile">
-          <span className="tile-icon">⌂</span>
-          <strong>Samen Thuis</strong>
-          <p>Huishouden en gedeelde planning blijven in hun eigen app.</p>
-          <StatusPill>Eigenaar: Samen Thuis</StatusPill>
-        </div>
+        <AppTile icon="⌂" title="Samen Thuis" description="Huishouden en gedeelde planning blijven in hun eigen app." url={externalAppUrls.samenThuis} />
+        <AppTile icon="C" title="Coach" description="Teams, trainingen en wedstrijden in hun eigen app." url={externalAppUrls.coach} />
       </div>
       <div className="grid grid-2">
         <Card title="Recente activiteit" action={<Link className="text-button" to="/activiteiten">Alles bekijken →</Link>}>
@@ -273,13 +272,13 @@ function HomePage({
   );
 }
 
-function AppTile({ icon, title, description, url, onOpen }: { icon: string; title: string; description: string; url: string; onOpen: () => void }) {
+function AppTile({ icon, title, description, url, onOpen }: { icon: string; title: string; description: string; url: string; onOpen?: () => void }) {
   return (
     <div className="app-tile">
       <span className="tile-icon">{icon}</span>
       <strong>{title}</strong>
       <p>{description}</p>
-      {url ? <><StatusPill tone="good">Beschikbaar</StatusPill><Button style={{ marginTop: 14 }} onClick={onOpen}>Open {title} ↗</Button></> : <><StatusPill tone="warning">URL niet ingesteld</StatusPill><Link className="text-button" to="/instellingen" style={{ marginTop: 8 }}>Stel URL in →</Link></>}
+      {url ? <><StatusPill tone="good">Beschikbaar</StatusPill><a className="button button-primary" style={{ marginTop: 14 }} href={url} target="_blank" rel="noopener noreferrer" onClick={onOpen}>Open {title} ↗</a></> : <><StatusPill tone="warning">URL niet ingesteld</StatusPill><Link className="text-button" to="/instellingen" style={{ marginTop: 8 }}>Stel URL in →</Link></>}
     </div>
   );
 }
@@ -311,7 +310,7 @@ function AppInfoPage({
           <div className="list-item"><span>Toegang</span><span>{url || 'Niet beschikbaar; URL instellen via Instellingen'}</span></div>
           <div className="list-item"><span>Synchronisatie</span><span>Niet geconfigureerd</span></div>
         </div>
-        {url && <Button style={{ marginTop: 16 }} onClick={() => void onOpen(appId)}>Open {appName} ↗</Button>}
+        {url && <a className="button button-primary" style={{ marginTop: 16 }} href={url} target="_blank" rel="noopener noreferrer" onClick={() => void onOpen(appId)}>Open {appName} ↗</a>}
       </Card>
     </div>
   );
