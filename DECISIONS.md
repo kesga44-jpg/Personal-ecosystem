@@ -66,6 +66,8 @@ Ontwerp: [docs/hub/HUB_DESIGN.md](docs/hub/HUB_DESIGN.md) — in principe goedge
 | B-18 | Nieuwe modules | ✅ Akkoord | Lichaam & gezondheid, Voeding, Dagboek & stemming; afbakening ten opzichte van Samen Thuis in ADR 0020 | [0020](docs/adr/0020-een-app-met-modules.md) |
 | B-19 | Uitbreidingen | ✅ Akkoord | Sport: krachttraining, duursport en import, doelen en planning, regelgebaseerde coach. SIDEQUEST: stappen en categorieën, levels en badges, statistieken, herinneringen. Volgorde in [DEVELOPMENT_ROADMAP.md](DEVELOPMENT_ROADMAP.md) | — |
 | B-20 | Samen Thuis-migratie `20261014_household_state_sync` | ⏸ Uitgesteld door eigenaar | Inventarisatie 2026-11-16 (alleen lezen): alleen deze migratie ontbreekt in project A; zonder deze migratie werkt de huishoudsync niet. Uitvoeren pas na back-up en expliciet akkoord | — |
+| B-21 | Accounts voor Personal Ecosystem | ✅ Akkoord (ontwerp) | Zelf aanmaken met e-mail + wachtwoord + verplichte TOTP; inhoud eind-tot-eind versleuteld in de browser; schema `pe` in project A; livegang pas na poorten P-1 t/m P-6 | [0021](docs/adr/0021-accounts-met-eind-tot-eind-versleuteling.md) |
+| B-22 | Externe gegevens | ✅ Akkoord | Open-Meteo (weer), Open Food Facts (voeding), wger (oefeningen), OpenStreetMap (kaart); alleen gratis, voorwaarden per dienst in API_CATALOG.md; geen persoons- of gezondheidsgegevens naar buiten | — |
 
 ## Ontbrekende informatie (nog steeds open)
 
