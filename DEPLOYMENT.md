@@ -27,11 +27,13 @@ Stel in elk bestaand project onder **Settings → Build** de root directory leeg
 
 | Project | Build command | Deploy command |
 |---|---|---|
-| `pe-hub` | `npm ci && npm run build:hub` | `npx wrangler deploy --config apps/hub/wrangler.jsonc` |
+| `pe-hub` | `npm ci && npm run build:ecosystem` | `npx wrangler deploy --config apps/ecosystem/wrangler.jsonc` |
 | `pe-sportapp` | `npm ci && npm run build:sportapp` | `npx wrangler deploy --config apps/sportapp/wrangler.jsonc` |
 | `pe-sidequest` | `npm ci && npm run build:sidequest` | `npx wrangler deploy --config apps/sidequest/wrangler.jsonc` |
 
-Stel voor alle projecten de **build variable** `NODE_VERSION=24` in. Stel daarnaast uitsluitend voor `pe-hub` de build variables `VITE_SPORTAPP_URL=https://pe-sportapp.kesga44.workers.dev` en `VITE_SIDEQUEST_URL=https://pe-sidequest.kesga44.workers.dev` in. Dit zijn geen runtime variables; `VITE_*`-waarden zijn publiek en mogen geen geheimen bevatten. Hub-instellingen kunnen de links ook lokaal aanpassen. De apps gebruiken momenteel geen Supabase-client, authenticatie, keys of netwerk-API's.
+**Overgang naar Personal Ecosystem (ADR 0020):** `pe-hub` bouwt sinds deze wijziging `apps/ecosystem` (Dashboard, Sport en SIDEQUEST op één origin). Pas na het mergen in Cloudflare bij `pe-hub` het build- en deploycommando aan zoals in de tabel; tot dat moment deployt `pe-hub` nog de oude Hub. De oude Hub-gegevens blijven beschikbaar, omdat de nieuwe app dezelfde IndexedDB-namen op dezelfde origin gebruikt. `pe-sportapp` en `pe-sidequest` blijven de oude losse apps deployen, met een verhuismelding; gegevens daarvan zet de gebruiker over via export en import op `/back-up`. Alle `wrangler.jsonc`-bestanden zetten `preview_urls` uit.
+
+Stel voor alle projecten de **build variable** `NODE_VERSION=24` in. De build variables `VITE_SPORTAPP_URL` en `VITE_SIDEQUEST_URL` zijn voor `apps/ecosystem` niet nodig (de modules staan op dezelfde origin) en mogen na de overgang bij `pe-hub` worden verwijderd; alleen de oude losse Hub gebruikt ze nog. Dit zijn geen runtime variables; `VITE_*`-waarden zijn publiek en mogen geen geheimen bevatten. Hub-instellingen kunnen de links ook lokaal aanpassen. De apps gebruiken momenteel geen Supabase-client, authenticatie, keys of netwerk-API's.
 
 Elke configuratie gebruikt `./dist` relatief aan het eigen `wrangler.jsonc` en `assets.not_found_handling: "single-page-application"`. `_redirects` wordt voor deze Workers niet gebruikt; `_headers` bevat de beveiligingsheaders en CSP. In de lokale Wrangler-preview gaven diepe links de app-shell met status 200. Ook een ontbrekend bestand onder `/assets/` gaf status 200 met `index.html`, niet 404; dit is een bewust geaccepteerde beperking. De service worker precachet alleen gegenereerde app-shellbestanden; er is geen runtimecache voor persoonlijke gegevens.
 

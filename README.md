@@ -6,8 +6,11 @@ Een local-first platform met drie zelfstandig te bouwen webapps:
 
 De startpagina linkt ook naar de bestaande apps Samen Thuis en Coach, die een account gebruiken. De drie nieuwe apps hieronder werken lokaal zonder account; hun knoppen blijven uitgeschakeld totdat hun eigen online URL's zijn ingesteld.
 
+Sinds [ADR 0020](docs/adr/0020-een-app-met-modules.md) draaien Hub, Sportapp en SIDEQUEST als modules van één app, **Personal Ecosystem** (`apps/ecosystem`): Dashboard op `/`, Sport op `/sport`, SIDEQUEST op `/quest` en een centrale back-up op `/back-up`. Elke module houdt een eigen IndexedDB-database. De losse apps hieronder blijven tijdelijk bestaan met een verhuismelding.
+
 | App | Eigenaar van | Starten | Productiebuild |
 |---|---|---|---|
+| Personal Ecosystem | Eén app met de modules Dashboard, Sport en SIDEQUEST, plus centrale back-up | `npm run dev:ecosystem` | `npm run build:ecosystem` |
 | Hub | Startpagina, app-links, eigen snelkoppelingen en app-openingen | `npm run dev:hub` | `npm run build:hub` |
 | Sportapp | Sportactiviteiten, trainingsplannen, GPX-samenvattingen en statistieken | `npm run dev:sportapp` | `npm run build:sportapp` |
 | SIDEQUEST | Persoonlijke doelen, gewoontes, quests, punten en streaks | `npm run dev:sidequest` | `npm run build:sidequest` |
@@ -34,6 +37,7 @@ npm run typecheck
 npm run build:hub
 npm run build:sportapp
 npm run build:sidequest
+npm run build:ecosystem
 npm run build:all
 npm run check:dist
 npm run test:e2e
