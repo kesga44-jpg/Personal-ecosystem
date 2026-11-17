@@ -14,6 +14,11 @@ describe('Open Food Facts omzetten', () => {
     expect(parseOffProduct(null)).toBeNull();
   });
 
+  it('leest de zoekdienst met merken als lijst', () => {
+    const hit = { code: '8710866074931', brands: ['Brans kaas', 'Ander'], product_name: 'Kaas 48+ geraspt', nutriments: { 'energy-kcal_100g': 381, proteins_100g: 24.3, carbohydrates_100g: 2.6, fat_100g: 30.4 } };
+    expect(parseOffSearch({ hits: [hit] })).toEqual([{ code: '8710866074931', name: 'Kaas 48+ geraspt', brand: 'Brans kaas', per100: { kcal: 381, protein: 24.3, carbs: 2.6, fat: 30.4 }, servingGrams: null }]);
+  });
+
   it('ontdubbelt zoekresultaten', () => {
     const item = { code: '12345678', product_name: 'X', nutriments: { 'energy-kcal_100g': 10 } };
     expect(parseOffSearch({ products: [item, item] })).toHaveLength(1);

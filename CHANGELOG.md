@@ -5,6 +5,10 @@ Elke app in de monorepo krijgt een eigen sectie zodra die bestaat. Bestaande app
 
 ## [Unreleased]
 
+### Opgelost
+
+- Voeding: zoeken op productnaam faalde live meestal direct, omdat het oude zoekadres van Open Food Facts (`/cgi/search.pl`) verzoeken vanaf Cloudflare weigert. De Worker zoekt nu eerst via de zoekdienst `search.openfoodfacts.org` (Nederlandstalig, merken als lijst) en valt alleen bij een fout terug op het oude adres. Barcodes werkten al.
+
 ### Toegevoegd
 
 - PR 5: module Voeding (`/voeding`): per dag registreren per maaltijd met hoeveelheid in grammen; producten zoeken (pas na een druk op Zoeken), barcode intypen of scannen met de camera (ingebouwde `BarcodeDetector`, o.a. Chrome op Android) of zelf invoeren; overzicht met energie (ring t.o.v. doel), eiwit, koolhydraten, vet en hun aandeel in de energie, maaltijden en energie over 14 dagen; productenlijst en dagdoelen. Eigen database `personal-ecosystem-voeding`. Nieuwe Worker voor `pe-hub` (`apps/ecosystem/worker/index.ts`) met alleen de route `/api/voeding/*`: geeft barcode of zoekterm door aan Open Food Facts met een eigen User-Agent, valideert invoer, cachet openbare productgegevens en meldt drukte (429) of storing in gewone taal; alle andere paden blijven statische bestanden. `Permissions-Policy` staat de camera nu toe voor deze site. Dashboardwidget Voeding toont alleen óf er vandaag iets is geregistreerd. Centrale back-up versie 4; versies 1–3 blijven herstelbaar. `ProgressRing` kan een eigen tekst tonen.

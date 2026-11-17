@@ -63,14 +63,32 @@ describe('doorgeefserver Open Food Facts', () => {
     expect((await handleFoodApi(request('/api/voeding/zoeken?q=kaas'), env)).status).toBe(502);
   });
 
-  it('zoekt met een opgeschoonde term en geeft alleen bruikbare producten terug', async () => {
-    const spy = mockFetch(Response.json({ products: [offProduct, { code: '123', product_name: 'x' }, offProduct] }));
+  it('zoekt via de zoekdienst met een opgeschoonde term en geeft alleen bruikbare producten terug', async () => {
+    const spy = mockFetch(Response.json({ hits: [{ ...offProduct, brands: ['Merk A'] }, { code: '123', product_name: 'x' }, offProduct] }));
     const response = await handleFoodApi(request('/api/voeding/zoeken?q=%20%20volle%20%20yoghurt%20'), env);
-    const body = (await response.json()) as { products: unknown[] };
+    const body = (await response.json()) as { products: { brand: string }[] };
     expect(body.products).toHaveLength(1);
+    expect(body.products[0]!.brand).toBe('Merk A');
+    expect(spy).toHaveBeenCalledTimes(1);
     const upstreamUrl = new URL(String(spy.mock.calls[0]![0]));
-    expect(upstreamUrl.pathname).toBe('/cgi/search.pl');
-    expect(upstreamUrl.searchParams.get('search_terms')).toBe('volle yoghurt');
+    expect(upstreamUrl.origin).toBe('https://search.openfoodfacts.org');
+    expect(upstreamUrl.searchParams.get('q')).toBe('volle yoghurt');
+    expect(upstreamUrl.searchParams.get('langs')).toBe('nl,en');
+  });
+
+  it('valt terug op het oude zoekadres als de zoekdienst faalt', async () => {
+    const spy = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response('', { status: 503 }))
+      .mockResolvedValueOnce(Response.json({ products: [offProduct] }));
+    const response = await handleFoodApi(request('/api/voeding/zoeken?q=yoghurt'), env);
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as { products: unknown[] }).products).toHaveLength(1);
+    expect(new URL(String(spy.mock.calls[1]![0])).pathname).toBe('/cgi/search.pl');
+  });
+
+  it('meldt drukte als beide zoekadressen falen', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response('', { status: 429 })).mockResolvedValueOnce(new Response('', { status: 503 }));
+    expect((await handleFoodApi(request('/api/voeding/zoeken?q=yoghurt'), env)).status).toBe(429);
   });
 
   it('serveert de app voor alle andere paden en kent geen andere API-routes', async () => {

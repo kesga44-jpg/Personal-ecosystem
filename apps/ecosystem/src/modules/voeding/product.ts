@@ -66,14 +66,17 @@ export function parseOffProduct(input: unknown): OffProduct | null {
   return {
     code,
     name,
-    brand: text(product.brands, 80).split(',')[0]!.trim(),
+    // Productpagina's geven merken als tekst ("A, B"), de zoekdienst als lijst (["A", "B"]).
+    brand: (Array.isArray(product.brands) ? text(product.brands[0], 80) : text(product.brands, 80).split(',')[0]!).trim(),
     per100: { kcal: Math.round(kcal), protein: macro('proteins'), carbs: macro('carbohydrates'), fat: macro('fat') },
     servingGrams: serving !== null && serving > 0 && serving <= 2000 ? round1(serving) : null
   };
 }
 
+/** Zoekresultaten: `products` (oud zoekadres) of `hits` (zoekdienst search.openfoodfacts.org). */
 export function parseOffSearch(input: unknown): OffProduct[] {
-  const products = (input as { products?: unknown[] } | null)?.products;
+  const data = input as { products?: unknown[]; hits?: unknown[] } | null;
+  const products = data?.hits ?? data?.products;
   if (!Array.isArray(products)) return [];
   const seen = new Set<string>();
   const result: OffProduct[] = [];
