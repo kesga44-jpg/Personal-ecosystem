@@ -2,9 +2,15 @@ import type { LocalExport } from '@ecosystem/storage';
 
 /** Centrale back-up van alle modules (ADR 0020 § 3). */
 export const BACKUP_FORMAT = 'personal-ecosystem-backup';
-export const BACKUP_VERSION = 1;
-export const MODULE_IDS = ['hub', 'sport', 'sidequest'] as const;
+export const BACKUP_VERSION = 2;
+export const MODULE_IDS = ['hub', 'sport', 'sidequest', 'lichaam'] as const;
 export type BackupModuleId = (typeof MODULE_IDS)[number];
+
+/** Modules per back-upversie. Versie 1 (vóór Lichaam) blijft herstelbaar; Lichaam blijft dan ongewijzigd. */
+const MODULES_BY_VERSION: Record<number, readonly BackupModuleId[]> = {
+  1: ['hub', 'sport', 'sidequest'],
+  2: MODULE_IDS
+};
 
 export interface EcosystemBackup {
   format: typeof BACKUP_FORMAT;
@@ -24,7 +30,8 @@ export interface RestorePlan {
 const moduleLabels: Record<BackupModuleId, string> = {
   hub: 'Dashboard',
   sport: 'Sport',
-  sidequest: 'SIDEQUEST'
+  sidequest: 'SIDEQUEST',
+  lichaam: 'Lichaam'
 };
 
 export function moduleLabel(id: BackupModuleId): string {
@@ -82,18 +89,19 @@ export async function planRestore(input: unknown, validators: Record<BackupModul
   }
 
   if (candidate.format !== BACKUP_FORMAT) throw new Error('Dit bestand is geen Personal Ecosystem-back-up.');
-  if (candidate.version !== BACKUP_VERSION) throw new Error('Deze back-upversie wordt niet ondersteund.');
+  const expected = typeof candidate.version === 'number' ? MODULES_BY_VERSION[candidate.version] : undefined;
+  if (!expected) throw new Error('Deze back-upversie wordt niet ondersteund.');
   const modules = candidate.modules;
   if (!modules || typeof modules !== 'object' || Array.isArray(modules)) throw new Error('De back-up bevat geen modules.');
   const keys = Object.keys(modules);
-  if (keys.length !== MODULE_IDS.length || !MODULE_IDS.every((id) => keys.includes(id))) {
+  if (keys.length !== expected.length || !expected.every((id) => keys.includes(id))) {
     throw new Error('De back-up bevat onverwachte of ontbrekende modules.');
   }
   if (typeof candidate.checksum !== 'string' || candidate.checksum !== (await sha256Hex(canonicalJson(modules)))) {
     throw new Error('Het controlegetal klopt niet: het bestand is beschadigd of aangepast.');
   }
-  const typed = modules as Record<BackupModuleId, unknown>;
-  for (const id of MODULE_IDS) {
+  const typed = modules as Partial<Record<BackupModuleId, unknown>>;
+  for (const id of expected) {
     try {
       validators[id](typed[id]);
     } catch (cause) {
@@ -101,5 +109,5 @@ export async function planRestore(input: unknown, validators: Record<BackupModul
       throw new Error(`${moduleLabel(id)}: ${reason}`);
     }
   }
-  return { source: 'ecosystem', modules: typed as Record<BackupModuleId, LocalExport> };
+  return { source: 'ecosystem', modules: typed as Partial<Record<BackupModuleId, LocalExport>> };
 }
