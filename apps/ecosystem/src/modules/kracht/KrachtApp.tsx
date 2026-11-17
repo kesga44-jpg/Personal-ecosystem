@@ -17,7 +17,7 @@ import {
   StatusPill,
   type ModuleLink
 } from '@ecosystem/ui';
-import { searchWger } from './api';
+import { fetchWgerExercise, searchWger } from './api';
 import {
   allExercises,
   cleanLink,
@@ -42,7 +42,7 @@ import {
   type TemplateItem
 } from './domain';
 import { CATEGORIES, EQUIPMENT, KINDS, kindLabels, type Category, type Equipment, type Exercise, type Kind } from './exercises';
-import type { WgerExercise } from './wger';
+import type { WgerExercise, WgerSearchItem } from './wger';
 import { databaseConfig } from './storage';
 import { draftExercise, draftToSession, readDraft, writeDraft, type Draft, type DraftExercise, type DraftSet } from './workout';
 
@@ -614,7 +614,8 @@ function ExercisesPage({ exercises, sessions, error, onSave, onDelete }: { exerc
 
 function WgerPanel({ known, onSave }: { known: Set<string>; onSave: (exercise: Exercise) => Promise<boolean> }) {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<WgerExercise[] | null>(null);
+  const [results, setResults] = useState<WgerSearchItem[] | null>(null);
+  const [loadingId, setLoadingId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
   const [chosen, setChosen] = useState<WgerExercise | null>(null);
@@ -632,6 +633,20 @@ function WgerPanel({ known, onSave }: { known: Set<string>; onSave: (exercise: E
       setNote(message(cause, 'Zoeken is mislukt.'));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function choose(item: WgerSearchItem) {
+    setNote('');
+    setLoadingId(item.id);
+    try {
+      const detail = await fetchWgerExercise(item.id);
+      if (detail) setChosen(detail);
+      else setNote('wger geeft voor deze oefening geen bruikbare licentie. Kies een andere of voer de oefening zelf in.');
+    } catch (cause) {
+      setNote(message(cause, 'De licentie kon niet worden opgehaald.'));
+    } finally {
+      setLoadingId(null);
     }
   }
 
@@ -676,9 +691,9 @@ function WgerPanel({ known, onSave }: { known: Set<string>; onSave: (exercise: E
               <div className="list-item" key={item.id}>
                 <div>
                   <p className="item-title">{item.nameNl ?? item.name}</p>
-                  <p className="item-subtitle">{item.nameNl ? `${item.name} · ` : ''}{item.author} · {item.license}</p>
+                  {item.nameNl && <p className="item-subtitle">{item.name}</p>}
                 </div>
-                {known.has(`wger:${item.id}`) ? <StatusPill tone="good">Al toegevoegd</StatusPill> : <Button variant="secondary" onClick={() => setChosen(item)} aria-label={`Kies ${item.nameNl ?? item.name}`}>Kies</Button>}
+                {known.has(`wger:${item.id}`) ? <StatusPill tone="good">Al toegevoegd</StatusPill> : <Button variant="secondary" disabled={loadingId !== null} onClick={() => void choose(item)} aria-label={`Kies ${item.nameNl ?? item.name}`}>{loadingId === item.id ? 'Ophalen…' : 'Kies'}</Button>}
               </div>
             ))}
           </div>
@@ -687,7 +702,7 @@ function WgerPanel({ known, onSave }: { known: Set<string>; onSave: (exercise: E
         ))
       )}
       <p className="item-subtitle">
-        Oefeningen uit <a href="https://wger.de/" target="_blank" rel="noopener noreferrer">wger</a> hebben elk een eigen Creative Commons-licentie; naam, auteur en licentie worden bewaard en getoond. Alleen je zoekterm gaat via de eigen server van deze app naar wger.
+        Oefeningen uit <a href="https://wger.de/" target="_blank" rel="noopener noreferrer">wger</a> hebben elk een eigen Creative Commons-licentie; licentie en auteur worden bij kiezen opgehaald, bewaard en getoond. Alleen je zoekterm of de gekozen oefening gaat via de eigen server van deze app naar wger.
       </p>
     </div>
   );
