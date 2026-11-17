@@ -9,7 +9,9 @@ import type { Activity } from '@ecosystem/sportapp/domain';
 import type { Habit, HabitCheck, Quest } from '@ecosystem/sidequest/domain';
 import { databaseConfig as lichaamConfig } from '../modules/lichaam/storage';
 import type { BodyDay } from '../modules/lichaam/domain';
-import { checkHeatmap, daysSince, greeting, habitsToday, lichaamFilledToday, localDateKey, pointsPerDay, sportWeek, topStreaks } from './summary';
+import { databaseConfig as dagboekConfig } from '../modules/dagboek/storage';
+import type { JournalEntry } from '../modules/dagboek/domain';
+import { checkHeatmap, dagboekWrittenToday, daysSince, greeting, habitsToday, lichaamFilledToday, localDateKey, pointsPerDay, sportWeek, topStreaks } from './summary';
 import { moveWidget, readLayout, toggleWidget, widgetLabels, writeLayout, type WidgetId, type WidgetLayout } from './widgets';
 import { describeWeather, forecastUrl, geocodingUrl, parseForecast, parseGeocoding, readLocation, trainingAdvice, writeLocation, type WeatherLocation, type WeatherNow } from './weather';
 
@@ -21,9 +23,11 @@ interface DashboardData {
   shortcuts: Shortcut[];
   /** Alleen datums van Lichaam-registraties; geen waarden (ADR 0020 § 2). */
   lichaamDates: { date: string }[];
+  /** Alleen datums van Dagboek-notities; geen stemming of tekst. */
+  dagboekDates: { date: string }[];
 }
 
-const emptyData: DashboardData = { activities: [], habits: [], checks: [], quests: [], shortcuts: [], lichaamDates: [] };
+const emptyData: DashboardData = { activities: [], habits: [], checks: [], quests: [], shortcuts: [], lichaamDates: [], dagboekDates: [] };
 const externalApps = [
   { title: 'Samen Thuis', url: 'https://kesga44-jpg.github.io/Samen-thuis/' },
   { title: 'Coach', url: 'https://kesga44-jpg.github.io/Coach/' }
@@ -48,27 +52,30 @@ function lastBackup(): string {
 
 /** Leest alleen samenvattingen uit de modules (ADR 0020 § 2); het dashboard schrijft nooit in andere modules. */
 async function loadData(): Promise<DashboardData> {
-  const [hub, sport, quest, lichaam] = await Promise.all([
+  const [hub, sport, quest, lichaam, dagboek] = await Promise.all([
     openLocalDatabase(hubConfig),
     openLocalDatabase(sportConfig),
     openLocalDatabase(questConfig),
-    openLocalDatabase(lichaamConfig)
+    openLocalDatabase(lichaamConfig),
+    openLocalDatabase(dagboekConfig)
   ]);
   try {
-    const [shortcuts, activities, habits, checks, quests, bodyDays] = await Promise.all([
+    const [shortcuts, activities, habits, checks, quests, bodyDays, journal] = await Promise.all([
       hub.list<Shortcut>('shortcuts'),
       sport.list<Activity>('activities'),
       quest.list<Habit>('habits'),
       quest.list<HabitCheck>('habitChecks'),
       quest.list<Quest>('quests'),
-      lichaam.list<BodyDay>('days')
+      lichaam.list<BodyDay>('days'),
+      dagboek.list<JournalEntry>('entries')
     ]);
-    return { activities, habits, checks, quests, shortcuts, lichaamDates: bodyDays.map((day) => ({ date: day.date })) };
+    return { activities, habits, checks, quests, shortcuts, lichaamDates: bodyDays.map((day) => ({ date: day.date })), dagboekDates: journal.map((entry) => ({ date: entry.date })) };
   } finally {
     hub.close();
     sport.close();
     quest.close();
     lichaam.close();
+    dagboek.close();
   }
 }
 
@@ -102,6 +109,7 @@ export default function WidgetDashboard() {
     streaks: <StreaksWidget data={data} today={today} />,
     points: <PointsWidget data={data} today={today} />,
     lichaam: <LichaamWidget filled={lichaamFilledToday(data.lichaamDates, today)} />,
+    dagboek: <DagboekWidget written={dagboekWrittenToday(data.dagboekDates, today)} />,
     weather: <WeatherWidget />,
     'habits-heatmap': <HeatmapWidget checks={data.checks} today={today} />,
     backup: <BackupWidget now={now} />,
@@ -217,6 +225,19 @@ function LichaamWidget({ filled }: { filled: boolean }) {
   );
 }
 
+function DagboekWidget({ written }: { written: boolean }) {
+  return (
+    <>
+      <StatusPill tone={written ? 'good' : 'neutral'}>{written ? '✓ Vandaag geschreven' : 'Vandaag nog niet geschreven'}</StatusPill>
+      <p className="item-subtitle">Je dagboek is privé. Het dashboard ziet alleen óf je vandaag iets hebt geschreven, niet wat of hoe je je voelt.</p>
+      <div className="chip-row">
+        <a className="chip" href="/dagboek/schrijven">{written ? '✎ Aanpassen' : '✎ Schrijven'}</a>
+        <a className="chip" href="/dagboek">Stemming bekijken</a>
+      </div>
+    </>
+  );
+}
+
 function HeatmapWidget({ checks, today }: { checks: HabitCheck[]; today: string }) {
   const days = checkHeatmap(checks, today);
   return (
@@ -246,6 +267,7 @@ function AppsWidget({ shortcuts }: { shortcuts: Shortcut[] }) {
       <a className="chip" href="/sport">↗ Sport</a>
       <a className="chip" href="/quest">✦ SIDEQUEST</a>
       <a className="chip" href="/lichaam">♥ Lichaam</a>
+      <a className="chip" href="/dagboek">✎ Dagboek</a>
       {externalApps.map((app) => <a key={app.url} className="chip" href={app.url} target="_blank" rel="noopener noreferrer">{app.title} ↗</a>)}
       {shortcuts.slice(0, 6).map((shortcut) => <a key={shortcut.id} className="chip" href={shortcut.url} target="_blank" rel="noopener noreferrer">{shortcut.title} ↗</a>)}
     </div>
