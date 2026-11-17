@@ -15,6 +15,8 @@ import { databaseConfig as dagboekConfig } from './modules/dagboek/storage';
 import { validateDagboekBackup } from './modules/dagboek/domain';
 import { databaseConfig as voedingConfig } from './modules/voeding/storage';
 import { validateVoedingBackup } from './modules/voeding/domain';
+import { databaseConfig as krachtConfig } from './modules/kracht/storage';
+import { validateKrachtBackup } from './modules/kracht/domain';
 import {
   MODULE_IDS,
   backupFileName,
@@ -25,14 +27,15 @@ import {
   type RestorePlan
 } from './backup';
 
-const configs = { hub: hubConfig, sport: sportConfig, sidequest: questConfig, lichaam: lichaamConfig, dagboek: dagboekConfig, voeding: voedingConfig } as const;
+const configs = { hub: hubConfig, sport: sportConfig, sidequest: questConfig, lichaam: lichaamConfig, dagboek: dagboekConfig, voeding: voedingConfig, kracht: krachtConfig } as const;
 const domainValidators: Record<BackupModuleId, (data: unknown) => void> = {
   hub: validateHubBackup,
   sport: validateSportBackup,
   sidequest: validateSidequestBackup,
   lichaam: validateLichaamBackup,
   dagboek: validateDagboekBackup,
-  voeding: validateVoedingBackup
+  voeding: validateVoedingBackup,
+  kracht: validateKrachtBackup
 };
 const lastExportKey = 'personal-ecosystem.backup.last-export';
 const navigation = [{ to: '/', label: 'Back-up', icon: '⇩' }];
@@ -159,7 +162,7 @@ function BackupPage() {
       <PageHeader
         eyebrow="Jouw gegevens"
         title="Back-up"
-        description="Eén bestand met de gegevens van Dashboard, Sport, SIDEQUEST, Lichaam, Dagboek en Voeding. Je gegevens staan alleen op dit apparaat; maak regelmatig een back-up. Het bestand bevat ook gezondheidsgegevens en je dagboek: bewaar het veilig."
+        description="Eén bestand met de gegevens van Dashboard, Sport, SIDEQUEST, Lichaam, Dagboek, Voeding en Kracht. Je gegevens staan alleen op dit apparaat; maak regelmatig een back-up. Het bestand bevat ook gezondheidsgegevens en je dagboek: bewaar het veilig."
       />
       {error && <ErrorBanner message={error} />}
       {message && <p role="status"><StatusPill tone="good">{message}</StatusPill></p>}

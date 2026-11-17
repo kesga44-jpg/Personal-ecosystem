@@ -1,7 +1,7 @@
 import type { ModuleLink } from '@ecosystem/ui';
 
 /** Modules van Personal Ecosystem op één origin (ADR 0020). */
-export type ModuleId = 'dashboard' | 'sport' | 'quest' | 'lichaam' | 'voeding' | 'dagboek' | 'backup';
+export type ModuleId = 'dashboard' | 'sport' | 'quest' | 'lichaam' | 'kracht' | 'voeding' | 'dagboek' | 'backup';
 
 interface ModuleDefinition {
   id: ModuleId;
@@ -13,6 +13,7 @@ interface ModuleDefinition {
 export const modules: readonly ModuleDefinition[] = [
   { id: 'dashboard', path: '/', label: 'Dashboard', icon: '⌂' },
   { id: 'sport', path: '/sport', label: 'Sport', icon: '↗' },
+  { id: 'kracht', path: '/kracht', label: 'Kracht', icon: '▲' },
   { id: 'quest', path: '/quest', label: 'SIDEQUEST', icon: '✦' },
   { id: 'lichaam', path: '/lichaam', label: 'Lichaam', icon: '♥' },
   { id: 'voeding', path: '/voeding', label: 'Voeding', icon: '◔' },
