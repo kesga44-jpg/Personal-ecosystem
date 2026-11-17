@@ -8,6 +8,9 @@ export { filledToday as lichaamFilledToday } from '../modules/lichaam/domain';
 /** Dagboek: alleen óf er vandaag geschreven is, nooit stemming of tekst (DATA_OWNERSHIP.md). */
 export { writtenToday as dagboekWrittenToday } from '../modules/dagboek/domain';
 
+/** Voeding: alleen óf er vandaag iets is geregistreerd, nooit wat of hoeveel (DATA_OWNERSHIP.md). */
+export { loggedToday as voedingLoggedToday } from '../modules/voeding/domain';
+
 /**
  * Leescontracten voor het dashboard (ADR 0020 § 2, DATA_OWNERSHIP.md).
  * Alleen samenvattingen: aantallen, totalen en streaks. Geen notities of andere inhoud.
