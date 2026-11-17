@@ -12,6 +12,7 @@ describe('moduleForPath', () => {
     expect(moduleForPath('/quest/gewoontes')).toBe('quest');
     expect(moduleForPath('/lichaam')).toBe('lichaam');
     expect(moduleForPath('/lichaam/invoeren')).toBe('lichaam');
+    expect(moduleForPath('/dagboek/archief')).toBe('dagboek');
     expect(moduleForPath('/back-up')).toBe('backup');
   });
 
@@ -24,7 +25,7 @@ describe('moduleForPath', () => {
 describe('moduleLinksFor', () => {
   it('markeert alleen de actieve module', () => {
     const links = moduleLinksFor('sport');
-    expect(links.map((link) => link.href)).toEqual(['/', '/sport', '/quest', '/lichaam', '/back-up']);
+    expect(links.map((link) => link.href)).toEqual(['/', '/sport', '/quest', '/lichaam', '/dagboek', '/back-up']);
     expect(links.filter((link) => link.active).map((link) => link.href)).toEqual(['/sport']);
   });
 

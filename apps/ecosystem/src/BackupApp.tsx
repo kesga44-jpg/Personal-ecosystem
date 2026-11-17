@@ -11,6 +11,8 @@ import { validateSportBackup } from '@ecosystem/sportapp/domain';
 import { validateSidequestBackup } from '@ecosystem/sidequest/domain';
 import { databaseConfig as lichaamConfig } from './modules/lichaam/storage';
 import { validateLichaamBackup } from './modules/lichaam/domain';
+import { databaseConfig as dagboekConfig } from './modules/dagboek/storage';
+import { validateDagboekBackup } from './modules/dagboek/domain';
 import {
   MODULE_IDS,
   backupFileName,
@@ -21,12 +23,13 @@ import {
   type RestorePlan
 } from './backup';
 
-const configs = { hub: hubConfig, sport: sportConfig, sidequest: questConfig, lichaam: lichaamConfig } as const;
+const configs = { hub: hubConfig, sport: sportConfig, sidequest: questConfig, lichaam: lichaamConfig, dagboek: dagboekConfig } as const;
 const domainValidators: Record<BackupModuleId, (data: unknown) => void> = {
   hub: validateHubBackup,
   sport: validateSportBackup,
   sidequest: validateSidequestBackup,
-  lichaam: validateLichaamBackup
+  lichaam: validateLichaamBackup,
+  dagboek: validateDagboekBackup
 };
 const lastExportKey = 'personal-ecosystem.backup.last-export';
 const navigation = [{ to: '/', label: 'Back-up', icon: '⇩' }];
@@ -153,7 +156,7 @@ function BackupPage() {
       <PageHeader
         eyebrow="Jouw gegevens"
         title="Back-up"
-        description="Eén bestand met de gegevens van Dashboard, Sport, SIDEQUEST en Lichaam. Je gegevens staan alleen op dit apparaat; maak regelmatig een back-up. Het bestand bevat ook gezondheidsgegevens: bewaar het veilig."
+        description="Eén bestand met de gegevens van Dashboard, Sport, SIDEQUEST, Lichaam en Dagboek. Je gegevens staan alleen op dit apparaat; maak regelmatig een back-up. Het bestand bevat ook gezondheidsgegevens en je dagboek: bewaar het veilig."
       />
       {error && <ErrorBanner message={error} />}
       {message && <p role="status"><StatusPill tone="good">{message}</StatusPill></p>}

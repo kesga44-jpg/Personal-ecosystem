@@ -5,10 +5,12 @@ import { databaseConfig as hubConfig } from '@ecosystem/hub/App';
 import { databaseConfig as sportConfig } from '@ecosystem/sportapp/App';
 import { databaseConfig as questConfig } from '@ecosystem/sidequest/App';
 import { databaseConfig as lichaamConfig } from './modules/lichaam/storage';
+import { databaseConfig as dagboekConfig } from './modules/dagboek/storage';
 
 // ADR 0020 § 2: elke module heeft een eigen database en schrijft alleen daarin.
 const configs = { hub: hubConfig, sportapp: sportConfig, sidequest: questConfig };
-const allNames = [...Object.values(configs), lichaamConfig].map((config) => config.databaseName);
+const newModules = { lichaam: lichaamConfig, dagboek: dagboekConfig };
+const allNames = [...Object.values(configs), ...Object.values(newModules)].map((config) => config.databaseName);
 
 describe('gescheiden opslag per module', () => {
   it('gebruikt per module een eigen databasenaam', () => {
@@ -16,6 +18,7 @@ describe('gescheiden opslag per module', () => {
     expect(sportConfig.databaseName).toBe('personal-ecosystem-sport');
     expect(questConfig.databaseName).toBe('personal-ecosystem-sidequest');
     expect(lichaamConfig.databaseName).toBe('personal-ecosystem-lichaam');
+    expect(dagboekConfig.databaseName).toBe('personal-ecosystem-dagboek');
     expect(new Set(allNames).size).toBe(allNames.length);
   });
 
@@ -31,13 +34,15 @@ describe('gescheiden opslag per module', () => {
     }
   });
 
-  it('module Lichaam noemt geen database van een andere module', () => {
-    const dir = join(process.cwd(), 'apps', 'ecosystem', 'src', 'modules', 'lichaam');
-    const others = allNames.filter((name) => name !== lichaamConfig.databaseName);
-    for (const file of readdirSync(dir).filter((name) => /\.(ts|tsx)$/.test(name) && !/\.test\./.test(name))) {
-      const source = readFileSync(join(dir, file), 'utf8');
-      for (const name of others) expect(source.includes(name), `lichaam/${file} noemt ${name}`).toBe(false);
-      expect(/fetch\(|XMLHttpRequest|sendBeacon|WebSocket/.test(source), `lichaam/${file} doet een netwerkverzoek`).toBe(false);
-    }
-  });
+  for (const [module, config] of Object.entries(newModules)) {
+    it(`module ${module} noemt geen andere database en doet geen netwerkverzoeken`, () => {
+      const dir = join(process.cwd(), 'apps', 'ecosystem', 'src', 'modules', module);
+      const others = allNames.filter((name) => name !== config.databaseName);
+      for (const file of readdirSync(dir).filter((name) => /\.(ts|tsx)$/.test(name) && !/\.test\./.test(name))) {
+        const source = readFileSync(join(dir, file), 'utf8');
+        for (const name of others) expect(source.includes(name), `${module}/${file} noemt ${name}`).toBe(false);
+        expect(/fetch\(|XMLHttpRequest|sendBeacon|WebSocket/.test(source), `${module}/${file} doet een netwerkverzoek`).toBe(false);
+      }
+    });
+  }
 });

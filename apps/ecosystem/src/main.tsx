@@ -20,6 +20,7 @@ const loaders: Record<ModuleId, () => Promise<{ default: ComponentType<{ links: 
   sport: () => import('./modules/sport'),
   quest: () => import('./modules/quest'),
   lichaam: () => import('./modules/lichaam'),
+  dagboek: () => import('./modules/dagboek'),
   backup: () => import('./BackupApp')
 };
 

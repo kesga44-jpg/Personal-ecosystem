@@ -10,10 +10,11 @@ const exports = {
   hub: localExport('hub', { launches: [], shortcuts: [{ id: 's1' }] }),
   sport: localExport('sport', { activities: [{ id: 'a1' }], trainings: [] }),
   sidequest: localExport('sidequest', { goals: [], habits: [{ id: 'h1' }] }),
-  lichaam: localExport('lichaam', { days: [{ id: '2026-11-16' }], profile: [] })
+  lichaam: localExport('lichaam', { days: [{ id: '2026-11-16' }], profile: [] }),
+  dagboek: localExport('dagboek', { entries: [{ id: '2026-11-17' }] })
 } satisfies Record<BackupModuleId, LocalExport>;
 
-const accept = () => ({ hub: vi.fn(), sport: vi.fn(), sidequest: vi.fn(), lichaam: vi.fn() });
+const accept = () => ({ hub: vi.fn(), sport: vi.fn(), sidequest: vi.fn(), lichaam: vi.fn(), dagboek: vi.fn() });
 
 describe('canonicalJson', () => {
   it('is onafhankelijk van de volgorde van sleutels', () => {
@@ -25,9 +26,9 @@ describe('createBackup', () => {
   it('maakt één bestand met alle modules en een controlegetal', async () => {
     const backup = await createBackup(exports, new Date('2026-11-16T12:00:00Z'));
     expect(backup.format).toBe(BACKUP_FORMAT);
-    expect(backup.version).toBe(2);
+    expect(backup.version).toBe(3);
     expect(backup.createdAt).toBe('2026-11-16T12:00:00.000Z');
-    expect(Object.keys(backup.modules)).toEqual(['hub', 'sport', 'sidequest', 'lichaam']);
+    expect(Object.keys(backup.modules)).toEqual(['hub', 'sport', 'sidequest', 'lichaam', 'dagboek']);
     expect(backup.checksum).toBe(await sha256Hex(canonicalJson(exports)));
   });
 });
@@ -37,8 +38,9 @@ describe('planRestore', () => {
     const validators = accept();
     const plan = await planRestore(await createBackup(exports), validators);
     expect(plan.source).toBe('ecosystem');
-    expect(Object.keys(plan.modules)).toEqual(['hub', 'sport', 'sidequest', 'lichaam']);
+    expect(Object.keys(plan.modules)).toEqual(['hub', 'sport', 'sidequest', 'lichaam', 'dagboek']);
     expect(validators.lichaam).toHaveBeenCalledWith(exports.lichaam);
+    expect(validators.dagboek).toHaveBeenCalledWith(exports.dagboek);
     expect(validators.hub).toHaveBeenCalledWith(exports.hub);
     expect(validators.sport).toHaveBeenCalledWith(exports.sport);
     expect(validators.sidequest).toHaveBeenCalledWith(exports.sidequest);
@@ -70,17 +72,27 @@ describe('planRestore', () => {
   it('weigert onbekende formaten en versies', async () => {
     await expect(planRestore(null, accept())).rejects.toThrow();
     await expect(planRestore({ format: 'iets-anders' }, accept())).rejects.toThrow('geen Personal Ecosystem-back-up');
-    await expect(planRestore({ ...(await createBackup(exports)), version: 3 }, accept())).rejects.toThrow('versie');
+    await expect(planRestore({ ...(await createBackup(exports)), version: 4 }, accept())).rejects.toThrow('versie');
   });
 
   it('herstelt een back-up van versie 1 (zonder Lichaam) en laat Lichaam ongemoeid', async () => {
-    const { lichaam: _lichaam, ...legacy } = exports;
+    const { lichaam: _lichaam, dagboek: _dagboek, ...legacy } = exports;
     const v1 = { format: BACKUP_FORMAT, version: 1, createdAt: '2026-11-10T10:00:00.000Z', modules: legacy, checksum: await sha256Hex(canonicalJson(legacy)) };
     const validators = accept();
     const plan = await planRestore(v1, validators);
     expect(Object.keys(plan.modules)).toEqual(['hub', 'sport', 'sidequest']);
     expect(validators.lichaam).not.toHaveBeenCalled();
+    expect(validators.dagboek).not.toHaveBeenCalled();
     await expect(planRestore({ ...v1, modules: exports, checksum: await sha256Hex(canonicalJson(exports)) }, accept())).rejects.toThrow('modules');
+  });
+
+  it('herstelt een back-up van versie 2 (zonder Dagboek) en laat Dagboek ongemoeid', async () => {
+    const { dagboek: _dagboek, ...v2modules } = exports;
+    const v2 = { format: BACKUP_FORMAT, version: 2, createdAt: '2026-11-16T10:00:00.000Z', modules: v2modules, checksum: await sha256Hex(canonicalJson(v2modules)) };
+    const validators = accept();
+    const plan = await planRestore(v2, validators);
+    expect(Object.keys(plan.modules)).toEqual(['hub', 'sport', 'sidequest', 'lichaam']);
+    expect(validators.dagboek).not.toHaveBeenCalled();
   });
 
   it('importeert losse back-ups van de oude apps in de juiste module', async () => {

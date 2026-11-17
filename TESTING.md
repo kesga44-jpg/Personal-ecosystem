@@ -27,6 +27,8 @@ npm run test:e2e
 | Chromium E2E — dashboard | `tests/e2e/ecosystem.spec.ts` | Widgets tonen samenvattingen uit Sport/SIDEQUEST, verbergen blijft bewaard, weerwidget met nagebootste Open-Meteo-antwoorden en afgeronde locatie |
 | Unit — Lichaam | `apps/ecosystem/src/modules/lichaam/domain.test.ts`, `backup.test.ts`, `separation.test.ts` | Invoer met komma en bereikcontrole, strenge datums, bloeddruklogica, back-upvalidatie, gemiddelde/verandering/reeksen/BMI, dashboardcontract; back-up versie 1 en 2; eigen databasenaam en geen netwerkverzoeken in de module |
 | Chromium E2E — Lichaam | `tests/e2e/ecosystem.spec.ts` | Foutmelding bij onrealistische waarde, meting opslaan en tonen, grafieken, geschiedenis en aanpassen, verwijderen na bevestiging, dashboardwidget zonder meetwaarden, 375/768/1280 px |
+| Unit — Dagboek | `apps/ecosystem/src/modules/dagboek/domain.test.ts`, `backup.test.ts`, `separation.test.ts` | Opbouw en validatie van notities (stemming verplicht, labels, dankbaarheid, lengte, toekomst), back-upvalidatie, gemiddelden, schrijfreeks, reeksen, stemming per label, zoeken, dashboardcontract; back-up versie 1, 2 en 3; eigen databasenaam en geen netwerkverzoeken |
+| Chromium E2E — Dagboek | `tests/e2e/ecosystem.spec.ts` | Foutmelding zonder stemming, notitie opslaan en tonen, zoeken en filteren, aanpassen, verwijderen na bevestiging, dashboardwidget zonder stemming of tekst, 375/768/1280 px |
 | Build/type | Per app + root | TypeScript strict typecheck en afzonderlijke productiebuilds voor alle drie apps |
 
 Er zijn nog geen volledige componenttests per scherm, coverage-drempel, axe/a11y-suite, cross-browserrun of FIT/TCX-importtests. Fysieke PWA-installatie en offline gebruik op iOS/iPadOS en Android zijn niet getest en blijven vervolgwerk.
