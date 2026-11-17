@@ -38,7 +38,7 @@ describe('grafieken', () => {
   });
 
   it('heatmap en voortgangsring zijn beschreven', () => {
-    render(<><Heatmap title="Checks" days={[{ date: '2026-11-15', value: 0 }, { date: '2026-11-16', value: 2 }]} /><ProgressRing label="Vandaag" value={1} max={3} /></>);
+    render(<><Heatmap title="Checks" days={[{ date: '2026-11-15', value: 0 }, { date: '2026-11-16', value: 2 }]} /><ProgressRing label="Vandaag" value={1} max={3} /><ProgressRing label="Energie" value={1455} max={2200} text="66%" /></>);
     expect(screen.getByRole('img', { name: /1 van 2 dagen actief/ })).toBeTruthy();
     expect(screen.getByRole('img', { name: 'Vandaag: 1 van 3' })).toBeTruthy();
   });

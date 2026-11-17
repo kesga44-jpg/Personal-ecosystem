@@ -143,7 +143,8 @@ export function Heatmap({ title, days }: { title: string; days: { date: string; 
   );
 }
 
-export function ProgressRing({ label, value, max }: { label: string; value: number; max: number }) {
+/** Voortgangsring. `text` vervangt de standaardtekst "waarde/max" (bijv. een percentage bij grote getallen). */
+export function ProgressRing({ label, value, max, text }: { label: string; value: number; max: number; text?: string }) {
   const ratio = max > 0 ? Math.min(1, Math.max(0, value / max)) : 0;
   const radius = 26;
   const circumference = 2 * Math.PI * radius;
@@ -151,7 +152,7 @@ export function ProgressRing({ label, value, max }: { label: string; value: numb
     <svg className="progress-ring" viewBox="0 0 64 64" role="img" aria-label={`${label}: ${value} van ${max}`}>
       <circle cx="32" cy="32" r={radius} className="ring-track" />
       <circle cx="32" cy="32" r={radius} className="ring-value" strokeDasharray={`${(ratio * circumference).toFixed(1)} ${circumference.toFixed(1)}`} transform="rotate(-90 32 32)" />
-      <text x="32" y="37" textAnchor="middle" className="ring-text">{value}/{max}</text>
+      <text x="32" y="37" textAnchor="middle" className="ring-text">{text ?? `${value}/${max}`}</text>
     </svg>
   );
 }
