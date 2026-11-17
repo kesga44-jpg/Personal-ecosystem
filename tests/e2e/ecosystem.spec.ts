@@ -146,6 +146,7 @@ test('Lichaam: registratie verwijderen na bevestiging', async ({ page }) => {
   await page.goto(`${base}/lichaam/invoeren`);
   await page.getByLabel('Rusthartslag (bpm)').fill('58');
   await page.getByRole('button', { name: 'Meting opslaan' }).click();
+  await expect(page).toHaveURL(`${base}/lichaam`);
   await page.goto(`${base}/lichaam/geschiedenis`);
   page.once('dialog', (dialog) => void dialog.accept());
   await page.getByRole('button', { name: /Registratie van .* verwijderen/ }).click();
@@ -195,6 +196,7 @@ test('Dagboek: notitie verwijderen na bevestiging', async ({ page }) => {
   await page.goto(`${base}/dagboek/schrijven`);
   await page.getByRole('button', { name: /Neutraal/ }).click();
   await page.getByRole('button', { name: 'Notitie opslaan' }).click();
+  await expect(page).toHaveURL(`${base}/dagboek`);
   await page.goto(`${base}/dagboek/archief`);
   page.once('dialog', (dialog) => void dialog.accept());
   await page.getByRole('button', { name: /Notitie van .* verwijderen/ }).click();
