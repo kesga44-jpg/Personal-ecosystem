@@ -21,6 +21,8 @@ for (const [path, text] of [
   ['/quest/gewoontes', 'Gewoontes'],
   ['/lichaam', 'Hoe gaat het met je lijf?'],
   ['/lichaam/invoeren', 'Meting invoeren'],
+  ['/dagboek', 'Hoe was je dag?'],
+  ['/dagboek/schrijven', 'Schrijven'],
   ['/back-up', 'Back-up']
 ] as const) {
   test(`Personal Ecosystem laadt ${path} zonder fouten`, async ({ page }) => {
@@ -150,10 +152,59 @@ test('Lichaam: registratie verwijderen na bevestiging', async ({ page }) => {
   await expect(page.getByText('Nog geen registraties')).toBeVisible();
 });
 
+test('Dagboek: stemming verplicht, notitie opslaan, zoeken en dashboard ziet alleen óf er geschreven is', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto(`${base}/dagboek/schrijven`);
+  await page.getByLabel('Notitie', { exact: false }).fill('Lange fietstocht met Sam langs de Vecht.');
+  await page.getByRole('button', { name: 'Notitie opslaan' }).click();
+  await expect(page.getByRole('alert')).toContainText('Kies hoe je je voelt.');
+
+  await page.getByRole('button', { name: /Goed/ }).click();
+  await expect(page.getByRole('button', { name: /Goed/ })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'sport', exact: true }).click();
+  await page.getByRole('button', { name: 'buiten', exact: true }).click();
+  await page.getByLabel('Dankbaar 1 van 3').fill('Mooi weer');
+  await page.getByLabel('Energie').selectOption('4');
+  await page.getByRole('button', { name: 'Notitie opslaan' }).click();
+
+  await expect(page).toHaveURL(`${base}/dagboek`);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Vandaag: 🙂 Goed');
+  await expect(page.locator('.metric').filter({ hasText: 'Schrijfreeks' }).locator('.metric-value')).toHaveText('1 dag');
+  await expect(page.getByRole('img', { name: /Stemmingskalender/ })).toBeVisible();
+
+  await page.goto(`${base}/dagboek/archief`);
+  await page.getByLabel('Zoeken').fill('FIETS');
+  await expect(page.getByText('Lange fietstocht met Sam langs de Vecht.')).toBeVisible();
+  await expect(page.getByText('Mooi weer')).toBeVisible();
+  await page.getByLabel('Zoeken').fill('zeilen');
+  await expect(page.getByText('Niets gevonden')).toBeVisible();
+  await page.getByLabel('Zoeken').fill('');
+  await page.getByRole('link', { name: 'Aanpassen' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Notitie aanpassen' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'sport', exact: true })).toHaveAttribute('aria-pressed', 'true');
+
+  await page.goto(base);
+  const widget = page.locator('.widget').filter({ has: page.getByRole('heading', { name: 'Dagboek' }) });
+  await expect(widget).toContainText('✓ Vandaag geschreven');
+  await expect(widget).not.toContainText('fietstocht');
+  await expect(widget).not.toContainText('🙂');
+  expect(errors).toEqual([]);
+});
+
+test('Dagboek: notitie verwijderen na bevestiging', async ({ page }) => {
+  await page.goto(`${base}/dagboek/schrijven`);
+  await page.getByRole('button', { name: /Neutraal/ }).click();
+  await page.getByRole('button', { name: 'Notitie opslaan' }).click();
+  await page.goto(`${base}/dagboek/archief`);
+  page.once('dialog', (dialog) => void dialog.accept());
+  await page.getByRole('button', { name: /Notitie van .* verwijderen/ }).click();
+  await expect(page.getByText('Nog geen notities')).toBeVisible();
+});
+
 for (const width of [375, 768, 1280]) {
   test(`Personal Ecosystem past op ${width}px zonder horizontaal scrollen`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    for (const path of ['/', '/sport', '/quest', '/lichaam', '/lichaam/invoeren', '/back-up']) {
+    for (const path of ['/', '/sport', '/quest', '/lichaam', '/lichaam/invoeren', '/dagboek', '/dagboek/schrijven', '/dagboek/archief', '/back-up']) {
       await page.goto(`${base}${path}`);
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
@@ -175,7 +226,7 @@ test('centrale back-up: exporteren, ongeldig bestand weigeren en herstellen', as
   await download.saveAs(exportPath);
   const backup = JSON.parse(await readFile(exportPath, 'utf8')) as { format: string; modules: Record<string, { stores: Record<string, unknown[]> }> };
   expect(backup.format).toBe('personal-ecosystem-backup');
-  expect(Object.keys(backup.modules).sort()).toEqual(['hub', 'lichaam', 'sidequest', 'sport']);
+  expect(Object.keys(backup.modules).sort()).toEqual(['dagboek', 'hub', 'lichaam', 'sidequest', 'sport']);
   expect(backup.modules.sport?.stores.activities).toHaveLength(1);
   await expect(page.getByText(/Laatste back-up op dit apparaat: (?!nog niet)/)).toBeVisible();
 
