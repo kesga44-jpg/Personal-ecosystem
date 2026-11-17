@@ -2,6 +2,9 @@ import type { ChartPoint } from '@ecosystem/ui';
 import type { Activity } from '@ecosystem/sportapp/domain';
 import { HABIT_POINTS_PER_CHECK, calculateHabitStreak, currentPeriodChecks, type Habit, type HabitCheck, type Quest } from '@ecosystem/sidequest/domain';
 
+/** Lichaam: alleen óf er vandaag iets is ingevuld, nooit de waarden zelf (DATA_OWNERSHIP.md). */
+export { filledToday as lichaamFilledToday } from '../modules/lichaam/domain';
+
 /**
  * Leescontracten voor het dashboard (ADR 0020 § 2, DATA_OWNERSHIP.md).
  * Alleen samenvattingen: aantallen, totalen en streaks. Geen notities of andere inhoud.
