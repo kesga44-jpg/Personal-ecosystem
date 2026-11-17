@@ -14,6 +14,7 @@ export interface Env {
 }
 
 const OFF = 'https://world.openfoodfacts.org';
+const SEARCH = 'https://search.openfoodfacts.org';
 const PRODUCT_FIELDS = 'code,product_name,product_name_nl,brands,nutriments,serving_quantity';
 const PRODUCT_TTL = 7 * 24 * 3600;
 const SEARCH_TTL = 24 * 3600;
@@ -96,18 +97,19 @@ export async function handleFoodApi(request: Request, env: Env): Promise<Respons
   if (url.pathname === '/api/voeding/zoeken') {
     const query = cleanQuery(url.searchParams.get('q') ?? '');
     if (!query) return problem(400, 'Typ minstens twee tekens.');
-    const params = new URLSearchParams({
-      search_terms: query,
-      search_simple: '1',
-      action: 'process',
-      json: '1',
-      page_size: '20',
-      lc: 'nl',
-      fields: PRODUCT_FIELDS
-    });
     return cached(`${url.origin}/api/voeding/zoeken?q=${encodeURIComponent(query.toLowerCase())}`, SEARCH_TTL, async () => {
-      const response = await upstream(`${OFF}/cgi/search.pl?${params.toString()}`, env);
-      if (!(response instanceof Response) || !response.ok) return upstreamProblem(response.status);
+      // Eerst de zoekdienst van Open Food Facts (snel, Nederlandstalig); het oude zoekadres weigert verzoeken vanaf Cloudflare vaak.
+      const primary = new URLSearchParams({ q: query, langs: 'nl,en', page_size: '20', fields: PRODUCT_FIELDS });
+      const first = await upstream(`${SEARCH}/search?${primary.toString()}`, env);
+      let response: Response;
+      if (first instanceof Response && first.ok) {
+        response = first;
+      } else {
+        const legacy = new URLSearchParams({ search_terms: query, search_simple: '1', action: 'process', json: '1', page_size: '20', lc: 'nl', fields: PRODUCT_FIELDS });
+        const fallback = await upstream(`${OFF}/cgi/search.pl?${legacy.toString()}`, env);
+        if (!(fallback instanceof Response) || !fallback.ok) return upstreamProblem(fallback.status === 429 || first.status === 429 ? 429 : fallback.status);
+        response = fallback;
+      }
       const data = await response.json().catch(() => null);
       return json({ products: parseOffSearch(data) } satisfies SearchResponse, 200, SEARCH_TTL);
     });
