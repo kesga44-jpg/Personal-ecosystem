@@ -1,11 +1,14 @@
 /**
- * Worker voor pe-hub: serveert de app (statische bestanden) en een kleine doorgeefroute voor Open Food Facts.
+ * Worker voor pe-hub: serveert de app (statische bestanden) en kleine doorgeefroutes voor Open Food Facts en wger.
  *
  * Waarom: Open Food Facts vraagt elke app om zich met een eigen User-Agent te melden; een browser kan die niet zetten.
+ * wger heeft geen zoekfunctie in de API; de Worker haalt daarom de openbare lijst met oefeningnamen op,
+ * houdt alleen naam, licentie en auteur over en bewaart die compacte lijst een week in de cache.
  * Wat er doorgaat: alleen een barcode of zoekterm. Geen gebruikers-ID, geen cookies, geen innamegegevens.
  * Er wordt niets gelogd of opgeslagen behalve een gedeelde cache van openbare productgegevens.
  */
 import { cleanQuery, isBarcode, parseOffProduct, parseOffSearch, type ProductResponse, type SearchResponse } from '../src/modules/voeding/product';
+import { WGER_LANGUAGE, buildCatalog, searchCatalog, type WgerExercise, type WgerSearchResponse } from '../src/modules/kracht/wger';
 
 export interface Env {
   ASSETS: { fetch(request: Request): Promise<Response> };
@@ -118,11 +121,57 @@ export async function handleFoodApi(request: Request, env: Env): Promise<Respons
   return problem(404, 'Onbekende route.');
 }
 
+const WGER = 'https://wger.de/api/v2/exercise-translation/';
+const WGER_TTL = 7 * 24 * 3600;
+/** Catalogus per Worker-instantie in het geheugen, zodat de cache niet bij elke zoekopdracht gelezen hoeft te worden. */
+let memoryCatalog: { loadedAt: number; catalog: WgerExercise[] } | null = null;
+
+async function loadWgerCatalog(origin: string, env: Env): Promise<WgerExercise[] | Response> {
+  if (memoryCatalog && Date.now() - memoryCatalog.loadedAt < 3600_000) return memoryCatalog.catalog;
+  const response = await cached(`${origin}/api/kracht/_catalogus-v1`, WGER_TTL, async () => {
+    const list = (language: number) => upstream(`${WGER}?language=${language}&limit=2000&format=json`, env);
+    const [english, dutch] = await Promise.all([list(WGER_LANGUAGE.en), list(WGER_LANGUAGE.nl)]);
+    if (!(english instanceof Response) || !english.ok) {
+      return english.status === 429
+        ? problem(429, 'wger is even druk. Probeer het over een minuut opnieuw of voer de oefening zelf in.')
+        : problem(502, 'wger is nu niet bereikbaar. Kies een basisoefening of voer de oefening zelf in.');
+    }
+    const englishData = await english.json().catch(() => null);
+    // Nederlandse namen zijn een aanvulling; zonder die lijst werkt zoeken op Engelse naam gewoon door.
+    const dutchData = dutch instanceof Response && dutch.ok ? await dutch.json().catch(() => null) : null;
+    const catalog = buildCatalog(englishData, dutchData);
+    if (!catalog.length) return problem(502, 'wger gaf geen bruikbare oefeningen terug. Probeer het later opnieuw.');
+    return json(catalog, 200, WGER_TTL);
+  });
+  if (!response.ok) return response;
+  const catalog = (await response.json().catch(() => null)) as WgerExercise[] | null;
+  if (!Array.isArray(catalog)) return problem(502, 'De oefeningenlijst kon niet worden gelezen.');
+  memoryCatalog = { loadedAt: Date.now(), catalog };
+  return catalog;
+}
+
+export async function handleStrengthApi(request: Request, env: Env): Promise<Response> {
+  if (request.method !== 'GET') return problem(405, 'Alleen opvragen is toegestaan.');
+  const url = new URL(request.url);
+  if (url.pathname !== '/api/kracht/oefeningen') return problem(404, 'Onbekende route.');
+  const query = (url.searchParams.get('q') ?? '').replace(/\s+/g, ' ').trim().slice(0, 60);
+  if (query.length < 2) return problem(400, 'Typ minstens twee tekens.');
+  const catalog = await loadWgerCatalog(url.origin, env);
+  if (catalog instanceof Response) return catalog;
+  return json({ exercises: searchCatalog(catalog, query) } satisfies WgerSearchResponse, 200, 3600);
+}
+
+/** Alleen voor tests: vergeet de catalogus in het geheugen. */
+export function resetWgerMemory(): void {
+  memoryCatalog = null;
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname.startsWith('/api/')) {
       if (url.pathname.startsWith('/api/voeding/')) return handleFoodApi(request, env);
+      if (url.pathname.startsWith('/api/kracht/')) return handleStrengthApi(request, env);
       return problem(404, 'Onbekende route.');
     }
     return env.ASSETS.fetch(request);

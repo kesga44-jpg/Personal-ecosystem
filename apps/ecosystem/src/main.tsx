@@ -18,6 +18,7 @@ updateSW = registerSW({
 const loaders: Record<ModuleId, () => Promise<{ default: ComponentType<{ links: ModuleLink[] }> }>> = {
   dashboard: () => import('./modules/dashboard'),
   sport: () => import('./modules/sport'),
+  kracht: () => import('./modules/kracht'),
   quest: () => import('./modules/quest'),
   lichaam: () => import('./modules/lichaam'),
   voeding: () => import('./modules/voeding'),

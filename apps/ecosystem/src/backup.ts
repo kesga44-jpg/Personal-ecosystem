@@ -2,8 +2,8 @@ import type { LocalExport } from '@ecosystem/storage';
 
 /** Centrale back-up van alle modules (ADR 0020 § 3). */
 export const BACKUP_FORMAT = 'personal-ecosystem-backup';
-export const BACKUP_VERSION = 4;
-export const MODULE_IDS = ['hub', 'sport', 'sidequest', 'lichaam', 'dagboek', 'voeding'] as const;
+export const BACKUP_VERSION = 5;
+export const MODULE_IDS = ['hub', 'sport', 'sidequest', 'lichaam', 'dagboek', 'voeding', 'kracht'] as const;
 export type BackupModuleId = (typeof MODULE_IDS)[number];
 
 /** Modules per back-upversie. Oudere versies blijven herstelbaar; modules die er nog niet in zaten, blijven dan ongewijzigd. */
@@ -11,7 +11,8 @@ const MODULES_BY_VERSION: Record<number, readonly BackupModuleId[]> = {
   1: ['hub', 'sport', 'sidequest'],
   2: ['hub', 'sport', 'sidequest', 'lichaam'],
   3: ['hub', 'sport', 'sidequest', 'lichaam', 'dagboek'],
-  4: MODULE_IDS
+  4: ['hub', 'sport', 'sidequest', 'lichaam', 'dagboek', 'voeding'],
+  5: MODULE_IDS
 };
 
 export interface EcosystemBackup {
@@ -35,7 +36,8 @@ const moduleLabels: Record<BackupModuleId, string> = {
   sidequest: 'SIDEQUEST',
   lichaam: 'Lichaam',
   dagboek: 'Dagboek',
-  voeding: 'Voeding'
+  voeding: 'Voeding',
+  kracht: 'Kracht'
 };
 
 export function moduleLabel(id: BackupModuleId): string {

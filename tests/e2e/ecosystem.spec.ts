@@ -23,6 +23,10 @@ for (const [path, text] of [
   ['/lichaam/invoeren', 'Meting invoeren'],
   ['/voeding', 'Wat heb je gegeten?'],
   ['/voeding/toevoegen', 'Toevoegen'],
+  ['/kracht', 'Krachttraining'],
+  ['/kracht/schemas', 'Schema’s'],
+  ['/kracht/oefeningen', 'Oefeningen'],
+  ['/kracht/voortgang', 'Voortgang'],
   ['/dagboek', 'Hoe was je dag?'],
   ['/dagboek/schrijven', 'Schrijven'],
   ['/back-up', 'Back-up']
@@ -272,10 +276,104 @@ test('Voeding: onbekende barcode leidt naar zelf invoeren, en een fout wordt dui
   await expect(page.getByRole('alert')).toContainText('even druk');
 });
 
+test('Kracht: schema met Darebee-link, training met sets, record en dashboard ziet alleen het aantal', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto(`${base}/kracht/schemas/nieuw`);
+  await page.getByLabel('Naam').fill('Volledig lichaam A');
+  await page.getByLabel('Link (optioneel)').fill('http://darebee.com/workouts/x.html');
+  await page.getByLabel('Oefening kiezen').selectOption({ label: 'Squat' });
+  await page.getByRole('button', { name: 'Toevoegen' }).click();
+  await page.getByLabel('Squat sets').fill('2');
+  await page.getByLabel('Squat doel').fill('5');
+  await page.getByLabel('Squat rust').fill('0');
+  await page.getByRole('button', { name: 'Schema opslaan' }).click();
+  await expect(page.getByRole('alert')).toContainText('https');
+  await page.getByLabel('Link (optioneel)').fill('https://darebee.com/workouts/x.html');
+  await page.getByRole('button', { name: 'Schema opslaan' }).click();
+  await expect(page).toHaveURL(`${base}/kracht/schemas`);
+  const darebee = page.getByRole('link', { name: 'Open workout op Darebee ↗' });
+  await expect(darebee).toHaveAttribute('href', 'https://darebee.com/workouts/x.html');
+  await expect(darebee).toHaveAttribute('rel', 'noopener noreferrer');
+
+  await page.getByRole('button', { name: 'Start Volledig lichaam A' }).click();
+  await expect(page).toHaveURL(/\/kracht\/training\?schema=/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Volledig lichaam A' })).toBeVisible();
+  await page.getByRole('button', { name: 'Training opslaan' }).click();
+  await expect(page.getByRole('alert')).toContainText('Vink minstens één');
+  await page.getByLabel('Squat set 1 gewicht').fill('60');
+  await page.getByRole('button', { name: 'Squat set 1 gedaan' }).click();
+  // Een lopende training overleeft herladen.
+  await page.reload();
+  await expect(page.getByLabel('Squat set 1 gewicht')).toHaveValue('60');
+  await expect(page.getByRole('button', { name: 'Squat set 1 gedaan' })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Training opslaan' }).click();
+  await expect(page).toHaveURL(`${base}/kracht/geschiedenis`);
+  await expect(page.getByText('Squat: 5 × 60 kg')).toBeVisible();
+
+  // Tweede training, zwaarder: nieuw record.
+  await page.goto(`${base}/kracht/training`);
+  await expect(page.getByRole('heading', { level: 1, name: 'Vrije training' })).toBeVisible();
+  await page.getByLabel('Oefening kiezen').selectOption({ label: 'Squat' });
+  await page.getByRole('button', { name: 'Toevoegen' }).click();
+  await expect(page.getByLabel('Squat set 1 gewicht')).toHaveValue('60');
+  await page.getByLabel('Squat set 1 gewicht').fill('62,5');
+  await page.getByRole('button', { name: 'Squat set 1 gedaan' }).click();
+  await page.getByRole('button', { name: 'Training opslaan' }).click();
+  await expect(page).toHaveURL(/\/kracht\/voortgang\?records=Squat/);
+  await expect(page.getByText('Nieuw record: Squat')).toBeVisible();
+  await expect(page.getByText(/Beste: 62,5 kg/)).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Voortgang Squat' })).toBeVisible();
+
+  await page.goto(base);
+  const widget = page.locator('.widget').filter({ has: page.getByRole('heading', { name: 'Kracht' }) });
+  await expect(widget).toContainText('2 trainingen deze week');
+  await expect(widget).not.toContainText('Squat');
+  await expect(widget).not.toContainText('kg');
+  expect(errors).toEqual([]);
+});
+
+test('Kracht: oefening uit wger overnemen met licentie en auteur, en fouten duidelijk melden', async ({ page }) => {
+  const requested: string[] = [];
+  await page.route('**/api/kracht/**', (route) => {
+    const url = new URL(route.request().url());
+    requested.push(url.pathname + url.search);
+    return route.fulfill({ json: { exercises: [{ id: 91, name: 'Bent Over Row', nameNl: null, license: 'CC-BY-SA 3', licenseUrl: 'https://creativecommons.org/licenses/by-sa/3.0/deed.en', author: 'Jan' }] } });
+  });
+  await page.goto(`${base}/kracht/oefeningen`);
+  await expect(page.getByText('40 oefeningen')).toBeVisible();
+  await page.getByLabel('Zoek in wger').fill('row');
+  expect(requested).toEqual([]);
+  await page.getByRole('button', { name: 'Zoeken', exact: true }).click();
+  await page.getByRole('button', { name: 'Kies Bent Over Row' }).click();
+  await expect(page.getByText('Jan · CC-BY-SA 3')).toBeVisible();
+  await page.getByRole('combobox', { name: 'Spiergroep', exact: true }).selectOption('rug');
+  await page.getByRole('combobox', { name: 'Materiaal', exact: true }).selectOption('halter');
+  await page.getByRole('button', { name: 'Overnemen' }).click();
+  await expect(page.getByText('Bent Over Row is toegevoegd.')).toBeVisible();
+  await expect(page.getByText('41 oefeningen')).toBeVisible();
+  const item = page.locator('.list-item').filter({ hasText: 'rug · halter' }).filter({ hasText: 'Bent Over Row' });
+  await expect(item.getByRole('link', { name: 'CC-BY-SA 3' })).toHaveAttribute('href', 'https://creativecommons.org/licenses/by-sa/3.0/deed.en');
+  await expect(item).toContainText('Jan');
+  expect(requested).toEqual(['/api/kracht/oefeningen?q=row']);
+
+  await page.getByRole('button', { name: 'Zelf invoeren' }).click();
+  await page.getByLabel('Naam').fill('Sled push');
+  await page.getByRole('combobox', { name: 'Meten in', exact: true }).selectOption('tijd');
+  await page.getByRole('button', { name: 'Oefening opslaan' }).click();
+  await expect(page.getByText('Sled push is toegevoegd.')).toBeVisible();
+
+  await page.unroute('**/api/kracht/**');
+  await page.route('**/api/kracht/**', (route) => route.fulfill({ status: 502, json: { error: 'wger is nu niet bereikbaar. Kies een basisoefening of voer de oefening zelf in.' } }));
+  await page.getByRole('button', { name: 'Zoeken in wger' }).click();
+  await page.getByLabel('Zoek in wger').fill('curl');
+  await page.getByRole('button', { name: 'Zoeken', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'niet bereikbaar' })).toBeVisible();
+});
+
 for (const width of [375, 768, 1280]) {
   test(`Personal Ecosystem past op ${width}px zonder horizontaal scrollen`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    for (const path of ['/', '/sport', '/quest', '/lichaam', '/lichaam/invoeren', '/voeding', '/voeding/toevoegen', '/dagboek', '/dagboek/schrijven', '/dagboek/archief', '/back-up']) {
+    for (const path of ['/', '/sport', '/quest', '/lichaam', '/lichaam/invoeren', '/voeding', '/voeding/toevoegen', '/kracht', '/kracht/training', '/kracht/oefeningen', '/kracht/schemas/nieuw', '/dagboek', '/dagboek/schrijven', '/dagboek/archief', '/back-up']) {
       await page.goto(`${base}${path}`);
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
@@ -297,7 +395,7 @@ test('centrale back-up: exporteren, ongeldig bestand weigeren en herstellen', as
   await download.saveAs(exportPath);
   const backup = JSON.parse(await readFile(exportPath, 'utf8')) as { format: string; modules: Record<string, { stores: Record<string, unknown[]> }> };
   expect(backup.format).toBe('personal-ecosystem-backup');
-  expect(Object.keys(backup.modules).sort()).toEqual(['dagboek', 'hub', 'lichaam', 'sidequest', 'sport', 'voeding']);
+  expect(Object.keys(backup.modules).sort()).toEqual(['dagboek', 'hub', 'kracht', 'lichaam', 'sidequest', 'sport', 'voeding']);
   expect(backup.modules.sport?.stores.activities).toHaveLength(1);
   await expect(page.getByText(/Laatste back-up op dit apparaat: (?!nog niet)/)).toBeVisible();
 
