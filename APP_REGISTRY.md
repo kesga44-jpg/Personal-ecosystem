@@ -15,6 +15,7 @@ De huidige Hub gebruikt nog een vaste lokale appnavigatie; automatische register
 | `sidequest` | SIDEQUEST | MVP lokaal | `kesga44-jpg/Personal-ecosystem/apps/sidequest` | Niet aangesloten | Lokale IndexedDB | Persoonlijke doelen, gewoontes, streaks, quests en reproduceerbare punten |
 | `lichaam` | Lichaam & gezondheid (module) | Gepland (ADR 0020) | `apps/ecosystem` | Niet aangesloten | IndexedDB `personal-ecosystem-lichaam` | Gewicht, omvang, rusthartslag, slaap, herstel |
 | `voeding` | Voeding (module) | Gepland (ADR 0020) | `apps/ecosystem` | Niet aangesloten | IndexedDB `personal-ecosystem-voeding` | Persoonlijke inname en voedingswaarden; geen weekmenu of boodschappen |
+| `kracht` | Kracht (module, onderdeel van Sport) | Gebouwd (PR 6) | `apps/ecosystem` | Niet aangesloten | IndexedDB `personal-ecosystem-kracht` | Krachttraining: oefeningen (basis, eigen, wger), schema's, sets, records |
 | `dagboek` | Dagboek & stemming (module) | Gepland (ADR 0020) | `apps/ecosystem` | Niet aangesloten | IndexedDB `personal-ecosystem-dagboek` | Privé-dagnotities, stemming en energie |
 
 De schema's `hub`, `sport`, `quest` en eventuele buckets zijn alleen ontworpen; er is geen runtime Supabase-verbinding/migratie in de MVP. Toekomstige functies uit de volgende paragrafen blijven roadmap, niet geïmplementeerde functionaliteit.
