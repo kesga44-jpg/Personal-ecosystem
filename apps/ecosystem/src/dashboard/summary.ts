@@ -11,6 +11,9 @@ export { writtenToday as dagboekWrittenToday } from '../modules/dagboek/domain';
 /** Voeding: alleen óf er vandaag iets is geregistreerd, nooit wat of hoeveel (DATA_OWNERSHIP.md). */
 export { loggedToday as voedingLoggedToday } from '../modules/voeding/domain';
 
+/** Kracht: alleen het aantal trainingen deze week, nooit oefeningen of gewichten (DATA_OWNERSHIP.md). */
+export { sessionsThisWeek as krachtSessionsThisWeek } from '../modules/kracht/domain';
+
 /**
  * Leescontracten voor het dashboard (ADR 0020 § 2, DATA_OWNERSHIP.md).
  * Alleen samenvattingen: aantallen, totalen en streaks. Geen notities of andere inhoud.
