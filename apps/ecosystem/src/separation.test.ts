@@ -6,10 +6,13 @@ import { databaseConfig as sportConfig } from '@ecosystem/sportapp/App';
 import { databaseConfig as questConfig } from '@ecosystem/sidequest/App';
 import { databaseConfig as lichaamConfig } from './modules/lichaam/storage';
 import { databaseConfig as dagboekConfig } from './modules/dagboek/storage';
+import { databaseConfig as voedingConfig } from './modules/voeding/storage';
 
 // ADR 0020 § 2: elke module heeft een eigen database en schrijft alleen daarin.
 const configs = { hub: hubConfig, sportapp: sportConfig, sidequest: questConfig };
-const newModules = { lichaam: lichaamConfig, dagboek: dagboekConfig };
+const newModules = { lichaam: lichaamConfig, dagboek: dagboekConfig, voeding: voedingConfig };
+/** Bestanden die netwerkverkeer mogen doen, en alleen naar deze same-origin route. */
+const networkFiles: Record<string, { file: string; route: string }> = { voeding: { file: 'api.ts', route: '/api/voeding/' } };
 const allNames = [...Object.values(configs), ...Object.values(newModules)].map((config) => config.databaseName);
 
 describe('gescheiden opslag per module', () => {
@@ -19,6 +22,7 @@ describe('gescheiden opslag per module', () => {
     expect(questConfig.databaseName).toBe('personal-ecosystem-sidequest');
     expect(lichaamConfig.databaseName).toBe('personal-ecosystem-lichaam');
     expect(dagboekConfig.databaseName).toBe('personal-ecosystem-dagboek');
+    expect(voedingConfig.databaseName).toBe('personal-ecosystem-voeding');
     expect(new Set(allNames).size).toBe(allNames.length);
   });
 
@@ -41,6 +45,11 @@ describe('gescheiden opslag per module', () => {
       for (const file of readdirSync(dir).filter((name) => /\.(ts|tsx)$/.test(name) && !/\.test\./.test(name))) {
         const source = readFileSync(join(dir, file), 'utf8');
         for (const name of others) expect(source.includes(name), `${module}/${file} noemt ${name}`).toBe(false);
+        if (networkFiles[module]?.file === file) {
+          expect(/XMLHttpRequest|sendBeacon|WebSocket|https?:\/\//.test(source), `${module}/${file} praat alleen met de eigen route`).toBe(false);
+          expect(source.includes(networkFiles[module]!.route)).toBe(true);
+          continue;
+        }
         expect(/fetch\(|XMLHttpRequest|sendBeacon|WebSocket/.test(source), `${module}/${file} doet een netwerkverzoek`).toBe(false);
       }
     });

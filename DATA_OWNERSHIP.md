@@ -17,10 +17,10 @@ Na [ADR 0020](docs/adr/0020-een-app-met-modules.md) draaien alle modules in éé
 | Sport | IndexedDB `personal-ecosystem-sport` | Dashboard: aantallen, totale duur en afstand per periode. SIDEQUEST (alleen als de koppeling aan staat): ID, datum, sporttype en duur per activiteit |
 | SIDEQUEST | IndexedDB `personal-ecosystem-sidequest` | Dashboard: aantallen, streaks, punten |
 | Lichaam & gezondheid | IndexedDB `personal-ecosystem-lichaam` (stores `days`, `profile`) | Dashboard: alleen of er vandaag iets is ingevuld (`lichaamFilledToday`; het dashboard houdt alleen datums vast). Later, apart besluit: Sport-coach leest laatste slaap- en hersteltrend |
-| Voeding | IndexedDB `personal-ecosystem-voeding` | Dashboard: alleen of er vandaag iets is ingevuld |
+| Voeding | IndexedDB `personal-ecosystem-voeding` (stores `entries`, `products`, `settings`) | Dashboard: alleen of er vandaag iets is geregistreerd (`voedingLoggedToday`; het dashboard houdt alleen datums vast). Naar Open Food Facts gaat via de eigen Worker alleen een barcode of zoekterm |
 | Dagboek & stemming | IndexedDB `personal-ecosystem-dagboek` (store `entries`) | Dashboard: alleen of er vandaag iets is geschreven (`dagboekWrittenToday`; het dashboard houdt alleen datums vast). Geen stemming en geen inhoud van notities |
 
-Elk leescontract staat in `apps/ecosystem/src/dashboard/summary.ts` (eerder gepland in `packages/core`; die package mag geen apps importeren), geeft alleen de genoemde samenvattingen terug en heeft unit-tests. Het dashboard opent de databases van Sport, SIDEQUEST, Lichaam en Dagboek alleen om te lezen. Nieuwe contracten vereisen een update van deze tabel.
+Elk leescontract staat in `apps/ecosystem/src/dashboard/summary.ts` (eerder gepland in `packages/core`; die package mag geen apps importeren), geeft alleen de genoemde samenvattingen terug en heeft unit-tests. Het dashboard opent de databases van Sport, SIDEQUEST, Lichaam, Dagboek en Voeding alleen om te lezen. Nieuwe contracten vereisen een update van deze tabel.
 
 Deze lokale databases vervangen of lezen de bestaande opslag van Samen Thuis/Coach niet. Er is geen automatische upload. De tabellen/schema's hieronder zijn de gewenste toekomstige gedeelde backend en zijn niet aangemaakt.
 

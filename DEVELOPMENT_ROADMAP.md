@@ -18,7 +18,7 @@ Volgorde van de eerstvolgende PR's. Elke PR is één onderwerp, met tests en doc
 | 9 | SIDEQUEST | Statistieken en kalender-heatmap |
 | 10 | Koppeling | Sport → SIDEQUEST-punten, standaard uit |
 | 11 | Nieuw | Lichaam & gezondheid — ✅ PR 3 (eerder ingepland op verzoek van de eigenaar) |
-| 12 | Nieuw | Voeding met Open Food Facts en barcodescan |
+| 12 | Nieuw | Voeding met Open Food Facts en barcodescan — ✅ PR 5 |
 | 13 | Nieuw | Dagboek & stemming — ✅ PR 4 |
 | 14 | Herinneringen | Binnen de app, alleen eigen module-items (ADR 0018); web-push apart besluit |
 

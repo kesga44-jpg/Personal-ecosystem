@@ -21,6 +21,8 @@ for (const [path, text] of [
   ['/quest/gewoontes', 'Gewoontes'],
   ['/lichaam', 'Hoe gaat het met je lijf?'],
   ['/lichaam/invoeren', 'Meting invoeren'],
+  ['/voeding', 'Wat heb je gegeten?'],
+  ['/voeding/toevoegen', 'Toevoegen'],
   ['/dagboek', 'Hoe was je dag?'],
   ['/dagboek/schrijven', 'Schrijven'],
   ['/back-up', 'Back-up']
@@ -203,10 +205,77 @@ test('Dagboek: notitie verwijderen na bevestiging', async ({ page }) => {
   await expect(page.getByText('Nog geen notities')).toBeVisible();
 });
 
+const yoghurt = { code: '8710400000000', name: 'Volle yoghurt', brand: 'Merk', per100: { kcal: 63, protein: 3.6, carbs: 4.4, fat: 3.3 }, servingGrams: 150 };
+
+test('Voeding: zoeken via de eigen route, hoeveelheid kiezen en dashboard ziet alleen óf er iets is geregistreerd', async ({ page }) => {
+  const errors = collectErrors(page);
+  const requested: string[] = [];
+  await page.route('**/api/voeding/**', (route) => {
+    requested.push(new URL(route.request().url()).pathname + new URL(route.request().url()).search);
+    return route.fulfill({ json: { products: [yoghurt] } });
+  });
+  await page.goto(`${base}/voeding/toevoegen`);
+  await page.getByLabel('Product zoeken').fill('volle yoghurt');
+  expect(requested).toEqual([]);
+  await page.locator('form').getByRole('button', { name: 'Zoeken', exact: true }).click();
+  await page.getByRole('button', { name: 'Kies Volle yoghurt' }).click();
+  await expect(page.getByLabel('Hoeveelheid (g)')).toHaveValue('150');
+  await page.getByLabel('Hoeveelheid (g)').fill('200');
+  await page.getByLabel('Maaltijd').selectOption('ontbijt');
+  await expect(page.getByText('Dit is 126 kcal')).toBeVisible();
+  await page.getByRole('button', { name: 'Opslaan' }).click();
+
+  await expect(page).toHaveURL(`${base}/voeding`);
+  await expect(page.locator('.metric').filter({ has: page.locator('.metric-label', { hasText: /^Energie$/ }) }).locator('.metric-value')).toHaveText('126 kcal');
+  await expect(page.getByText('Volle yoghurt (Merk)')).toBeVisible();
+  await expect(page.getByRole('img', { name: /Energie per dag/ })).toBeVisible();
+  expect(requested).toEqual(['/api/voeding/zoeken?q=volle%20yoghurt']);
+
+  await page.goto(`${base}/voeding/toevoegen`);
+  await expect(page.getByRole('button', { name: 'Volle yoghurt' })).toBeVisible();
+
+  await page.goto(base);
+  const widget = page.locator('.widget').filter({ has: page.getByRole('heading', { name: 'Voeding' }) });
+  await expect(widget).toContainText('✓ Vandaag geregistreerd');
+  await expect(widget).not.toContainText('yoghurt');
+  await expect(widget).not.toContainText('kcal');
+  expect(errors).toEqual([]);
+});
+
+test('Voeding: onbekende barcode leidt naar zelf invoeren, en een fout wordt duidelijk gemeld', async ({ page }) => {
+  await page.route('**/api/voeding/product/**', (route) => route.fulfill({ json: { found: false } }));
+  await page.goto(`${base}/voeding/toevoegen`);
+  await page.getByRole('button', { name: 'Barcode', exact: true }).click();
+  await page.getByLabel('Barcode', { exact: false }).fill('87104000');
+  await page.getByRole('button', { name: 'Opzoeken' }).click();
+  await expect(page.getByText('staat niet (volledig) in Open Food Facts')).toBeVisible();
+  await page.getByRole('button', { name: 'Zelf invoeren' }).last().click();
+
+  await page.getByLabel('Naam').fill('Zelfgemaakte soep');
+  await page.getByLabel('Energie per 100 g (kcal)').fill('45');
+  await page.getByLabel('Eiwit per 100 g (g)').fill('2,5');
+  await page.getByLabel('Koolhydraten per 100 g (g)').fill('6');
+  await page.getByRole('button', { name: 'Verder' }).click();
+  await expect(page.getByRole('alert')).toContainText('Vul vet per 100 g in');
+  await page.getByLabel('Vet per 100 g (g)').fill('1');
+  await page.getByRole('button', { name: 'Verder' }).click();
+  await page.getByLabel('Hoeveelheid (g)').fill('300');
+  await page.getByRole('button', { name: 'Opslaan' }).click();
+  await expect(page).toHaveURL(`${base}/voeding`);
+  await expect(page.locator('.metric').filter({ has: page.locator('.metric-label', { hasText: /^Energie$/ }) }).locator('.metric-value')).toHaveText('135 kcal');
+
+  await page.unroute('**/api/voeding/product/**');
+  await page.route('**/api/voeding/zoeken**', (route) => route.fulfill({ status: 429, json: { error: 'Open Food Facts is even druk. Probeer het over een minuut opnieuw of voer het product zelf in.' } }));
+  await page.goto(`${base}/voeding/toevoegen`);
+  await page.getByLabel('Product zoeken').fill('kaas');
+  await page.locator('form').getByRole('button', { name: 'Zoeken', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('even druk');
+});
+
 for (const width of [375, 768, 1280]) {
   test(`Personal Ecosystem past op ${width}px zonder horizontaal scrollen`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    for (const path of ['/', '/sport', '/quest', '/lichaam', '/lichaam/invoeren', '/dagboek', '/dagboek/schrijven', '/dagboek/archief', '/back-up']) {
+    for (const path of ['/', '/sport', '/quest', '/lichaam', '/lichaam/invoeren', '/voeding', '/voeding/toevoegen', '/dagboek', '/dagboek/schrijven', '/dagboek/archief', '/back-up']) {
       await page.goto(`${base}${path}`);
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
@@ -228,7 +297,7 @@ test('centrale back-up: exporteren, ongeldig bestand weigeren en herstellen', as
   await download.saveAs(exportPath);
   const backup = JSON.parse(await readFile(exportPath, 'utf8')) as { format: string; modules: Record<string, { stores: Record<string, unknown[]> }> };
   expect(backup.format).toBe('personal-ecosystem-backup');
-  expect(Object.keys(backup.modules).sort()).toEqual(['dagboek', 'hub', 'lichaam', 'sidequest', 'sport']);
+  expect(Object.keys(backup.modules).sort()).toEqual(['dagboek', 'hub', 'lichaam', 'sidequest', 'sport', 'voeding']);
   expect(backup.modules.sport?.stores.activities).toHaveLength(1);
   await expect(page.getByText(/Laatste back-up op dit apparaat: (?!nog niet)/)).toBeVisible();
 
