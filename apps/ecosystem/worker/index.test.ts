@@ -103,53 +103,87 @@ describe('doorgeefserver Open Food Facts', () => {
 });
 
 describe('doorgeefserver wger (Kracht)', () => {
+  // Vorm zoals wger die op 17-11-2026 teruggaf: vertalingen zonder licentieveld.
   const english = {
     results: [
-      { exercise: 73, name: 'Bench Press', license: 2, license_author: 'wger.de', description: '<p>lang</p>' },
-      { exercise: 91, name: 'Bent Over Row', license: 1, license_author: 'Jan' },
-      { exercise: 12, name: 'Mystery', license: 99, license_author: 'x' }
+      { id: 1, exercise: 73, name: 'Bench Press', language: 2, license_author: 'wger.de', description: '<p>lang</p>' },
+      { id: 2, exercise: 91, name: 'Bent Over Row', language: 2, license_author: 'Jan' }
     ]
   };
-  const dutch = { results: [{ exercise: 73, name: 'Bankdrukken', license: 2 }] };
+  const dutch = { results: [{ id: 3, exercise: 73, name: 'Bankdrukken', language: 6 }] };
+  const info = {
+    id: 73,
+    license: { id: 2, short_name: 'CC-BY-SA 4', url: 'https://creativecommons.org/licenses/by-sa/4.0/deed.en' },
+    license_author: 'wger.de',
+    translations: [
+      { exercise: 73, name: 'Bench Press', language: 2, license: 2, license_author: 'wger.de' },
+      { exercise: 73, name: 'Bankdrukken', language: 6, license: 2, license_author: 'Kees' }
+    ]
+  };
 
-  function mockWger(englishResponse: Response) {
-    return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => (String(input).includes('language=6') ? Response.json(dutch) : englishResponse.clone()));
+  function mockWger(englishResponse: Response, infoResponse: Response = Response.json(info)) {
+    return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes('/exerciseinfo/')) return infoResponse.clone();
+      return url.includes('language=6') ? Response.json(dutch) : englishResponse.clone();
+    });
   }
 
   afterEach(() => resetWgerMemory());
 
-  it('bouwt een compacte catalogus en zoekt op Nederlandse en Engelse naam', async () => {
+  it('bouwt een namenlijst en zoekt op Nederlandse en Engelse naam', async () => {
     const spy = mockWger(Response.json(english));
     const response = await worker.fetch(request('/api/kracht/oefeningen?q=bank'), env);
     expect(response.status).toBe(200);
-    const body = (await response.json()) as { exercises: { id: number; nameNl: string | null; license: string; author: string }[] };
-    expect(body.exercises).toEqual([{ id: 73, name: 'Bench Press', nameNl: 'Bankdrukken', license: 'CC-BY-SA 4', licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0/deed.en', author: 'wger.de' }]);
+    expect(await response.json()).toEqual({ exercises: [{ id: 73, name: 'Bench Press', nameNl: 'Bankdrukken' }] });
     expect(spy.mock.calls.map(([url]) => String(url))).toEqual([
       'https://wger.de/api/v2/exercise-translation/?language=2&limit=2000&format=json',
       'https://wger.de/api/v2/exercise-translation/?language=6&limit=2000&format=json'
     ]);
     // Tweede zoekopdracht komt uit het geheugen: geen nieuwe verzoeken naar wger.
-    const row = await (await handleStrengthApi(request('/api/kracht/oefeningen?q=row'), env)).json();
-    expect(row).toEqual({ exercises: [expect.objectContaining({ id: 91, author: 'Jan', license: 'CC-BY-SA 3' })] });
+    expect(await (await handleStrengthApi(request('/api/kracht/oefeningen?q=row'), env)).json()).toEqual({ exercises: [{ id: 91, name: 'Bent Over Row', nameNl: null }] });
     expect(spy).toHaveBeenCalledTimes(2);
   });
 
-  it('weigert korte zoektermen, andere methodes en onbekende routes zonder wger te belasten', async () => {
+  it('haalt licentie en auteurs van één gekozen oefening op', async () => {
+    const spy = mockWger(Response.json(english));
+    const response = await handleStrengthApi(request('/api/kracht/oefening/73'), env);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      found: true,
+      exercise: { id: 73, name: 'Bench Press', nameNl: 'Bankdrukken', license: 'CC-BY-SA 4', licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0/deed.en', author: 'wger.de, Kees' }
+    });
+    expect(String(spy.mock.calls[0]![0])).toBe('https://wger.de/api/v2/exerciseinfo/73/?format=json');
+    vi.restoreAllMocks();
+    mockWger(Response.json(english), new Response('', { status: 404 }));
+    expect(await (await handleStrengthApi(request('/api/kracht/oefening/74'), env)).json()).toEqual({ found: false });
+    vi.restoreAllMocks();
+    mockWger(Response.json(english), Response.json({ ...info, license: { id: 99 } }));
+    const unknown = await handleStrengthApi(request('/api/kracht/oefening/75'), env);
+    expect(await unknown.json()).toEqual({ found: false });
+    expect(unknown.headers.get('cache-control')).toBe('no-store');
+  });
+
+  it('weigert korte zoektermen, ongeldige ID\'s, andere methodes en onbekende routes zonder wger te belasten', async () => {
     const spy = mockWger(Response.json(english));
     expect((await handleStrengthApi(request('/api/kracht/oefeningen?q=a'), env)).status).toBe(400);
     expect((await handleStrengthApi(request('/api/kracht/oefeningen?q=bank', { method: 'POST' }), env)).status).toBe(405);
-    expect((await handleStrengthApi(request('/api/kracht/_catalogus-v1'), env)).status).toBe(404);
+    expect((await handleStrengthApi(request('/api/kracht/_catalogus-v2'), env)).status).toBe(404);
+    expect((await handleStrengthApi(request('/api/kracht/oefening/0'), env)).status).toBe(404);
+    expect((await handleStrengthApi(request('/api/kracht/oefening/12a'), env)).status).toBe(404);
     expect(spy).not.toHaveBeenCalled();
   });
 
   it('meldt drukte en storing in gewone taal en onthoudt mislukkingen niet', async () => {
-    mockWger(new Response('', { status: 429 }));
+    mockWger(new Response('', { status: 429 }), new Response('', { status: 429 }));
     const busy = await handleStrengthApi(request('/api/kracht/oefeningen?q=bank'), env);
     expect(busy.status).toBe(429);
     expect((await busy.json()).error).toContain('even druk');
+    expect((await handleStrengthApi(request('/api/kracht/oefening/73'), env)).status).toBe(429);
     vi.restoreAllMocks();
-    const spy = mockWger(new Response('', { status: 500 }));
+    const spy = mockWger(new Response('', { status: 500 }), new Response('', { status: 500 }));
     expect((await handleStrengthApi(request('/api/kracht/oefeningen?q=bank'), env)).status).toBe(502);
+    expect((await handleStrengthApi(request('/api/kracht/oefening/73'), env)).status).toBe(502);
     expect(spy).toHaveBeenCalled();
     vi.restoreAllMocks();
     mockWger(Response.json(english));
