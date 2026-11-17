@@ -19,6 +19,8 @@ for (const [path, text] of [
   ['/sport/activiteiten', 'Activiteiten'],
   ['/quest', 'Jouw volgende quest.'],
   ['/quest/gewoontes', 'Gewoontes'],
+  ['/lichaam', 'Hoe gaat het met je lijf?'],
+  ['/lichaam/invoeren', 'Meting invoeren'],
   ['/back-up', 'Back-up']
 ] as const) {
   test(`Personal Ecosystem laadt ${path} zonder fouten`, async ({ page }) => {
@@ -103,10 +105,55 @@ test('weerwidget gebruikt Open-Meteo met afgeronde locatie', async ({ page }) =>
   expect(new URL(forecast).searchParams.get('latitude')).toBe('52.09');
 });
 
+test('Lichaam: meting invoeren, fout tonen, trend zien en dashboard ziet alleen óf er iets is ingevuld', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto(`${base}/lichaam/invoeren`);
+  await page.getByLabel('Gewicht (kg)').fill('4');
+  await page.getByRole('button', { name: 'Meting opslaan' }).click();
+  await expect(page.getByRole('alert')).toContainText('Gewicht moet tussen 20 en 400 kg liggen.');
+
+  await page.getByLabel('Gewicht (kg)').fill('81,5');
+  await page.getByLabel('Slaap (uur)').fill('7,5');
+  await page.getByLabel('Bovendruk (mmHg)').fill('121');
+  await page.getByLabel('Onderdruk (mmHg)').fill('79');
+  await page.getByLabel('Herstel').selectOption('4');
+  await page.getByRole('button', { name: 'Meting opslaan' }).click();
+
+  await expect(page).toHaveURL(`${base}/lichaam`);
+  await expect(page.locator('.metric').filter({ hasText: 'Gewicht' }).locator('.metric-value')).toHaveText('81,5 kg');
+  await expect(page.locator('.metric').filter({ hasText: 'Bloeddruk' }).locator('.metric-value')).toHaveText('121/79');
+  await expect(page.getByRole('img', { name: /Gewicht per meting/ })).toBeVisible();
+  await expect(page.getByRole('img', { name: /Uren slaap per nacht/ })).toBeVisible();
+
+  await page.goto(`${base}/lichaam/geschiedenis`);
+  await expect(page.getByText(/81,5 kg · 7,5 uur slaap · 121\/79 mmHg · herstel 4\/5/)).toBeVisible();
+  await page.getByRole('link', { name: 'Aanpassen' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Meting aanpassen' })).toBeVisible();
+  await expect(page.getByLabel('Gewicht (kg)')).toHaveValue('81,5');
+
+  await page.goto(base);
+  const widget = page.locator('.widget').filter({ has: page.getByRole('heading', { name: 'Lichaam' }) });
+  await expect(widget).toContainText('✓ Vandaag ingevuld');
+  await expect(widget).not.toContainText('81');
+  await page.reload();
+  await expect(widget).toContainText('✓ Vandaag ingevuld');
+  expect(errors).toEqual([]);
+});
+
+test('Lichaam: registratie verwijderen na bevestiging', async ({ page }) => {
+  await page.goto(`${base}/lichaam/invoeren`);
+  await page.getByLabel('Rusthartslag (bpm)').fill('58');
+  await page.getByRole('button', { name: 'Meting opslaan' }).click();
+  await page.goto(`${base}/lichaam/geschiedenis`);
+  page.once('dialog', (dialog) => void dialog.accept());
+  await page.getByRole('button', { name: /Registratie van .* verwijderen/ }).click();
+  await expect(page.getByText('Nog geen registraties')).toBeVisible();
+});
+
 for (const width of [375, 768, 1280]) {
   test(`Personal Ecosystem past op ${width}px zonder horizontaal scrollen`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    for (const path of ['/', '/sport', '/quest', '/back-up']) {
+    for (const path of ['/', '/sport', '/quest', '/lichaam', '/lichaam/invoeren', '/back-up']) {
       await page.goto(`${base}${path}`);
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
@@ -128,7 +175,7 @@ test('centrale back-up: exporteren, ongeldig bestand weigeren en herstellen', as
   await download.saveAs(exportPath);
   const backup = JSON.parse(await readFile(exportPath, 'utf8')) as { format: string; modules: Record<string, { stores: Record<string, unknown[]> }> };
   expect(backup.format).toBe('personal-ecosystem-backup');
-  expect(Object.keys(backup.modules).sort()).toEqual(['hub', 'sidequest', 'sport']);
+  expect(Object.keys(backup.modules).sort()).toEqual(['hub', 'lichaam', 'sidequest', 'sport']);
   expect(backup.modules.sport?.stores.activities).toHaveLength(1);
   await expect(page.getByText(/Laatste back-up op dit apparaat: (?!nog niet)/)).toBeVisible();
 

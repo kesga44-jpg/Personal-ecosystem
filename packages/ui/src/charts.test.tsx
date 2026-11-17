@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { BarChart, Heatmap, LineChart, ProgressRing, niceMax } from './charts';
+import { BarChart, Heatmap, LineChart, ProgressRing, lineScale, niceMax } from './charts';
 
 describe('niceMax', () => {
   it('rondt af naar een leesbare schaal', () => {
@@ -8,6 +8,17 @@ describe('niceMax', () => {
     expect(niceMax([7])).toBe(10);
     expect(niceMax([43])).toBe(50);
     expect(niceMax([120])).toBe(200);
+  });
+});
+
+describe('lineScale', () => {
+  it('begint bij nul voor tellingen', () => {
+    expect(lineScale([3, 7], true)).toEqual({ min: 0, max: 10 });
+  });
+  it('zoomt in op gemeten waarden zoals gewicht', () => {
+    expect(lineScale([80, 82], false)).toEqual({ min: 79, max: 83 });
+    expect(lineScale([70, 70], false)).toEqual({ min: 69, max: 71 });
+    expect(lineScale([], false)).toEqual({ min: 0, max: 1 });
   });
 });
 

@@ -166,6 +166,7 @@ h1 { margin: 0; color: #17212b; font-size: clamp(28px, 4vw, 38px); line-height: 
 .chart-axis { stroke: var(--chart-grid); stroke-width: 1; }
 .chart-bar { fill: var(--accent, #397d71); }
 .chart-line { stroke: var(--accent, #397d71); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.chart-dot { fill: var(--accent, #397d71); vector-effect: non-scaling-stroke; }
 .chart-area { fill: var(--accent-soft, #eaf3f1); opacity: .8; }
 .chart-label { fill: var(--text-muted); font-size: 10px; }
 .sparkline { width: 100px; height: 28px; }

@@ -7,7 +7,9 @@ import { databaseConfig as questConfig } from '@ecosystem/sidequest/App';
 import type { Shortcut } from '@ecosystem/hub/domain';
 import type { Activity } from '@ecosystem/sportapp/domain';
 import type { Habit, HabitCheck, Quest } from '@ecosystem/sidequest/domain';
-import { checkHeatmap, daysSince, greeting, habitsToday, localDateKey, pointsPerDay, sportWeek, topStreaks } from './summary';
+import { databaseConfig as lichaamConfig } from '../modules/lichaam/storage';
+import type { BodyDay } from '../modules/lichaam/domain';
+import { checkHeatmap, daysSince, greeting, habitsToday, lichaamFilledToday, localDateKey, pointsPerDay, sportWeek, topStreaks } from './summary';
 import { moveWidget, readLayout, toggleWidget, widgetLabels, writeLayout, type WidgetId, type WidgetLayout } from './widgets';
 import { describeWeather, forecastUrl, geocodingUrl, parseForecast, parseGeocoding, readLocation, trainingAdvice, writeLocation, type WeatherLocation, type WeatherNow } from './weather';
 
@@ -17,9 +19,11 @@ interface DashboardData {
   checks: HabitCheck[];
   quests: Quest[];
   shortcuts: Shortcut[];
+  /** Alleen datums van Lichaam-registraties; geen waarden (ADR 0020 § 2). */
+  lichaamDates: { date: string }[];
 }
 
-const emptyData: DashboardData = { activities: [], habits: [], checks: [], quests: [], shortcuts: [] };
+const emptyData: DashboardData = { activities: [], habits: [], checks: [], quests: [], shortcuts: [], lichaamDates: [] };
 const externalApps = [
   { title: 'Samen Thuis', url: 'https://kesga44-jpg.github.io/Samen-thuis/' },
   { title: 'Coach', url: 'https://kesga44-jpg.github.io/Coach/' }
@@ -44,20 +48,27 @@ function lastBackup(): string {
 
 /** Leest alleen samenvattingen uit de modules (ADR 0020 § 2); het dashboard schrijft nooit in andere modules. */
 async function loadData(): Promise<DashboardData> {
-  const [hub, sport, quest] = await Promise.all([openLocalDatabase(hubConfig), openLocalDatabase(sportConfig), openLocalDatabase(questConfig)]);
+  const [hub, sport, quest, lichaam] = await Promise.all([
+    openLocalDatabase(hubConfig),
+    openLocalDatabase(sportConfig),
+    openLocalDatabase(questConfig),
+    openLocalDatabase(lichaamConfig)
+  ]);
   try {
-    const [shortcuts, activities, habits, checks, quests] = await Promise.all([
+    const [shortcuts, activities, habits, checks, quests, bodyDays] = await Promise.all([
       hub.list<Shortcut>('shortcuts'),
       sport.list<Activity>('activities'),
       quest.list<Habit>('habits'),
       quest.list<HabitCheck>('habitChecks'),
-      quest.list<Quest>('quests')
+      quest.list<Quest>('quests'),
+      lichaam.list<BodyDay>('days')
     ]);
-    return { activities, habits, checks, quests, shortcuts };
+    return { activities, habits, checks, quests, shortcuts, lichaamDates: bodyDays.map((day) => ({ date: day.date })) };
   } finally {
     hub.close();
     sport.close();
     quest.close();
+    lichaam.close();
   }
 }
 
@@ -90,6 +101,7 @@ export default function WidgetDashboard() {
     'sport-week': <SportWeekWidget activities={data.activities} today={today} />,
     streaks: <StreaksWidget data={data} today={today} />,
     points: <PointsWidget data={data} today={today} />,
+    lichaam: <LichaamWidget filled={lichaamFilledToday(data.lichaamDates, today)} />,
     weather: <WeatherWidget />,
     'habits-heatmap': <HeatmapWidget checks={data.checks} today={today} />,
     backup: <BackupWidget now={now} />,
@@ -192,6 +204,19 @@ function PointsWidget({ data, today }: { data: DashboardData; today: string }) {
   );
 }
 
+function LichaamWidget({ filled }: { filled: boolean }) {
+  return (
+    <>
+      <StatusPill tone={filled ? 'good' : 'neutral'}>{filled ? '✓ Vandaag ingevuld' : 'Vandaag nog niet ingevuld'}</StatusPill>
+      <p className="item-subtitle">Gewicht, slaap, hartslag en herstel. Het dashboard toont alleen óf je iets hebt ingevuld, niet wat.</p>
+      <div className="chip-row">
+        <a className="chip" href="/lichaam/invoeren">{filled ? '✎ Aanvullen' : '＋ Meting invoeren'}</a>
+        <a className="chip" href="/lichaam">Trends bekijken</a>
+      </div>
+    </>
+  );
+}
+
 function HeatmapWidget({ checks, today }: { checks: HabitCheck[]; today: string }) {
   const days = checkHeatmap(checks, today);
   return (
@@ -220,6 +245,7 @@ function AppsWidget({ shortcuts }: { shortcuts: Shortcut[] }) {
     <div className="chip-row">
       <a className="chip" href="/sport">↗ Sport</a>
       <a className="chip" href="/quest">✦ SIDEQUEST</a>
+      <a className="chip" href="/lichaam">♥ Lichaam</a>
       {externalApps.map((app) => <a key={app.url} className="chip" href={app.url} target="_blank" rel="noopener noreferrer">{app.title} ↗</a>)}
       {shortcuts.slice(0, 6).map((shortcut) => <a key={shortcut.id} className="chip" href={shortcut.url} target="_blank" rel="noopener noreferrer">{shortcut.title} ↗</a>)}
     </div>

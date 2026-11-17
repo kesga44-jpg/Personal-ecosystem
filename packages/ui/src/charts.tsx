@@ -65,13 +65,36 @@ export function BarChart({ title, points, unit = '', height = 120 }: { title: st
   );
 }
 
-export function LineChart({ title, points, unit = '', height = 110 }: { title: string; points: ChartPoint[]; unit?: string; height?: number }) {
+/** Schaal voor een lijngrafiek. Vanaf nul voor tellingen; anders rond de gemeten waarden (bijv. gewicht). */
+export function lineScale(values: number[], zeroBased: boolean): { min: number; max: number } {
+  const finite = values.filter((value) => Number.isFinite(value));
+  if (zeroBased || !finite.length) return { min: 0, max: niceMax(finite) };
+  const low = Math.min(...finite);
+  const high = Math.max(...finite);
+  const padding = Math.max((high - low) * 0.15, 1);
+  return { min: Math.floor(low - padding), max: Math.ceil(high + padding) };
+}
+
+export function LineChart({
+  title,
+  points,
+  unit = '',
+  height = 110,
+  zeroBased = true
+}: {
+  title: string;
+  points: ChartPoint[];
+  unit?: string;
+  height?: number;
+  zeroBased?: boolean;
+}) {
   const width = 320;
   const values = points.map((point) => point.value);
-  const max = niceMax(values);
+  const { min, max } = lineScale(values, zeroBased);
   const chartHeight = height;
   const step = points.length > 1 ? width / (points.length - 1) : 0;
-  const coords = points.map((point, index) => [index * step, chartHeight - (point.value / max) * (chartHeight - 8)] as const);
+  const x = (index: number) => (points.length > 1 ? index * step : width / 2);
+  const coords = points.map((point, index) => [x(index), chartHeight - ((point.value - min) / (max - min)) * (chartHeight - 8)] as const);
   const path = coords.map(([x, y], index) => `${index ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
   const area = coords.length ? `${path} L${width},${chartHeight} L0,${chartHeight} Z` : '';
   const labelEvery = Math.max(1, Math.ceil(points.length / 7));
@@ -81,6 +104,7 @@ export function LineChart({ title, points, unit = '', height = 110 }: { title: s
         <line x1="0" x2={width} y1={chartHeight - 0.5} y2={chartHeight - 0.5} className="chart-axis" />
         {area && <path d={area} className="chart-area" />}
         {path && <path d={path} className="chart-line" fill="none" />}
+        {coords.length === 1 && <circle cx={coords[0]![0]} cy={coords[0]![1]} r="3" className="chart-dot" />}
       </svg>
       <div className="chart-labels chart-labels-spread" aria-hidden="true">
         {points.filter((_, index) => index % labelEvery === 0 || index === points.length - 1).map((point) => <span key={point.label}>{point.label}</span>)}
