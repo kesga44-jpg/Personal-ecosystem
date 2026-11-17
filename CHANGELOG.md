@@ -7,6 +7,7 @@ Elke app in de monorepo krijgt een eigen sectie zodra die bestaat. Bestaande app
 
 ### Opgelost
 
+- Kracht: zoeken in wger gaf live altijd "geen bruikbare oefeningen". De namenlijst van wger (`exercise-translation`) bevat geen licentieveld; PR 6 ging daar ten onrechte van uit en filterde zo alles weg. Zoeken gebruikt nu alleen namen; licentie en auteurs van een oefening worden pas bij kiezen opgehaald via de nieuwe Worker-route `/api/kracht/oefening/{id}` (wger `exerciseinfo`, 7 dagen gecachet). De Worker leest uit de namenlijst (~0,9 MB) alleen naam en ID en sorteert de lijst niet meer, om binnen de CPU-limiet van het gratis plan te blijven. Getoetst tegen echte wger-antwoorden.
 - Voeding: zoeken op productnaam faalde live meestal direct, omdat het oude zoekadres van Open Food Facts (`/cgi/search.pl`) verzoeken vanaf Cloudflare weigert. De Worker zoekt nu eerst via de zoekdienst `search.openfoodfacts.org` (Nederlandstalig, merken als lijst) en valt alleen bij een fout terug op het oude adres. Barcodes werkten al.
 
 ### Toegevoegd
