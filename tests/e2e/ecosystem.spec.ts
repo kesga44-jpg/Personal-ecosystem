@@ -337,7 +337,10 @@ test('Kracht: oefening uit wger overnemen met licentie en auteur, en fouten duid
   await page.route('**/api/kracht/**', (route) => {
     const url = new URL(route.request().url());
     requested.push(url.pathname + url.search);
-    return route.fulfill({ json: { exercises: [{ id: 91, name: 'Bent Over Row', nameNl: null, license: 'CC-BY-SA 3', licenseUrl: 'https://creativecommons.org/licenses/by-sa/3.0/deed.en', author: 'Jan' }] } });
+    if (url.pathname === '/api/kracht/oefening/91') {
+      return route.fulfill({ json: { found: true, exercise: { id: 91, name: 'Bent Over Row', nameNl: null, license: 'CC-BY-SA 3', licenseUrl: 'https://creativecommons.org/licenses/by-sa/3.0/deed.en', author: 'Jan' } } });
+    }
+    return route.fulfill({ json: { exercises: [{ id: 91, name: 'Bent Over Row', nameNl: null }] } });
   });
   await page.goto(`${base}/kracht/oefeningen`);
   await expect(page.getByText('40 oefeningen')).toBeVisible();
@@ -354,7 +357,7 @@ test('Kracht: oefening uit wger overnemen met licentie en auteur, en fouten duid
   const item = page.locator('.list-item').filter({ hasText: 'rug · halter' }).filter({ hasText: 'Bent Over Row' });
   await expect(item.getByRole('link', { name: 'CC-BY-SA 3' })).toHaveAttribute('href', 'https://creativecommons.org/licenses/by-sa/3.0/deed.en');
   await expect(item).toContainText('Jan');
-  expect(requested).toEqual(['/api/kracht/oefeningen?q=row']);
+  expect(requested).toEqual(['/api/kracht/oefeningen?q=row', '/api/kracht/oefening/91']);
 
   await page.getByRole('button', { name: 'Zelf invoeren' }).click();
   await page.getByLabel('Naam').fill('Sled push');
