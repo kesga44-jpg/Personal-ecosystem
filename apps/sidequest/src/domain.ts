@@ -27,17 +27,35 @@ export interface HabitCheck {
   date: string;
 }
 
+export interface QuestStep {
+  id: string;
+  title: string;
+  done: boolean;
+}
+
 export interface Quest {
   id: string;
   title: string;
   description: string;
+  /** Aantal stappen. Bij een quest met `steps` altijd gelijk aan het aantal stappen. */
   target: number;
+  /** Gezette stappen. Bij een quest met `steps` altijd het aantal afgevinkte stappen. */
   progress: number;
   rewardPoints: number;
   status: 'active' | 'completed';
   completedAt: string | null;
   createdAt: string;
+  /** Sinds PR 8; ontbreekt in oudere gegevens en geldt dan als "Overig". */
+  category?: string;
+  /** JJJJ-MM-DD; sinds PR 8, optioneel. */
+  deadline?: string | null;
+  /** Benoemde stappen; sinds PR 8, optioneel. Leeg of afwezig = alleen een teller. */
+  steps?: QuestStep[];
 }
+
+export const QUEST_CATEGORIES = ['Gezondheid', 'Leren', 'Creatief', 'Huis', 'Werk', 'Sociaal', 'Overig'] as const;
+export const DEFAULT_QUEST_CATEGORY = 'Overig';
+export const MAX_QUEST_STEPS = 30;
 
 export const HABIT_POINTS_PER_CHECK = 5;
 
@@ -112,21 +130,124 @@ export function validateSidequestBackup(input: unknown): void {
 
   for (const value of quests) {
     if (!value || typeof value !== 'object') throw new Error('SIDEQUEST-back-up bevat een ongeldige quest.');
-    const quest = value as Partial<Quest>;
-    if (
-      typeof quest.title !== 'string' || !quest.title.trim() || quest.title.length > 100 ||
-      typeof quest.description !== 'string' || quest.description.length > 500 ||
-      !Number.isInteger(quest.target) || quest.target! <= 0 ||
-      !Number.isInteger(quest.progress) || quest.progress! < 0 || quest.progress! > quest.target! ||
-      !Number.isInteger(quest.rewardPoints) || quest.rewardPoints! < 0 || quest.rewardPoints! > 10_000 ||
-      !['active', 'completed'].includes(quest.status ?? '') ||
-      !validTimestamp(quest.createdAt) ||
-      (quest.status === 'completed' && (quest.progress !== quest.target || !validTimestamp(quest.completedAt))) ||
-      (quest.status === 'active' && (quest.progress === quest.target || quest.completedAt !== null))
-    ) {
-      throw new Error('SIDEQUEST-back-up bevat ongeldige questgegevens.');
+    if (!isValidQuest(value as Partial<Quest>)) throw new Error('SIDEQUEST-back-up bevat ongeldige questgegevens.');
+  }
+}
+
+function isValidStep(value: unknown): value is QuestStep {
+  if (!value || typeof value !== 'object') return false;
+  const step = value as Partial<QuestStep>;
+  return typeof step.id === 'string' && !!step.id && step.id.length <= 64 &&
+    typeof step.title === 'string' && !!step.title.trim() && step.title.length <= 100 &&
+    typeof step.done === 'boolean';
+}
+
+function isValidQuest(quest: Partial<Quest>): boolean {
+  if (
+    typeof quest.title !== 'string' || !quest.title.trim() || quest.title.length > 100 ||
+    typeof quest.description !== 'string' || quest.description.length > 500 ||
+    !Number.isInteger(quest.target) || quest.target! <= 0 ||
+    !Number.isInteger(quest.progress) || quest.progress! < 0 || quest.progress! > quest.target! ||
+    !Number.isInteger(quest.rewardPoints) || quest.rewardPoints! < 0 || quest.rewardPoints! > 10_000 ||
+    !['active', 'completed'].includes(quest.status ?? '') ||
+    !validTimestamp(quest.createdAt) ||
+    (quest.status === 'completed' && (quest.progress !== quest.target || !validTimestamp(quest.completedAt))) ||
+    (quest.status === 'active' && (quest.progress === quest.target || quest.completedAt !== null))
+  ) return false;
+  if (quest.category !== undefined && (typeof quest.category !== 'string' || !quest.category.trim() || quest.category.length > 40)) return false;
+  if (quest.deadline !== undefined && quest.deadline !== null && !validDate(quest.deadline)) return false;
+  if (quest.steps !== undefined) {
+    if (!Array.isArray(quest.steps) || quest.steps.length > MAX_QUEST_STEPS || !quest.steps.every(isValidStep)) return false;
+    if (new Set(quest.steps.map((step) => step.id)).size !== quest.steps.length) return false;
+    if (quest.steps.length > 0) {
+      const done = quest.steps.filter((step) => step.done).length;
+      if (quest.target !== quest.steps.length || quest.progress !== done) return false;
     }
   }
+  return true;
+}
+
+/** Gooit een Nederlandse foutmelding als de quest niet consistent is (formulier en opslag). */
+export function validateQuest(quest: Quest): void {
+  if (!isValidQuest(quest)) {
+    throw new Error('Controleer de quest: naam (max. 100 tekens), categorie, geldige deadline, 1–30 stappen met een naam en een beloning van 0 tot 10.000 punten.');
+  }
+}
+
+/** Vult velden aan die in oudere gegevens ontbreken. */
+export function normalizeQuest(quest: Quest): Quest & { category: string; deadline: string | null; steps: QuestStep[] } {
+  return {
+    ...quest,
+    category: quest.category?.trim() || DEFAULT_QUEST_CATEGORY,
+    deadline: quest.deadline ?? null,
+    steps: quest.steps ?? []
+  };
+}
+
+function completion(quest: Quest, progress: number, now: string): Quest {
+  const completed = progress >= quest.target;
+  return { ...quest, progress, status: completed ? 'completed' : 'active', completedAt: completed ? now : null };
+}
+
+/** Zet één stap bij een quest zonder benoemde stappen. Voltooide quests veranderen niet. */
+export function advanceQuest(quest: Quest, now = new Date().toISOString()): Quest {
+  if (quest.status === 'completed' || (quest.steps?.length ?? 0) > 0) return quest;
+  return completion(quest, Math.min(quest.target, quest.progress + 1), now);
+}
+
+/**
+ * Vinkt een benoemde stap aan of uit. Bij de laatste stap is de quest voltooid en telt de beloning;
+ * een voltooide quest blijft vast, zodat punten niet kunnen verdwijnen of dubbel tellen.
+ */
+export function toggleQuestStep(quest: Quest, stepId: string, now = new Date().toISOString()): Quest {
+  const steps = quest.steps ?? [];
+  if (quest.status === 'completed' || !steps.some((step) => step.id === stepId)) return quest;
+  const nextSteps = steps.map((step) => (step.id === stepId ? { ...step, done: !step.done } : step));
+  return completion({ ...quest, steps: nextSteps }, nextSteps.filter((step) => step.done).length, now);
+}
+
+/**
+ * Past een actieve quest aan. Met benoemde stappen volgen doel en voortgang uit de stappen;
+ * zijn na het aanpassen alle stappen afgevinkt, dan is de quest voltooid.
+ */
+export function editQuest(
+  quest: Quest,
+  changes: { title: string; description: string; category: string; deadline: string | null; rewardPoints: number; steps: QuestStep[]; target?: number },
+  now = new Date().toISOString()
+): Quest {
+  if (quest.status === 'completed') throw new Error('Een voltooide quest kan niet meer worden aangepast.');
+  const base: Quest = {
+    ...quest,
+    title: changes.title.trim(),
+    description: changes.description.trim(),
+    category: changes.category.trim() || DEFAULT_QUEST_CATEGORY,
+    deadline: changes.deadline || null,
+    rewardPoints: changes.rewardPoints,
+    steps: changes.steps.map((step) => ({ ...step, title: step.title.trim() }))
+  };
+  const next = changes.steps.length
+    ? completion({ ...base, target: changes.steps.length }, changes.steps.filter((step) => step.done).length, now)
+    : completion({ ...base, target: changes.target ?? quest.target }, Math.min(quest.progress, changes.target ?? quest.target), now);
+  validateQuest(next);
+  return next;
+}
+
+/** Dagen tot de deadline (negatief = te laat), of null zonder deadline. */
+export function daysUntilDeadline(quest: Quest, today: string): number | null {
+  if (!quest.deadline || !validDate(quest.deadline) || !validDate(today)) return null;
+  return Math.round((utcDate(quest.deadline).getTime() - utcDate(today).getTime()) / 86_400_000);
+}
+
+/** Actieve quests: eerst met deadline (vroegste eerst), daarna zonder, nieuwste eerst. */
+export function sortActiveQuests(quests: Quest[]): Quest[] {
+  return [...quests].sort((a, b) => {
+    const da = a.deadline ?? null;
+    const db = b.deadline ?? null;
+    if (da && db && da !== db) return da.localeCompare(db);
+    if (da && !db) return -1;
+    if (!da && db) return 1;
+    return b.createdAt.localeCompare(a.createdAt);
+  });
 }
 
 function utcDate(value: string): Date {

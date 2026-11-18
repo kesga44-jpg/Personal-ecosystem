@@ -467,10 +467,74 @@ test('Duur: training zelf invoeren, fout tonen, aanpassen en verwijderen', async
   await expect(page.getByText('Geen trainingen')).toBeVisible();
 });
 
+test('SIDEQUEST: quest met categorie, deadline en benoemde stappen afvinken, bewerken en filteren', async ({ page }) => {
+  const errors = collectErrors(page);
+  const day = (offset: number) => {
+    const date = new Date();
+    date.setDate(date.getDate() + offset);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  };
+  await page.goto(`${base}/quest/quests`);
+
+  await page.getByRole('button', { name: '＋ Quest maken' }).click();
+  await page.getByLabel('Naam').fill('Fiets opknappen');
+  await page.getByLabel('Categorie').fill('Huis');
+  await page.getByLabel('Deadline (optioneel)').fill(day(-1));
+  await page.getByLabel('Punten bij voltooien').fill('30');
+  await page.getByRole('button', { name: '＋ Stap toevoegen' }).click();
+  await page.getByRole('button', { name: '＋ Stap toevoegen' }).click();
+  await expect(page.getByLabel('Aantal stappen')).toHaveCount(0);
+  await page.getByLabel('Stap 1', { exact: true }).fill('Banden plakken');
+  await page.getByLabel('Stap 2', { exact: true }).fill('Remmen afstellen');
+  await page.getByRole('button', { name: 'Quest opslaan' }).click();
+  await expect(page.getByRole('alert')).toContainText('Kies een deadline vandaag of later.');
+  await page.getByLabel('Deadline (optioneel)').fill(day(2));
+  await page.getByRole('button', { name: 'Quest opslaan' }).click();
+
+  const bike = page.locator('.quest-item').filter({ hasText: 'Fiets opknappen' });
+  await expect(bike.getByText('Nog 2 dagen')).toBeVisible();
+  await expect(bike.getByText('0 van 2 stappen')).toBeVisible();
+  await expect(bike.getByRole('button', { name: 'Registreer stap' })).toHaveCount(0);
+
+  await page.getByRole('button', { name: '＋ Quest maken' }).click();
+  await page.getByLabel('Naam').fill('Boek lezen');
+  await page.getByLabel('Categorie').fill('Leren');
+  await page.getByLabel('Aantal stappen').fill('2');
+  await page.getByRole('button', { name: 'Quest opslaan' }).click();
+  await expect(page.locator('.quest-item').first()).toContainText('Fiets opknappen');
+
+  await page.getByRole('group', { name: 'Filter op categorie' }).getByRole('button', { name: 'Leren' }).click();
+  await expect(page.getByText('Fiets opknappen')).toHaveCount(0);
+  await expect(page.getByText('Boek lezen')).toBeVisible();
+  await page.getByRole('group', { name: 'Filter op categorie' }).getByRole('button', { name: 'Alle' }).click();
+
+  await bike.getByRole('checkbox', { name: 'Banden plakken' }).click();
+  await expect(bike.getByText('1 van 2 stappen')).toBeVisible();
+  await bike.getByRole('button', { name: 'Fiets opknappen bewerken' }).click();
+  await page.getByRole('button', { name: '＋ Stap toevoegen' }).click();
+  await page.getByLabel('Stap 3', { exact: true }).fill('Proefrit');
+  await page.getByRole('button', { name: 'Quest opslaan' }).click();
+  await expect(bike.getByText('1 van 3 stappen')).toBeVisible();
+  await expect(bike.getByRole('checkbox', { name: 'Banden plakken' })).toBeChecked();
+
+  // Twee stappen direct na elkaar, zonder te wachten op opslaan: de tweede klik mag de eerste niet overschrijven.
+  await bike.evaluate((item) => {
+    const boxes = [...item.querySelectorAll<HTMLInputElement>('.quest-steps input')];
+    boxes[1]!.click();
+    boxes[2]!.click();
+  });
+  await expect(page.getByText('Huis · +30 punten')).toBeVisible();
+  await expect(page.locator('.quest-item').filter({ hasText: 'Fiets opknappen' })).toHaveCount(0);
+
+  await page.goto(`${base}/quest`);
+  await expect(page.getByText('30 punten', { exact: true })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 for (const width of [375, 768, 1280]) {
   test(`Personal Ecosystem past op ${width}px zonder horizontaal scrollen`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    for (const path of ['/', '/sport', '/quest', '/lichaam', '/lichaam/invoeren', '/voeding', '/voeding/toevoegen', '/kracht', '/kracht/training', '/kracht/oefeningen', '/kracht/schemas/nieuw', '/duur', '/duur/importeren', '/duur/toevoegen', '/dagboek', '/dagboek/schrijven', '/dagboek/archief', '/back-up']) {
+    for (const path of ['/', '/sport', '/quest', '/quest/quests', '/lichaam', '/lichaam/invoeren', '/voeding', '/voeding/toevoegen', '/kracht', '/kracht/training', '/kracht/oefeningen', '/kracht/schemas/nieuw', '/duur', '/duur/importeren', '/duur/toevoegen', '/dagboek', '/dagboek/schrijven', '/dagboek/archief', '/back-up']) {
       await page.goto(`${base}${path}`);
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { BrowserRouter, Link, Route, Routes, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { BrowserRouter, Link, Route, Routes } from 'react-router-dom';
 import { downloadJson, formatDate, newId } from '@ecosystem/core';
 import { openLocalDatabase, parseLocalBackup, runStorageAction as performStorageAction, type LocalDatabase } from '@ecosystem/storage';
 import {
@@ -17,16 +17,27 @@ import {
   type ModuleLink
 } from '@ecosystem/ui';
 import {
+  advanceQuest,
   calculateHabitStreak,
   calculatePoints,
   currentPeriodChecks,
+  daysUntilDeadline,
+  DEFAULT_QUEST_CATEGORY,
+  editQuest,
   HABIT_POINTS_PER_CHECK,
+  MAX_QUEST_STEPS,
+  normalizeQuest,
+  QUEST_CATEGORIES,
+  sortActiveQuests,
+  toggleQuestStep,
+  validateQuest,
   validateSidequestBackup,
   validateProgress,
   type Goal,
   type Habit,
   type HabitCheck,
-  type Quest
+  type Quest,
+  type QuestStep
 } from './domain';
 
 export const databaseConfig = {
@@ -57,6 +68,11 @@ function todayKey(): string {
   return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
 }
 
+/** Leest de quest opnieuw uit de database, zodat snel na elkaar afvinken elkaar niet overschrijft. */
+async function latestQuest(db: LocalDatabase, quest: Quest): Promise<Quest> {
+  return normalizeQuest((await db.get<Quest>('quests', quest.id)) ?? quest);
+}
+
 export interface AppProps {
   /** Pad waaronder de app draait; '/' als losse app, bijv. '/sport' als module (ADR 0020). */
   basename?: string;
@@ -72,6 +88,14 @@ function App({ basename = '/', moduleLinks = [] }: AppProps = {}) {
   const [quests, setQuests] = useState<Quest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  /** Quest-wijzigingen lopen na elkaar, zodat snel afvinken nooit een eerdere klik overschrijft. */
+  const questQueue = useRef<Promise<unknown>>(Promise.resolve());
+
+  function queueQuestChange(change: (current: Quest) => Quest, quest: Quest): Promise<boolean> {
+    const next = questQueue.current.then(() => runStorageAction(async (db) => db.put('quests', change(await latestQuest(db, quest)))));
+    questQueue.current = next.catch(() => undefined);
+    return next;
+  }
 
   async function refresh(db: LocalDatabase) {
     const [nextGoals, nextHabits, nextChecks, nextQuests] = await Promise.all([
@@ -83,7 +107,7 @@ function App({ basename = '/', moduleLinks = [] }: AppProps = {}) {
     setGoals(nextGoals.sort((a, b) => a.targetDate.localeCompare(b.targetDate)));
     setHabits(nextHabits.sort((a, b) => a.title.localeCompare(b.title)));
     setChecks(nextChecks.sort((a, b) => b.date.localeCompare(a.date)));
-    setQuests(nextQuests.sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+    setQuests(nextQuests.map(normalizeQuest).sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
   }
 
   useEffect(() => {
@@ -161,18 +185,10 @@ function App({ basename = '/', moduleLinks = [] }: AppProps = {}) {
             element={
               <QuestsPage
                 quests={quests}
+                goalCategories={goals.map((goal) => goal.category)}
                 onSave={(quest) => runStorageAction((db) => db.put('quests', quest))}
-                onProgress={(quest) =>
-                  runStorageAction((db) => {
-                    const progress = Math.min(quest.target, quest.progress + 1);
-                    return db.put('quests', {
-                      ...quest,
-                      progress,
-                      status: progress >= quest.target ? 'completed' : 'active',
-                      completedAt: progress >= quest.target ? new Date().toISOString() : null
-                    });
-                  })
-                }
+                onProgress={(quest) => queueQuestChange((current) => advanceQuest(current), quest)}
+                onToggleStep={(quest, stepId) => queueQuestChange((current) => toggleQuestStep(current, stepId), quest)}
                 error={error}
               />
             }
@@ -203,7 +219,7 @@ function Dashboard({
   const today = todayKey();
   const activeGoals = goals.filter((goal) => goal.status === 'active');
   const todayHabits = habits.filter((habit) => !habit.archived);
-  const activeQuests = quests.filter((quest) => quest.status === 'active');
+  const activeQuests = sortActiveQuests(quests.filter((quest) => quest.status === 'active'));
   const points = calculatePoints(checks, quests);
   const recent = useMemo(
     () => [
@@ -281,9 +297,9 @@ function Dashboard({
                 <div className="list-item" key={quest.id}>
                   <div style={{ flex: 1 }}>
                     <p className="item-title">{quest.title}</p>
-                    <p className="item-subtitle">{quest.progress}/{quest.target} stappen · beloning {quest.rewardPoints} punten</p>
+                    <p className="item-subtitle">{quest.category ?? DEFAULT_QUEST_CATEGORY} · {quest.progress}/{quest.target} stappen · beloning {quest.rewardPoints} punten</p>
                   </div>
-                  <StatusPill>{Math.round((quest.progress / quest.target) * 100)}%</StatusPill>
+                  <DeadlinePill quest={quest} today={today} fallback={`${Math.round((quest.progress / quest.target) * 100)}%`} />
                 </div>
               ))}
             </div>
@@ -556,51 +572,118 @@ function HabitForm({
   );
 }
 
+function DeadlinePill({ quest, today, fallback }: { quest: Quest; today: string; fallback?: string }) {
+  const days = daysUntilDeadline(quest, today);
+  if (days === null) return fallback ? <StatusPill>{fallback}</StatusPill> : null;
+  if (days < 0) return <StatusPill tone="warning">{days === -1 ? '1 dag te laat' : `${-days} dagen te laat`}</StatusPill>;
+  if (days === 0) return <StatusPill tone="warning">Deadline vandaag</StatusPill>;
+  if (days === 1) return <StatusPill tone="warning">Deadline morgen</StatusPill>;
+  return <StatusPill tone={days <= 3 ? 'warning' : 'neutral'}>Nog {days} dagen</StatusPill>;
+}
+
 function QuestsPage({
   quests,
+  goalCategories,
   onSave,
   onProgress,
+  onToggleStep,
   error
 }: {
   quests: Quest[];
+  goalCategories: string[];
   onSave: (quest: Quest) => Promise<boolean>;
   onProgress: (quest: Quest) => Promise<boolean>;
+  onToggleStep: (quest: Quest, stepId: string) => Promise<boolean>;
   error: string;
 }) {
-  const [showForm, setShowForm] = useState(false);
-  const active = quests.filter((quest) => quest.status === 'active');
-  const completed = quests.filter((quest) => quest.status === 'completed');
+  const today = todayKey();
+  const [form, setForm] = useState<{ quest: Quest | null } | null>(null);
+  const [filter, setFilter] = useState<string>('alle');
+  const categories = useMemo(
+    () => [...new Set(quests.map((quest) => quest.category ?? DEFAULT_QUEST_CATEGORY))].sort((a, b) => a.localeCompare(b, 'nl')),
+    [quests]
+  );
+  const suggestions = useMemo(
+    () => [...new Set([...QUEST_CATEGORIES, ...categories, ...goalCategories.map((category) => category.trim()).filter(Boolean)])],
+    [categories, goalCategories]
+  );
+  const shown = quests.filter((quest) => filter === 'alle' || (quest.category ?? DEFAULT_QUEST_CATEGORY) === filter);
+  const active = sortActiveQuests(shown.filter((quest) => quest.status === 'active'));
+  const completed = shown.filter((quest) => quest.status === 'completed');
+
   return (
     <div className="stack">
       {error && <ErrorBanner message={error} />}
-      <PageHeader eyebrow="Uitdagingen, op jouw tempo" title="Quests" description="Maak een uitdaging met een helder doel en transparante puntenbeloning." action={<Button onClick={() => setShowForm(true)}>＋ Quest maken</Button>} />
-      {showForm && <QuestForm onCancel={() => setShowForm(false)} onSave={async (quest) => {
-        const saved = await onSave(quest);
-        if (saved) setShowForm(false);
-        return saved;
-      }} />}
+      <PageHeader eyebrow="Uitdagingen, op jouw tempo" title="Quests" description="Maak een uitdaging met een helder doel, eigen stappen en een transparante puntenbeloning." action={<Button onClick={() => setForm({ quest: null })}>＋ Quest maken</Button>} />
+      {form && (
+        <QuestForm
+          key={form.quest?.id ?? 'nieuw'}
+          initial={form.quest}
+          categories={suggestions}
+          onCancel={() => setForm(null)}
+          onSave={async (quest) => {
+            const saved = await onSave(quest);
+            if (saved) setForm(null);
+            return saved;
+          }}
+        />
+      )}
+      {categories.length > 1 && (
+        <div className="chip-row" role="group" aria-label="Filter op categorie">
+          {['alle', ...categories].map((category) => (
+            <button key={category} type="button" className="chip chip-toggle" aria-pressed={filter === category} onClick={() => setFilter(category)}>
+              {category === 'alle' ? 'Alle' : category}
+            </button>
+          ))}
+        </div>
+      )}
       <Card title="Actieve quests">
         {active.length ? (
           <div className="list">
-            {active.map((quest) => (
-              <div className="list-item" key={quest.id}>
-                <div style={{ flex: 1 }}>
-                  <p className="item-title">{quest.title}</p>
-                  <p className="item-subtitle">{quest.description || 'Geen aanvullende notitie'} · beloning {quest.rewardPoints} punten</p>
-                  <p className="item-subtitle">{quest.progress} van {quest.target} stappen</p>
-                  <div className="progress-track" style={{ marginTop: 8 }}><span style={{ width: `${Math.min(100, (quest.progress / quest.target) * 100)}%` }} /></div>
+            {active.map((quest) => {
+              const steps = quest.steps ?? [];
+              return (
+                <div className="list-item quest-item" key={quest.id}>
+                  <div style={{ flex: 1 }}>
+                    <div className="quest-heading">
+                      <p className="item-title">{quest.title}</p>
+                      <StatusPill>{quest.category ?? DEFAULT_QUEST_CATEGORY}</StatusPill>
+                      <DeadlinePill quest={quest} today={today} />
+                    </div>
+                    <p className="item-subtitle">
+                      {quest.description || 'Geen aanvullende notitie'} · beloning {quest.rewardPoints} punten
+                      {quest.deadline ? ` · deadline ${formatDate(quest.deadline)}` : ''}
+                    </p>
+                    <p className="item-subtitle">{quest.progress} van {quest.target} stappen</p>
+                    <div className="progress-track" style={{ marginTop: 8 }}><span style={{ width: `${Math.min(100, (quest.progress / quest.target) * 100)}%` }} /></div>
+                    {steps.length > 0 && (
+                      <ul className="quest-steps" aria-label={`Stappen van ${quest.title}`}>
+                        {steps.map((step) => (
+                          <li key={step.id}>
+                            <label className={step.done ? 'quest-step done' : 'quest-step'}>
+                              <input type="checkbox" checked={step.done} onChange={() => void onToggleStep(quest, step.id)} />
+                              <span>{step.title}</span>
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  <div className="quest-actions">
+                    {steps.length === 0 && <Button onClick={() => void onProgress(quest)}>Registreer stap</Button>}
+                    <Button variant="secondary" aria-label={`${quest.title} bewerken`} onClick={() => setForm({ quest })}>Bewerken</Button>
+                  </div>
                 </div>
-                <Button onClick={() => void onProgress(quest)}>Registreer stap</Button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
-          <EmptyState title="Klaar voor een quest?">Je kiest de stappen en stelt vooraf de beloning in. Geen willekeurige punten.</EmptyState>
+          <EmptyState title={filter === 'alle' ? 'Klaar voor een quest?' : `Geen actieve quests in ${filter}`}>Je kiest de stappen en stelt vooraf de beloning in. Geen willekeurige punten.</EmptyState>
         )}
       </Card>
       <Card title="Afgerond">
         {completed.length ? (
-          <div className="list">{completed.map((quest) => <div className="list-item" key={quest.id}><div><p className="item-title">{quest.title}</p><p className="item-subtitle">+{quest.rewardPoints} punten · afgerond {quest.completedAt ? formatDate(quest.completedAt) : '—'}</p></div><StatusPill tone="good">Voltooid</StatusPill></div>)}</div>
+          <div className="list">{completed.map((quest) => <div className="list-item" key={quest.id}><div><p className="item-title">{quest.title}</p><p className="item-subtitle">{quest.category ?? DEFAULT_QUEST_CATEGORY} · +{quest.rewardPoints} punten · afgerond {quest.completedAt ? formatDate(quest.completedAt) : '—'}</p></div><StatusPill tone="good">Voltooid</StatusPill></div>)}</div>
         ) : (
           <EmptyState title="Nog geen afgeronde quests">Voltooide quests komen hier terecht.</EmptyState>
         )}
@@ -609,50 +692,108 @@ function QuestsPage({
   );
 }
 
-function QuestForm({ onCancel, onSave }: { onCancel: () => void; onSave: (quest: Quest) => Promise<boolean> }) {
-  const [id] = useState(() => newId());
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [target, setTarget] = useState('3');
-  const [reward, setReward] = useState('20');
+function QuestForm({
+  initial,
+  categories,
+  onCancel,
+  onSave
+}: {
+  initial: Quest | null;
+  categories: string[];
+  onCancel: () => void;
+  onSave: (quest: Quest) => Promise<boolean>;
+}) {
+  const today = todayKey();
+  const [id] = useState(() => initial?.id ?? newId());
+  const [title, setTitle] = useState(initial?.title ?? '');
+  const [description, setDescription] = useState(initial?.description ?? '');
+  const [category, setCategory] = useState(initial?.category ?? DEFAULT_QUEST_CATEGORY);
+  const [deadline, setDeadline] = useState(initial?.deadline ?? '');
+  const [steps, setSteps] = useState<QuestStep[]>(initial?.steps ?? []);
+  const [target, setTarget] = useState(String(initial?.target ?? 3));
+  const [reward, setReward] = useState(String(initial?.rewardPoints ?? 20));
   const [formError, setFormError] = useState('');
+
+  function updateStep(stepId: string, value: string) {
+    setSteps((list) => list.map((step) => (step.id === stepId ? { ...step, title: value } : step)));
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const targetValue = Number(target);
+    setFormError('');
     const rewardPoints = Number(reward);
+    const named = steps.map((step) => ({ ...step, title: step.title.trim() })).filter((step) => step.title);
     try {
-      validateProgress(0, targetValue);
-      if (!title.trim() || !Number.isInteger(targetValue) || !Number.isInteger(rewardPoints) || rewardPoints < 0 || rewardPoints > 10000) {
-        throw new Error('Vul een naam, geheel aantal stappen en beloning van 0 tot 10.000 punten in.');
+      if (!title.trim()) throw new Error('Geef de quest een naam.');
+      if (!Number.isInteger(rewardPoints) || rewardPoints < 0 || rewardPoints > 10000) throw new Error('Vul een beloning van 0 tot 10.000 punten in.');
+      if (deadline && !initial && deadline < today) throw new Error('Kies een deadline vandaag of later.');
+      if (deadline && initial && deadline !== initial.deadline && deadline < today) throw new Error('Kies een deadline vandaag of later.');
+      if (named.length > MAX_QUEST_STEPS) throw new Error(`Gebruik maximaal ${MAX_QUEST_STEPS} stappen.`);
+      const targetValue = Number(target);
+      if (!named.length) {
+        validateProgress(0, targetValue);
+        if (!Number.isInteger(targetValue)) throw new Error('Vul een geheel aantal stappen in.');
       }
-      if (!await onSave({
-        id,
+      const changes = {
         title: title.trim().slice(0, 100),
         description: description.trim().slice(0, 500),
-        target: targetValue,
-        progress: 0,
+        category: category.trim().slice(0, 40) || DEFAULT_QUEST_CATEGORY,
+        deadline: deadline || null,
         rewardPoints,
-        status: 'active',
-        completedAt: null,
-        createdAt: new Date().toISOString()
-      })) return;
+        steps: named,
+        target: named.length ? named.length : targetValue
+      };
+      const quest: Quest = initial
+        ? editQuest(initial, changes)
+        : {
+            id,
+            ...changes,
+            progress: 0,
+            status: 'active',
+            completedAt: null,
+            createdAt: new Date().toISOString()
+          };
+      validateQuest(quest);
+      await onSave(quest);
     } catch (cause) {
       setFormError(cause instanceof Error ? cause.message : 'Controleer de questgegevens.');
     }
   }
 
   return (
-    <Card title="Nieuwe quest">
-      <form onSubmit={(event) => void submit(event)}>
+    <Card title={initial ? 'Quest bewerken' : 'Nieuwe quest'}>
+      <form onSubmit={(event) => void submit(event)} noValidate>
         <div className="form-grid">
           <Field label="Naam"><input maxLength={100} value={title} onChange={(event) => setTitle(event.target.value)} required /></Field>
-          <Field label="Aantal stappen"><input type="number" min="1" step="1" value={target} onChange={(event) => setTarget(event.target.value)} required /></Field>
+          <Field label="Categorie"><input maxLength={40} list={`quest-categories-${id}`} value={category} onChange={(event) => setCategory(event.target.value)} /></Field>
+          <Field label="Deadline (optioneel)"><input type="date" min={initial?.deadline && initial.deadline < today ? initial.deadline : today} value={deadline} onChange={(event) => setDeadline(event.target.value)} /></Field>
           <Field label="Punten bij voltooien"><input type="number" min="0" max="10000" step="1" value={reward} onChange={(event) => setReward(event.target.value)} required /></Field>
+          {steps.length === 0 && (
+            <Field label="Aantal stappen" hint="Of benoem hieronder de stappen.">
+              <input type="number" min="1" step="1" value={target} onChange={(event) => setTarget(event.target.value)} required />
+            </Field>
+          )}
           <Field label="Notitie (optioneel)"><input maxLength={500} value={description} onChange={(event) => setDescription(event.target.value)} /></Field>
         </div>
+        <datalist id={`quest-categories-${id}`}>
+          {categories.map((item) => <option key={item} value={item} />)}
+        </datalist>
+        <fieldset className="quest-step-editor">
+          <legend>Stappen (optioneel)</legend>
+          <p className="item-subtitle">Benoemde stappen vink je één voor één af. Zonder stappen houd je alleen een teller bij.</p>
+          {steps.map((step, index) => (
+            <div className="quest-step-row" key={step.id}>
+              <input aria-label={`Stap ${index + 1}`} maxLength={100} value={step.title} onChange={(event) => updateStep(step.id, event.target.value)} />
+              {step.done && <StatusPill tone="good">Gedaan</StatusPill>}
+              <Button type="button" variant="secondary" aria-label={`Stap ${index + 1} verwijderen`} onClick={() => setSteps((list) => list.filter((item) => item.id !== step.id))}>×</Button>
+            </div>
+          ))}
+          {steps.length < MAX_QUEST_STEPS && (
+            <Button type="button" variant="secondary" onClick={() => setSteps((list) => [...list, { id: newId(), title: '', done: false }])}>＋ Stap toevoegen</Button>
+          )}
+        </fieldset>
         {formError && <ErrorBanner message={formError} />}
-        <p className="item-subtitle">De beloning wordt alleen bij voltooiing eenmaal toegevoegd.</p>
+        <p className="item-subtitle">De beloning wordt alleen bij voltooiing eenmaal toegevoegd. Een voltooide quest ligt vast.</p>
         <div className="form-actions"><Button type="button" variant="secondary" onClick={onCancel}>Annuleren</Button><Button type="submit">Quest opslaan</Button></div>
       </form>
     </Card>
