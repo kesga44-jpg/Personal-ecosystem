@@ -59,6 +59,33 @@ export const MAX_QUEST_STEPS = 30;
 
 export const HABIT_POINTS_PER_CHECK = 5;
 
+/** Punten per dag met minstens één training uit Sport, Kracht of Duur, als de koppeling aan staat (PR 11). */
+export const SPORT_POINTS_PER_DAY = 10;
+
+/**
+ * Koppeling Sport → SIDEQUEST (I-5, ADR 0020). Standaard uit.
+ * `since` is de dag waarop je de koppeling voor het eerst aanzette; uit- en weer aanzetten houdt die datum aan,
+ * zodat alleen trainingen vanaf dat moment meetellen en punten reproduceerbaar blijven.
+ */
+export interface SportLink {
+  id: 'sport-link';
+  enabled: boolean;
+  since: string | null;
+}
+
+export const defaultSportLink: SportLink = { id: 'sport-link', enabled: false, since: null };
+
+/** Zet de koppeling aan of uit. De eerste keer aanzetten legt `since` vast; daarna blijft die gelijk. */
+export function toggleSportLink(link: SportLink, enabled: boolean, today: string): SportLink {
+  return { ...link, enabled, since: link.since ?? (enabled ? today : null) };
+}
+
+/** Dagen die sportpunten opleveren: unieke trainingsdagen vanaf `since`, alleen als de koppeling aan staat. */
+export function sportPointDays(link: SportLink | undefined, trainingDays: string[]): string[] {
+  if (!link?.enabled || !link.since) return [];
+  return [...new Set(trainingDays.filter((day) => validDate(day) && day >= link.since!))].sort();
+}
+
 function validDate(value: unknown): value is string {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const date = new Date(`${value}T00:00:00.000Z`);
@@ -80,6 +107,20 @@ export function validateSidequestBackup(input: unknown): void {
   const quests = stores.quests;
   if (!Array.isArray(goals) || !Array.isArray(habits) || !Array.isArray(checks) || !Array.isArray(quests)) {
     throw new Error('SIDEQUEST-back-up mist doelen, gewoontes, checks of quests.');
+  }
+  // Sinds schema 2 (PR 11); oudere back-ups hebben geen instellingen.
+  const settings = stores.settings;
+  if (settings !== undefined) {
+    if (!Array.isArray(settings) || settings.length > 1) throw new Error('SIDEQUEST-back-up bevat ongeldige instellingen.');
+    for (const value of settings) {
+      const link = value as Partial<SportLink> | null;
+      if (
+        !link || typeof link !== 'object' || link.id !== 'sport-link' || typeof link.enabled !== 'boolean' ||
+        !(link.since === null || validDate(link.since)) || (link.enabled && link.since === null)
+      ) {
+        throw new Error('SIDEQUEST-back-up bevat ongeldige instellingen.');
+      }
+    }
   }
 
   for (const value of goals) {
@@ -330,8 +371,9 @@ export function calculateHabitStreak(
   return streak;
 }
 
-export function calculatePoints(checks: HabitCheck[], quests: Quest[]): number {
-  const habitPoints = checks.length * HABIT_POINTS_PER_CHECK;
+/** Punten: gewoontechecks, voltooide quests en (alleen met de koppeling aan) trainingsdagen uit `sportPointDays`. */
+export function calculatePoints(checks: HabitCheck[], quests: Quest[], sportDays: string[] = []): number {
+  const habitPoints = checks.length * HABIT_POINTS_PER_CHECK + new Set(sportDays).size * SPORT_POINTS_PER_DAY;
   const questPoints = quests.reduce(
     (sum, quest) => sum + (quest.status === 'completed' ? quest.rewardPoints : 0),
     0

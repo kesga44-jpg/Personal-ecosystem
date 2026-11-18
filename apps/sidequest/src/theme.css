@@ -48,3 +48,6 @@
 .category-table th, .category-table td { padding: 8px 6px; border-bottom: 1px solid var(--border, #e3e8ea); text-align: right; }
 .category-table th:first-child, .category-table thead th:first-child { text-align: left; }
 .category-table thead th { color: var(--text-muted, #68757f); font-size: 11px; font-weight: 700; }
+.sport-link-toggle { gap: 16px; cursor: pointer; }
+.sport-link-toggle > span { display: grid; gap: 4px; }
+.sport-link-toggle input { width: 22px; height: 22px; flex: none; accent-color: var(--accent); }

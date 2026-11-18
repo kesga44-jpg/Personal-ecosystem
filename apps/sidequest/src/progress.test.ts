@@ -141,3 +141,23 @@ describe('statistieken', () => {
     expect(calendar[2]![3]).toEqual({ date: '2026-11-19', count: 0, inRange: false });
   });
 });
+
+describe('sportpunten in voortgang', () => {
+  it('tellen mee in level, badges en punten per week, maar niet in de activiteitenkalender', () => {
+    const sportDays = Array.from({ length: 70 }, (_, index) => {
+      const date = new Date('2026-09-01T00:00:00.000Z');
+      date.setUTCDate(date.getUTCDate() + index);
+      return date.toISOString().slice(0, 10);
+    });
+    expect(levelInfo(calculatePoints([], [], sportDays)).level).toBe(5);
+    const byId = Object.fromEntries(badges([], [], [], sportDays).map((badge) => [badge.id, badge]));
+    expect(byId['level-5']).toMatchObject({ earnedOn: '2026-11-09', current: 5 });
+    expect(byId['eerste-check']).toMatchObject({ earnedOn: null });
+    expect(pointsPerWeek([], [], '2026-11-09', 2, sportDays)).toEqual([
+      { weekStart: '2026-11-02', points: 70 },
+      { weekStart: '2026-11-09', points: 10 }
+    ]);
+    expect(activityCalendar([], [], '2026-11-09', 1).flat().every((day) => day.count === 0)).toBe(true);
+  });
+});
+
