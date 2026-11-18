@@ -190,4 +190,32 @@ describe('app-local IndexedDB', () => {
     await expect(migrated.list('tags')).resolves.toEqual([]);
     migrated.close();
   });
+
+  it('restores a backup of an older schema version only through an explicit export upgrade', async () => {
+    const firstVersion = await openLocalDatabase(config);
+    await firstVersion.put('items', { id: 'old', title: 'From version 1' });
+    const oldBackup = await firstVersion.exportData();
+    firstVersion.close();
+
+    const secondVersion: LocalDatabaseConfig = {
+      ...config,
+      version: 2,
+      stores: ['items', 'notes', 'tags'],
+      migrations: { ...config.migrations, 2: (database) => database.createObjectStore('tags', { keyPath: 'id' }) }
+    };
+    const withoutUpgrade = await openLocalDatabase(secondVersion);
+    expect(() => withoutUpgrade.validateRestore(oldBackup)).toThrow('unsupported data version');
+    withoutUpgrade.close();
+
+    const withUpgrade = await openLocalDatabase({ ...secondVersion, exportUpgrades: { 2: (stores) => ({ ...stores, tags: [] }) } });
+    expect(() => withUpgrade.validateRestore(oldBackup)).not.toThrow();
+    expect(() => withUpgrade.validateRestore({ ...oldBackup, schemaVersion: 3 })).toThrow('unsupported data version');
+    expect(() => withUpgrade.validateRestore({ ...oldBackup, schemaVersion: 0 })).toThrow('unsupported data version');
+    await withUpgrade.put('tags', { id: 'temporary' });
+    await withUpgrade.restore(oldBackup);
+    await expect(withUpgrade.list('items')).resolves.toEqual([{ id: 'old', title: 'From version 1' }]);
+    await expect(withUpgrade.list('tags')).resolves.toEqual([]);
+    expect(oldBackup.stores).not.toHaveProperty('tags');
+    withUpgrade.close();
+  });
 });

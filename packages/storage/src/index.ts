@@ -8,6 +8,11 @@ export interface LocalDatabaseConfig {
   version: number;
   stores: readonly string[];
   migrations: Readonly<Record<number, DatabaseMigration>>;
+  /**
+   * Omzetting van een back-up van versie n naar n + 1, per doelversie (bijv. `2` zet versie 1 om naar 2).
+   * Zo blijven back-ups van een oudere schemaversie herstelbaar. Zonder omzetting wordt een oudere back-up geweigerd.
+   */
+  exportUpgrades?: Readonly<Record<number, (stores: Record<string, RecordValue[]>) => Record<string, RecordValue[]>>>;
 }
 
 export interface LocalExport {
@@ -104,21 +109,33 @@ function parseExport(config: LocalDatabaseConfig, input: unknown): LocalExport {
   if (
     backup.format !== 'personal-ecosystem-local-data' ||
     backup.appId !== config.appId ||
-    backup.schemaVersion !== config.version ||
+    typeof backup.schemaVersion !== 'number' ||
+    !Number.isInteger(backup.schemaVersion) ||
+    backup.schemaVersion < 1 ||
+    backup.schemaVersion > config.version ||
     !backup.stores ||
-    typeof backup.stores !== 'object'
+    typeof backup.stores !== 'object' ||
+    Array.isArray(backup.stores)
   ) {
     throw new Error('This backup belongs to a different app or an unsupported data version.');
   }
 
+  // Oudere back-up: stap voor stap omzetten naar de huidige versie, op een kopie.
+  let stores = backup.stores as Record<string, RecordValue[]>;
+  for (let version = backup.schemaVersion + 1; version <= config.version; version += 1) {
+    const upgrade = config.exportUpgrades?.[version];
+    if (!upgrade) throw new Error('This backup belongs to a different app or an unsupported data version.');
+    stores = upgrade({ ...stores });
+  }
+
   const expectedStores = new Set(config.stores);
-  const providedStores = Object.keys(backup.stores);
+  const providedStores = Object.keys(stores);
   if (providedStores.length !== expectedStores.size || providedStores.some((store) => !expectedStores.has(store))) {
     throw new Error('The backup contains unexpected data stores.');
   }
 
   for (const store of config.stores) {
-    const records = backup.stores[store];
+    const records = stores[store];
     if (
       !Array.isArray(records) ||
       records.length > 50_000 ||
@@ -138,7 +155,7 @@ function parseExport(config: LocalDatabaseConfig, input: unknown): LocalExport {
     }
   }
 
-  return backup as LocalExport;
+  return { ...(backup as LocalExport), schemaVersion: config.version, stores };
 }
 
 export async function openLocalDatabase(config: LocalDatabaseConfig): Promise<LocalDatabase> {
