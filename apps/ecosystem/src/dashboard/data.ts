@@ -5,7 +5,7 @@ import { databaseConfig as sportConfig } from '@ecosystem/sportapp/App';
 import { databaseConfig as questConfig } from '@ecosystem/sidequest/App';
 import type { Shortcut } from '@ecosystem/hub/domain';
 import type { Activity } from '@ecosystem/sportapp/domain';
-import type { Habit, HabitCheck, Quest } from '@ecosystem/sidequest/domain';
+import type { Habit, HabitCheck, Quest, SportLink } from '@ecosystem/sidequest/domain';
 import { databaseConfig as lichaamConfig } from '../modules/lichaam/storage';
 import type { BodyDay } from '../modules/lichaam/domain';
 import { databaseConfig as dagboekConfig } from '../modules/dagboek/storage';
@@ -22,6 +22,8 @@ export interface DashboardData {
   habits: Habit[];
   checks: HabitCheck[];
   quests: Quest[];
+  /** Instelling van de koppeling Sport → SIDEQUEST (aan/uit en vanaf welke dag), voor dezelfde punten als in SIDEQUEST. */
+  sportLink: SportLink | undefined;
   shortcuts: Shortcut[];
   /** Alleen datums van Lichaam-registraties; geen waarden (ADR 0020 § 2). */
   lichaamDates: { date: string }[];
@@ -35,7 +37,7 @@ export interface DashboardData {
   duurTotals: { date: string; distanceM: number | null; durationSec: number }[];
 }
 
-export const emptyData: DashboardData = { activities: [], habits: [], checks: [], quests: [], shortcuts: [], lichaamDates: [], dagboekDates: [], voedingDates: [], krachtDates: [], duurTotals: [] };
+export const emptyData: DashboardData = { activities: [], habits: [], checks: [], quests: [], sportLink: undefined, shortcuts: [], lichaamDates: [], dagboekDates: [], voedingDates: [], krachtDates: [], duurTotals: [] };
 
 export function lastBackup(): string {
   try {
@@ -58,19 +60,20 @@ export async function loadData(): Promise<DashboardData> {
     openLocalDatabase(duurConfig)
   ]);
   try {
-    const [shortcuts, activities, habits, checks, quests, bodyDays, journal, food, strength, endurance] = await Promise.all([
+    const [shortcuts, activities, habits, checks, quests, sportLink, bodyDays, journal, food, strength, endurance] = await Promise.all([
       hub.list<Shortcut>('shortcuts'),
       sport.list<Activity>('activities'),
       quest.list<Habit>('habits'),
       quest.list<HabitCheck>('habitChecks'),
       quest.list<Quest>('quests'),
+      quest.get<SportLink>('settings', 'sport-link'),
       lichaam.list<BodyDay>('days'),
       dagboek.list<JournalEntry>('entries'),
       voeding.list<FoodEntry>('entries'),
       kracht.list<StrengthSession>('sessions'),
       duur.list<EnduranceWorkout>('workouts')
     ]);
-    return { activities, habits, checks, quests, shortcuts, lichaamDates: bodyDays.map((day) => ({ date: day.date })), dagboekDates: journal.map((entry) => ({ date: entry.date })), voedingDates: food.map((entry) => ({ date: entry.date })), krachtDates: strength.map((session) => ({ date: session.date })), duurTotals: endurance.map((workout) => ({ date: workout.date, distanceM: workout.distanceM, durationSec: workout.durationSec })) };
+    return { activities, habits, checks, quests, sportLink, shortcuts, lichaamDates: bodyDays.map((day) => ({ date: day.date })), dagboekDates: journal.map((entry) => ({ date: entry.date })), voedingDates: food.map((entry) => ({ date: entry.date })), krachtDates: strength.map((session) => ({ date: session.date })), duurTotals: endurance.map((workout) => ({ date: workout.date, distanceM: workout.distanceM, durationSec: workout.durationSec })) };
   } finally {
     hub.close();
     sport.close();

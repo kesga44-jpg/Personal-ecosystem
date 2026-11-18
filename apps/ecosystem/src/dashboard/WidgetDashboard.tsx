@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { BarChart, Button, Card, EmptyState, ErrorBanner, Field, Heatmap, LineChart, PageHeader, ProgressRing, StatusPill } from '@ecosystem/ui';
-import { calculatePoints } from '@ecosystem/sidequest/domain';
+import { calculatePoints, sportPointDays } from '@ecosystem/sidequest/domain';
+import { trainingDaysFrom } from '../integrations/trainingDays';
 import { levelInfo } from '@ecosystem/sidequest/progress';
 import type { Activity } from '@ecosystem/sportapp/domain';
 import type { Shortcut } from '@ecosystem/hub/domain';
@@ -159,9 +160,10 @@ function StreaksWidget({ data, today }: { data: DashboardData; today: string }) 
 }
 
 function PointsWidget({ data, today }: { data: DashboardData; today: string }) {
-  const points = pointsPerDay(data.checks, data.quests, today);
+  const sportDays = sportPointDays(data.sportLink, trainingDaysFrom({ activityStarts: data.activities.map((activity) => activity.startedAt), krachtDates: data.krachtDates.map((item) => item.date), duurDates: data.duurTotals.map((item) => item.date) }));
+  const points = pointsPerDay(data.checks, data.quests, today, 14, sportDays);
   const total = points.reduce((sum, point) => sum + point.value, 0);
-  const level = levelInfo(calculatePoints(data.checks, data.quests));
+  const level = levelInfo(calculatePoints(data.checks, data.quests, sportDays));
   return (
     <>
       <p className="widget-stat">{total}<small>punten in 14 dagen</small></p>

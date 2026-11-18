@@ -1,6 +1,6 @@
 import type { ChartPoint } from '@ecosystem/ui';
 import type { Activity } from '@ecosystem/sportapp/domain';
-import { HABIT_POINTS_PER_CHECK, calculateHabitStreak, currentPeriodChecks, type Habit, type HabitCheck, type Quest } from '@ecosystem/sidequest/domain';
+import { HABIT_POINTS_PER_CHECK, SPORT_POINTS_PER_DAY, calculateHabitStreak, currentPeriodChecks, type Habit, type HabitCheck, type Quest } from '@ecosystem/sidequest/domain';
 
 /** Lichaam: alleen óf er vandaag iets is ingevuld, nooit de waarden zelf (DATA_OWNERSHIP.md). */
 export { filledToday as lichaamFilledToday } from '../modules/lichaam/domain';
@@ -88,8 +88,8 @@ export function topStreaks(habits: Habit[], checks: HabitCheck[], today: string,
     .slice(0, limit);
 }
 
-/** Verdiende punten per dag (gewoontechecks + voltooide quests), voor een trendlijn. */
-export function pointsPerDay(checks: HabitCheck[], quests: Quest[], today: string, count = 14): ChartPoint[] {
+/** Verdiende punten per dag (gewoontechecks, voltooide quests en, met de koppeling aan, trainingsdagen), voor een trendlijn. */
+export function pointsPerDay(checks: HabitCheck[], quests: Quest[], today: string, count = 14, sportDays: string[] = []): ChartPoint[] {
   const days = lastDays(today, count);
   const points = new Map(days.map((day) => [day, 0]));
   for (const check of checks) if (points.has(check.date)) points.set(check.date, points.get(check.date)! + HABIT_POINTS_PER_CHECK);
@@ -98,6 +98,7 @@ export function pointsPerDay(checks: HabitCheck[], quests: Quest[], today: strin
     const day = localDateKey(new Date(quest.completedAt));
     if (points.has(day)) points.set(day, points.get(day)! + quest.rewardPoints);
   }
+  for (const day of new Set(sportDays)) if (points.has(day)) points.set(day, points.get(day)! + SPORT_POINTS_PER_DAY);
   return days.map((day) => ({ label: day.slice(8, 10), value: points.get(day)! }));
 }
 
