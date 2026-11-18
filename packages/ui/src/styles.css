@@ -257,3 +257,28 @@ button.chip { border: 0; cursor: pointer; font: inherit; font-size: 12px; font-w
 .template-fields .set-input { flex-direction: column; align-items: stretch; gap: 4px; }
 .rest-timer { position: sticky; top: 8px; z-index: 5; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08); }
 .add-row select { min-height: 44px; padding: 0 12px; color: var(--text); background: var(--surface, #fff); border: 1px solid var(--border, #e3e8eb); border-radius: 12px; font: inherit; }
+
+/* PR 7: duur — kaart, hartslagzones, tussentijden */
+.route-map-wrap { display: grid; gap: 8px; }
+.route-map { height: 320px; width: 100%; border-radius: 14px; overflow: hidden; background: var(--surface-2); }
+.route-map .leaflet-control-attribution { font-size: 11px; }
+.zone-bars { display: grid; gap: 6px; margin-top: 12px; }
+.zone-row { display: grid; grid-template-columns: minmax(0, 9rem) minmax(0, 1fr) 4rem; align-items: center; gap: 8px; font-size: 12px; }
+.zone-label { color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.zone-track { height: 10px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
+.zone-fill { display: block; height: 100%; border-radius: 99px; }
+.zone-1 { background: #9fb8c8; }
+.zone-2 { background: #5aa48f; }
+.zone-3 { background: #e0b44c; }
+.zone-4 { background: #e08a3c; }
+.zone-5 { background: #c94a4a; }
+.zone-value { text-align: right; font-variant-numeric: tabular-nums; }
+.split-table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.split-table th, .split-table td { padding: 6px 4px; text-align: left; border-bottom: 1px solid var(--border, #e3e8eb); }
+.split-table th { color: var(--text-muted); font-weight: 650; }
+.import-item { flex-wrap: wrap; }
+.import-item select { min-height: 40px; max-width: 100%; padding: 0 12px; color: var(--text); background: var(--surface, #fff); border: 1px solid var(--border, #e3e8eb); border-radius: 12px; font: inherit; }
+@media (max-width: 480px) {
+  .route-map { height: 260px; }
+  .zone-row { grid-template-columns: minmax(0, 7rem) minmax(0, 1fr) 3.5rem; }
+}
