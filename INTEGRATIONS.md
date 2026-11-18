@@ -19,7 +19,17 @@ Elke koppeling is optioneel: als de bron ontbreekt of de toestemming is ingetrok
 | I-9 | Samen Thuis → Hub-meldingen | `hub.notify()` vanuit Samen Thuis | Opt-in in Samen Thuis | Later, wijziging in Samen Thuis-repo |
 | — | Coach ↔ overige | **Geen** datakoppeling. Alleen I-1 en I-2 | — | — |
 
-## I-5 in detail: training telt mee voor een quest
+## I-5 lokaal (PR 11, 2026-11-18): trainingsdagen leveren punten op
+
+Zolang Personal Ecosystem lokaal draait (zonder account, ADR 0020), werkt I-5 in de browser:
+
+- **Gegevens:** Personal Ecosystem leest uit Sport (starttijd), Kracht en Duur alleen de **datums** van trainingen (`apps/ecosystem/src/integrations/trainingDays.ts`). Het leest alleen en schrijft nergens; `separation.test.ts` controleert dat. De datums gaan als `trainingDays` naar SIDEQUEST.
+- **Toestemming:** een eigen instelling in SIDEQUEST (store `settings`, record `sport-link`). Die staat standaard uit en gaat mee in de back-up.
+- **Regel:** 10 punten per dag waarop je minstens één training vastlegde (Sport, Kracht of Duur samen), alleen vanaf de dag dat je de koppeling voor het eerst aanzette. Uit- en weer aanzetten verandert die datum niet.
+- **Punten worden berekend, niet geboekt:** uitzetten haalt de sportpunten weg, opnieuw aanzetten brengt dezelfde punten terug. Dit wijkt bewust af van het onveranderlijke logboek hieronder, dat voor de latere servervariant geldt.
+- **Losse app:** in de oude losse SIDEQUEST-app is de koppeling niet beschikbaar.
+
+## I-5 in detail (servervariant, later): training telt mee voor een quest
 
 ```mermaid
 sequenceDiagram

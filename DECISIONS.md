@@ -69,6 +69,7 @@ Ontwerp: [docs/hub/HUB_DESIGN.md](docs/hub/HUB_DESIGN.md) — in principe goedge
 | B-21 | Accounts voor Personal Ecosystem | ✅ Akkoord (ontwerp) | Zelf aanmaken met e-mail + wachtwoord + verplichte TOTP; inhoud eind-tot-eind versleuteld in de browser; schema `pe` in project A; livegang pas na poorten P-1 t/m P-6 | [0021](docs/adr/0021-accounts-met-eind-tot-eind-versleuteling.md) |
 | B-22 | Externe gegevens | ✅ Akkoord | Open-Meteo (weer), Open Food Facts (voeding), wger (oefeningen), OpenStreetMap (kaart); alleen gratis, voorwaarden per dienst in API_CATALOG.md; geen persoons- of gezondheidsgegevens naar buiten | — |
 | B-23 | Herinneringen binnen de app | ✅ Akkoord (2026-11-18) | Alleen binnen Personal Ecosystem, alleen eigen module-items, afgeleid zonder opslag; blok op het dashboard en teller in de modulebalk; aan/uit en "vandaag verbergen" per apparaat; geen meldingen buiten de app (web-push apart besluit) | [0022](docs/adr/0022-herinneringen-binnen-de-app.md) |
+| B-24 | Koppeling Sport → SIDEQUEST | ✅ Akkoord (2026-11-18) | Standaard uit; 10 punten per dag met minstens één training (Sport, Kracht of Duur); alleen trainingen vanaf het eerste aanzetten; SIDEQUEST krijgt alleen datums; berekend, niet geboekt | [INTEGRATIONS.md](INTEGRATIONS.md) (I-5 lokaal) |
 
 ## Ontbrekende informatie (nog steeds open)
 
