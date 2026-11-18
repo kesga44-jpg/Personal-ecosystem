@@ -3,3 +3,11 @@
   --accent-dark: #23476e;
   --accent-soft: #eaf0f8;
 }
+
+.goal-row { align-items: center; }
+.plan-calendar { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.plan-day { display: grid; gap: 6px; padding: 10px 12px; border: 1px solid var(--border, #e3e8ea); border-radius: 12px; }
+.plan-day.today { border-color: var(--accent); background: var(--accent-soft); }
+.plan-day-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+.plan-item { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; }
+.plan-item > span:first-child { flex: 1; min-width: 0; }

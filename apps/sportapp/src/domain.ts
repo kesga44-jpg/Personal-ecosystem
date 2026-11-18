@@ -1,3 +1,5 @@
+import { validatePlanningStore } from './planning';
+
 export type SportType = 'run' | 'walk' | 'bike' | 'swim' | 'strength' | 'other';
 
 export interface Activity {
@@ -78,6 +80,8 @@ export function validateSportBackup(input: unknown): void {
   if (!Array.isArray(activities) || !Array.isArray(trainings)) {
     throw new Error('Sportapp-back-up mist activiteiten of trainingen.');
   }
+  // Sinds schema 2 (PR 13); oudere back-ups hebben geen planning.
+  validatePlanningStore(stores.planning);
 
   const fingerprints = new Set<string>();
   for (const value of activities) {
