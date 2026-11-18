@@ -28,17 +28,38 @@ import {
   type SportType,
   type Training
 } from './domain';
+import {
+  emptyWeekGoal,
+  isPlannedSession,
+  isWeekGoal,
+  planningCalendar,
+  planStatus,
+  weekProgress,
+  type PlannedSession,
+  type PlanningRecord,
+  type PlanStatus,
+  type SessionDay,
+  type WeekGoal
+} from './planning';
 
 export const databaseConfig = {
   appId: 'sport',
   databaseName: 'personal-ecosystem-sport',
-  version: 1,
-  stores: ['activities', 'trainings'],
+  version: 2,
+  stores: ['activities', 'trainings', 'planning'],
   migrations: {
     1: (database: IDBDatabase) => {
       database.createObjectStore('activities', { keyPath: 'id' });
       database.createObjectStore('trainings', { keyPath: 'id' });
+    },
+    // PR 13: weekdoel en geplande trainingen.
+    2: (database: IDBDatabase) => {
+      database.createObjectStore('planning', { keyPath: 'id' });
     }
+  },
+  // Back-ups van schema 1 blijven herstelbaar: zonder planning.
+  exportUpgrades: {
+    2: (stores: Record<string, { id: string }[]>) => ({ ...stores, planning: [] })
   }
 } as const;
 
@@ -46,6 +67,7 @@ const navigation = [
   { to: '/', label: 'Overzicht', icon: '⌂' },
   { to: '/activiteiten', label: 'Activiteiten', icon: '↗' },
   { to: '/trainingen', label: 'Trainingen', icon: '◉' },
+  { to: '/planning', label: 'Planning', icon: '▦' },
   { to: '/instellingen', label: 'Instellingen', icon: '⚙' }
 ];
 
@@ -60,20 +82,25 @@ export interface AppProps {
   basename?: string;
   /** Links naar de andere modules; leeg als losse app. */
   moduleLinks?: ModuleLink[];
+  /** Trainingen uit Kracht en Duur (alleen datum en minuten), voor het weekdoel. Ontbreekt in de losse app. */
+  otherSessions?: SessionDay[];
 }
 
-function App({ basename = '/', moduleLinks = [] }: AppProps = {}) {
+function App({ basename = '/', moduleLinks = [], otherSessions = [] }: AppProps = {}) {
   const [database, setDatabase] = useState<LocalDatabase | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [trainings, setTrainings] = useState<Training[]>([]);
+  const [planning, setPlanning] = useState<PlanningRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   async function refresh(db: LocalDatabase) {
-    const [nextActivities, nextTrainings] = await Promise.all([
+    const [nextActivities, nextTrainings, nextPlanning] = await Promise.all([
       db.list<Activity>('activities'),
-      db.list<Training>('trainings')
+      db.list<Training>('trainings'),
+      db.list<PlanningRecord>('planning')
     ]);
+    setPlanning(nextPlanning);
     setActivities(nextActivities.sort((a, b) => b.startedAt.localeCompare(a.startedAt)));
     setTrainings(nextTrainings.sort((a, b) => a.title.localeCompare(b.title)));
   }
@@ -112,6 +139,13 @@ function App({ basename = '/', moduleLinks = [] }: AppProps = {}) {
     );
   }
 
+  const goal = planning.find(isWeekGoal) ?? emptyWeekGoal;
+  const plans = planning.filter(isPlannedSession);
+  const sessions: SessionDay[] = [
+    ...activities.map((activity) => ({ date: localDay(new Date(activity.startedAt)), minutes: activity.durationMinutes })),
+    ...otherSessions
+  ];
+
   if (loading) return <LoadingState />;
   if (!database) return <main className="main-content"><ErrorBanner message={error || 'Lokale opslag is niet beschikbaar.'} /></main>;
 
@@ -121,7 +155,7 @@ function App({ basename = '/', moduleLinks = [] }: AppProps = {}) {
         <Routes>
           <Route
             path="/"
-            element={<Dashboard activities={activities} trainings={trainings} error={error} />}
+            element={<Dashboard activities={activities} trainings={trainings} sessions={sessions} goal={goal} error={error} />}
           />
           <Route
             path="/activiteiten"
@@ -159,6 +193,21 @@ function App({ basename = '/', moduleLinks = [] }: AppProps = {}) {
             }
           />
           <Route
+            path="/planning"
+            element={
+              <PlanningPage
+                sessions={sessions}
+                goal={goal}
+                plans={plans}
+                trainings={trainings}
+                onGoal={(next) => runStorageAction((db) => db.put('planning', next))}
+                onPlan={(plan) => runStorageAction((db) => db.put('planning', plan))}
+                onDelete={(id) => runStorageAction((db) => db.remove('planning', id))}
+                error={error}
+              />
+            }
+          />
+          <Route
             path="/instellingen"
             element={
               <SettingsPage
@@ -177,10 +226,14 @@ function App({ basename = '/', moduleLinks = [] }: AppProps = {}) {
 function Dashboard({
   activities,
   trainings,
+  sessions,
+  goal,
   error
 }: {
   activities: Activity[];
   trainings: Training[];
+  sessions: SessionDay[];
+  goal: WeekGoal;
   error: string;
 }) {
   const navigate = useNavigate();
@@ -204,6 +257,7 @@ function Dashboard({
         <Metric label="Beweegtijd" value={formatDuration(stats.durationMinutes)} note="Totale trainingsduur" />
         <Metric label="Trainingen" value={trainings.filter((training) => !training.archived).length.toString()} note="Actieve trainingsplannen" />
       </div>
+      <WeekGoalCard sessions={sessions} goal={goal} />
       <div className="grid grid-2">
         <Card title="Recente activiteiten">
           {activities.length ? (
@@ -241,6 +295,181 @@ function Dashboard({
         </Card>
       </div>
       <div className="notice">Lokale modus actief · Sportdata staat alleen in de Sportapp-opslag. Er is geen synchronisatie of externe sportkoppeling ingeschakeld.</div>
+    </div>
+  );
+}
+
+function localDay(value: Date = new Date()): string {
+  return new Date(value.getTime() - value.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+}
+
+function shortDay(day: string, withWeekday = false): string {
+  return new Intl.DateTimeFormat('nl-NL', withWeekday ? { weekday: 'short', day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short' }).format(new Date(`${day}T12:00:00`));
+}
+
+const statusLabels: Record<PlanStatus, string> = { gedaan: 'Gedaan', gemist: 'Gemist', gepland: 'Gepland' };
+
+function WeekGoalCard({ sessions, goal }: { sessions: SessionDay[]; goal: WeekGoal }) {
+  const progress = weekProgress(sessions, goal, localDay());
+  if (goal.sessions === null && goal.minutes === null) {
+    return (
+      <Card title="Weekdoel">
+        <p className="item-subtitle">Nog geen weekdoel. Deze week: {progress.sessions} {progress.sessions === 1 ? 'training' : 'trainingen'}, {progress.minutes} min.</p>
+        <Link className="text-button" to="/planning">Weekdoel instellen →</Link>
+      </Card>
+    );
+  }
+  return (
+    <Card title="Weekdoel" action={progress.reached ? <StatusPill tone="good">Gehaald</StatusPill> : undefined}>
+      <div className="list">
+        {goal.sessions !== null && <GoalRow label="Trainingen" value={progress.sessions} target={goal.sessions} unit="" />}
+        {goal.minutes !== null && <GoalRow label="Minuten" value={progress.minutes} target={goal.minutes} unit=" min" />}
+      </div>
+      <p className="item-subtitle">Week van {shortDay(progress.weekStart)}; trainingen uit Sport, Kracht en Duur tellen mee.</p>
+      <Link className="text-button" to="/planning">Naar planning →</Link>
+    </Card>
+  );
+}
+
+function GoalRow({ label, value, target, unit }: { label: string; value: number; target: number; unit: string }) {
+  return (
+    <div className="list-item goal-row">
+      <div style={{ flex: 1 }}>
+        <p className="item-title">{label}: {value} van {target}{unit}</p>
+        <div className="progress-track" role="progressbar" aria-label={`${label} deze week`} aria-valuemin={0} aria-valuemax={target} aria-valuenow={Math.min(value, target)}>
+          <span style={{ width: `${Math.min(100, (value / target) * 100)}%` }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PlanningPage({
+  sessions,
+  goal,
+  plans,
+  trainings,
+  onGoal,
+  onPlan,
+  onDelete,
+  error
+}: {
+  sessions: SessionDay[];
+  goal: WeekGoal;
+  plans: PlannedSession[];
+  trainings: Training[];
+  onGoal: (goal: WeekGoal) => Promise<boolean>;
+  onPlan: (plan: PlannedSession) => Promise<boolean>;
+  onDelete: (id: string) => Promise<boolean>;
+  error: string;
+}) {
+  const today = localDay();
+  const calendar = planningCalendar(plans, sessions, today);
+  const activeTrainings = trainings.filter((training) => !training.archived);
+  const [goalSessions, setGoalSessions] = useState(goal.sessions?.toString() ?? '');
+  const [goalMinutes, setGoalMinutes] = useState(goal.minutes?.toString() ?? '');
+  const [date, setDate] = useState(today);
+  const [trainingId, setTrainingId] = useState('');
+  const [title, setTitle] = useState('');
+  const [minutes, setMinutes] = useState('45');
+  const [formError, setFormError] = useState('');
+  const [savedGoal, setSavedGoal] = useState(false);
+
+  useEffect(() => {
+    setGoalSessions(goal.sessions?.toString() ?? '');
+    setGoalMinutes(goal.minutes?.toString() ?? '');
+  }, [goal.sessions, goal.minutes]);
+
+  async function saveGoal(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFormError('');
+    setSavedGoal(false);
+    const next: WeekGoal = { ...emptyWeekGoal, sessions: goalSessions.trim() ? Number(goalSessions) : null, minutes: goalMinutes.trim() ? Number(goalMinutes) : null };
+    if (!isWeekGoal(next)) {
+      setFormError('Vul 1 tot 21 trainingen en/of 1 tot 3000 minuten per week in, of laat een veld leeg.');
+      return;
+    }
+    setSavedGoal(await onGoal(next));
+  }
+
+  async function addPlan(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFormError('');
+    const training = activeTrainings.find((item) => item.id === trainingId);
+    const plan: PlannedSession = { id: newId(), kind: 'plan', date, title: (title.trim() || training?.title || '').slice(0, 100), minutes: Number(minutes), trainingId: training?.id ?? null };
+    if (date < today) {
+      setFormError('Plan een training vandaag of later.');
+      return;
+    }
+    if (!isPlannedSession(plan)) {
+      setFormError('Kies een datum, geef de training een naam (of kies een training) en vul 1 tot 600 minuten in.');
+      return;
+    }
+    if (await onPlan(plan)) {
+      setTitle('');
+      setTrainingId('');
+    }
+  }
+
+  return (
+    <div className="stack">
+      {(error || formError) && <ErrorBanner message={error || formError} />}
+      <PageHeader eyebrow="Vooruit kijken" title="Planning" description="Stel een weekdoel in en plan trainingen. Of een geplande training gedaan is, zie je aan je vastgelegde trainingen op die dag." />
+      <div className="grid grid-2">
+        <WeekGoalCard sessions={sessions} goal={goal} />
+        <Card title="Weekdoel instellen">
+          <form onSubmit={(event) => void saveGoal(event)} noValidate>
+            <div className="form-grid">
+              <Field label="Trainingen per week" hint="Leeg = geen doel"><input type="number" min="1" max="21" step="1" value={goalSessions} onChange={(event) => setGoalSessions(event.target.value)} /></Field>
+              <Field label="Minuten per week" hint="Leeg = geen doel"><input type="number" min="1" max="3000" step="1" value={goalMinutes} onChange={(event) => setGoalMinutes(event.target.value)} /></Field>
+            </div>
+            {savedGoal && <p role="status"><StatusPill tone="good">Weekdoel opgeslagen</StatusPill></p>}
+            <div className="form-actions"><Button type="submit">Weekdoel opslaan</Button></div>
+          </form>
+        </Card>
+      </div>
+      <Card title="Training plannen">
+        <form onSubmit={(event) => void addPlan(event)} noValidate>
+          <div className="form-grid">
+            <Field label="Datum"><input type="date" min={today} value={date} onChange={(event) => setDate(event.target.value)} /></Field>
+            <Field label="Training (optioneel)">
+              <select value={trainingId} onChange={(event) => {
+                setTrainingId(event.target.value);
+                const chosen = activeTrainings.find((item) => item.id === event.target.value);
+                if (chosen) setMinutes(chosen.targetMinutes.toString());
+              }}>
+                <option value="">Zelf invullen</option>
+                {activeTrainings.map((training) => <option key={training.id} value={training.id}>{training.title}</option>)}
+              </select>
+            </Field>
+            <Field label="Naam" hint={trainingId ? 'Leeg = naam van de training' : 'Bijv. Hardlopen of Zwemmen'}><input maxLength={100} value={title} onChange={(event) => setTitle(event.target.value)} /></Field>
+            <Field label="Minuten"><input type="number" min="1" max="600" step="1" value={minutes} onChange={(event) => setMinutes(event.target.value)} /></Field>
+          </div>
+          <div className="form-actions"><Button type="submit">Inplannen</Button></div>
+        </form>
+      </Card>
+      <Card title="Deze en volgende week">
+        <ul className="plan-calendar">
+          {calendar.map((day) => (
+            <li key={day.date} className={day.date === today ? 'plan-day today' : 'plan-day'}>
+              <div className="plan-day-head">
+                <span className="item-title">{shortDay(day.date, true)}{day.date === today ? ' · vandaag' : ''}</span>
+                {day.sessions > 0 && <span className="item-subtitle">{day.sessions} {day.sessions === 1 ? 'training' : 'trainingen'} · {day.minutes} min</span>}
+              </div>
+              {day.plans.map((plan) => {
+                const status = planStatus(plan, sessions, today);
+                return (
+                  <div className="plan-item" key={plan.id}>
+                    <span>{plan.title} · {plan.minutes} min</span>
+                    <StatusPill tone={status === 'gedaan' ? 'good' : status === 'gemist' ? 'warning' : 'neutral'}>{statusLabels[status]}</StatusPill>
+                    <ConfirmAction label={`${plan.title} op ${shortDay(plan.date)} verwijderen`} confirmMessage={`Geplande training "${plan.title}" verwijderen?`} onConfirm={() => void onDelete(plan.id)}>×</ConfirmAction>
+                  </div>
+                );
+              })}
+            </li>
+          ))}
+        </ul>
+      </Card>
     </div>
   );
 }
