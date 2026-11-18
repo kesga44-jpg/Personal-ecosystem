@@ -14,7 +14,7 @@ export default defineConfig({
       manifest: {
         name: 'Personal Ecosystem',
         short_name: 'Ecosystem',
-        description: 'Dashboard, Sport, Kracht, SIDEQUEST, Lichaam, Voeding en Dagboek in één persoonlijke app.',
+        description: 'Dashboard, Sport, Kracht, Duur, SIDEQUEST, Lichaam, Voeding en Dagboek in één persoonlijke app.',
         theme_color: '#397d71',
         background_color: '#f4f6f7',
         display: 'standalone',
