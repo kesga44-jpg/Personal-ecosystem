@@ -15,6 +15,7 @@ describe('moduleForPath', () => {
     expect(moduleForPath('/dagboek/archief')).toBe('dagboek');
     expect(moduleForPath('/voeding/toevoegen')).toBe('voeding');
     expect(moduleForPath('/kracht/training')).toBe('kracht');
+    expect(moduleForPath('/duur/activiteit/x')).toBe('duur');
     expect(moduleForPath('/krachtig')).toBe('dashboard');
     expect(moduleForPath('/back-up')).toBe('backup');
   });
@@ -28,7 +29,7 @@ describe('moduleForPath', () => {
 describe('moduleLinksFor', () => {
   it('markeert alleen de actieve module', () => {
     const links = moduleLinksFor('sport');
-    expect(links.map((link) => link.href)).toEqual(['/', '/sport', '/kracht', '/quest', '/lichaam', '/voeding', '/dagboek', '/back-up']);
+    expect(links.map((link) => link.href)).toEqual(['/', '/sport', '/kracht', '/duur', '/quest', '/lichaam', '/voeding', '/dagboek', '/back-up']);
     expect(links.filter((link) => link.active).map((link) => link.href)).toEqual(['/sport']);
   });
 

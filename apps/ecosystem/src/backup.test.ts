@@ -13,10 +13,11 @@ const exports = {
   lichaam: localExport('lichaam', { days: [{ id: '2026-11-16' }], profile: [] }),
   dagboek: localExport('dagboek', { entries: [{ id: '2026-11-17' }] }),
   voeding: localExport('voeding', { entries: [], products: [], settings: [] }),
-  kracht: localExport('kracht', { exercises: [], templates: [], sessions: [{ id: 'k1' }] })
+  kracht: localExport('kracht', { exercises: [], templates: [], sessions: [{ id: 'k1' }] }),
+  duur: localExport('duur', { workouts: [{ id: 'w1' }], tracks: [], settings: [] })
 } satisfies Record<BackupModuleId, LocalExport>;
 
-const accept = () => ({ hub: vi.fn(), sport: vi.fn(), sidequest: vi.fn(), lichaam: vi.fn(), dagboek: vi.fn(), voeding: vi.fn(), kracht: vi.fn() });
+const accept = () => ({ hub: vi.fn(), sport: vi.fn(), sidequest: vi.fn(), lichaam: vi.fn(), dagboek: vi.fn(), voeding: vi.fn(), kracht: vi.fn(), duur: vi.fn() });
 
 describe('canonicalJson', () => {
   it('is onafhankelijk van de volgorde van sleutels', () => {
@@ -28,9 +29,9 @@ describe('createBackup', () => {
   it('maakt één bestand met alle modules en een controlegetal', async () => {
     const backup = await createBackup(exports, new Date('2026-11-16T12:00:00Z'));
     expect(backup.format).toBe(BACKUP_FORMAT);
-    expect(backup.version).toBe(5);
+    expect(backup.version).toBe(6);
     expect(backup.createdAt).toBe('2026-11-16T12:00:00.000Z');
-    expect(Object.keys(backup.modules)).toEqual(['hub', 'sport', 'sidequest', 'lichaam', 'dagboek', 'voeding', 'kracht']);
+    expect(Object.keys(backup.modules)).toEqual(['hub', 'sport', 'sidequest', 'lichaam', 'dagboek', 'voeding', 'kracht', 'duur']);
     expect(backup.checksum).toBe(await sha256Hex(canonicalJson(exports)));
   });
 });
@@ -40,7 +41,7 @@ describe('planRestore', () => {
     const validators = accept();
     const plan = await planRestore(await createBackup(exports), validators);
     expect(plan.source).toBe('ecosystem');
-    expect(Object.keys(plan.modules)).toEqual(['hub', 'sport', 'sidequest', 'lichaam', 'dagboek', 'voeding', 'kracht']);
+    expect(Object.keys(plan.modules)).toEqual(['hub', 'sport', 'sidequest', 'lichaam', 'dagboek', 'voeding', 'kracht', 'duur']);
     expect(validators.voeding).toHaveBeenCalledWith(exports.voeding);
     expect(validators.lichaam).toHaveBeenCalledWith(exports.lichaam);
     expect(validators.dagboek).toHaveBeenCalledWith(exports.dagboek);
@@ -75,11 +76,11 @@ describe('planRestore', () => {
   it('weigert onbekende formaten en versies', async () => {
     await expect(planRestore(null, accept())).rejects.toThrow();
     await expect(planRestore({ format: 'iets-anders' }, accept())).rejects.toThrow('geen Personal Ecosystem-back-up');
-    await expect(planRestore({ ...(await createBackup(exports)), version: 6 }, accept())).rejects.toThrow('versie');
+    await expect(planRestore({ ...(await createBackup(exports)), version: 7 }, accept())).rejects.toThrow('versie');
   });
 
   it('herstelt een back-up van versie 1 (zonder Lichaam) en laat Lichaam ongemoeid', async () => {
-    const { lichaam: _lichaam, dagboek: _dagboek, voeding: _voeding, kracht: _kracht, ...legacy } = exports;
+    const { lichaam: _lichaam, dagboek: _dagboek, voeding: _voeding, kracht: _kracht, duur: _duur, ...legacy } = exports;
     const v1 = { format: BACKUP_FORMAT, version: 1, createdAt: '2026-11-10T10:00:00.000Z', modules: legacy, checksum: await sha256Hex(canonicalJson(legacy)) };
     const validators = accept();
     const plan = await planRestore(v1, validators);
@@ -90,7 +91,7 @@ describe('planRestore', () => {
   });
 
   it('herstelt een back-up van versie 2 (zonder Dagboek) en laat Dagboek ongemoeid', async () => {
-    const { dagboek: _dagboek, voeding: _voeding, kracht: _kracht, ...v2modules } = exports;
+    const { dagboek: _dagboek, voeding: _voeding, kracht: _kracht, duur: _duur, ...v2modules } = exports;
     const v2 = { format: BACKUP_FORMAT, version: 2, createdAt: '2026-11-16T10:00:00.000Z', modules: v2modules, checksum: await sha256Hex(canonicalJson(v2modules)) };
     const validators = accept();
     const plan = await planRestore(v2, validators);
@@ -99,7 +100,7 @@ describe('planRestore', () => {
   });
 
   it('herstelt een back-up van versie 3 (zonder Voeding) en laat Voeding ongemoeid', async () => {
-    const { voeding: _voeding, kracht: _kracht, ...v3modules } = exports;
+    const { voeding: _voeding, kracht: _kracht, duur: _duur, ...v3modules } = exports;
     const v3 = { format: BACKUP_FORMAT, version: 3, createdAt: '2026-11-17T10:00:00.000Z', modules: v3modules, checksum: await sha256Hex(canonicalJson(v3modules)) };
     const validators = accept();
     const plan = await planRestore(v3, validators);
@@ -108,12 +109,21 @@ describe('planRestore', () => {
   });
 
   it('herstelt een back-up van versie 4 (zonder Kracht) en laat Kracht ongemoeid', async () => {
-    const { kracht: _kracht, ...v4modules } = exports;
+    const { kracht: _kracht, duur: _duur, ...v4modules } = exports;
     const v4 = { format: BACKUP_FORMAT, version: 4, createdAt: '2026-11-17T10:00:00.000Z', modules: v4modules, checksum: await sha256Hex(canonicalJson(v4modules)) };
     const validators = accept();
     const plan = await planRestore(v4, validators);
     expect(Object.keys(plan.modules)).toEqual(['hub', 'sport', 'sidequest', 'lichaam', 'dagboek', 'voeding']);
     expect(validators.kracht).not.toHaveBeenCalled();
+  });
+
+  it('herstelt een back-up van versie 5 (zonder Duur) en laat Duur ongemoeid', async () => {
+    const { duur: _duur, ...v5modules } = exports;
+    const v5 = { format: BACKUP_FORMAT, version: 5, createdAt: '2026-11-17T10:00:00.000Z', modules: v5modules, checksum: await sha256Hex(canonicalJson(v5modules)) };
+    const validators = accept();
+    const plan = await planRestore(v5, validators);
+    expect(Object.keys(plan.modules)).toEqual(['hub', 'sport', 'sidequest', 'lichaam', 'dagboek', 'voeding', 'kracht']);
+    expect(validators.duur).not.toHaveBeenCalled();
   });
 
   it('importeert losse back-ups van de oude apps in de juiste module', async () => {
