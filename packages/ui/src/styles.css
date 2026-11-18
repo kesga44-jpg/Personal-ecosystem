@@ -125,6 +125,19 @@ h1 { margin: 0; color: #17212b; font-size: clamp(28px, 4vw, 38px); line-height: 
 .module-link:hover { background: #f1f4f5; }
 .module-link.active { color: var(--accent-dark, #2d675d); background: var(--accent-soft, #eaf3f1); }
 .module-link:focus-visible { outline: 3px solid #9dc9bf; outline-offset: 2px; }
+.module-badge { display: inline-grid; place-items: center; min-width: 20px; height: 20px; margin-left: auto; padding: 0 6px; color: #fff; background: #a35a00; border-radius: 99px; font-size: 11px; font-weight: 800; line-height: 1; }
+.module-switcher-compact .module-badge { margin-left: 2px; }
+.reminders-quiet { margin: -4px 0 0; color: var(--text-muted, #68757f); font-size: 13px; }
+.reminder-list { margin: 0; padding: 0; list-style: none; }
+.reminder-list .item-title a { color: inherit; }
+.reminder-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.reminder-toggle { cursor: pointer; font-size: 13px; }
+.reminders-card .item-subtitle + .list { margin-top: 8px; }
+.reminder-toggle input { width: 20px; height: 20px; flex: none; accent-color: var(--accent, #397d71); }
+@media (max-width: 640px) {
+  .reminder-list .list-item { flex-direction: column; align-items: stretch; }
+  .reminder-actions { justify-content: flex-start; }
+}
 .moved-notice { display: grid; gap: 4px; margin: 12px; padding: 13px 15px; color: #5b4310; background: #fff7e6; border: 1px solid #f0dcae; border-radius: 10px; font-size: 13px; }
 .moved-notice a { color: inherit; font-weight: 700; }
 @media (max-width: 640px) {
