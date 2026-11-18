@@ -22,6 +22,8 @@ export interface LocalDatabase {
   readonly appId: string;
   readonly schemaVersion: number;
   list<T extends RecordValue>(store: string): Promise<T[]>;
+  /** Eén record op ID, of undefined. */
+  get<T extends RecordValue>(store: string, id: string): Promise<T | undefined>;
   put<T extends RecordValue>(store: string, value: T): Promise<void>;
   remove(store: string, id: string): Promise<void>;
   exportData(): Promise<LocalExport>;
@@ -178,6 +180,13 @@ export async function openLocalDatabase(config: LocalDatabaseConfig): Promise<Lo
       const transaction = database.transaction(store, 'readonly');
       return runTransaction(transaction, async () =>
         await requestResult(transaction.objectStore(store).getAll()) as T[]
+      );
+    },
+    async get<T extends RecordValue>(store: string, id: string): Promise<T | undefined> {
+      assertStore(store);
+      const transaction = database.transaction(store, 'readonly');
+      return runTransaction(transaction, async () =>
+        await requestResult(transaction.objectStore(store).get(id)) as T | undefined
       );
     },
     async put<T extends RecordValue>(store: string, value: T): Promise<void> {

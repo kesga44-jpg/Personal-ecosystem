@@ -43,6 +43,15 @@ describe('app-local IndexedDB', () => {
     database.close();
   });
 
+  it('reads a single record by id', async () => {
+    const database = await openLocalDatabase(config);
+    await database.put('items', { id: 'two', title: 'Single' });
+    await expect(database.get('items', 'two')).resolves.toEqual({ id: 'two', title: 'Single' });
+    await expect(database.get('items', 'missing')).resolves.toBeUndefined();
+    await expect(database.get('other-app-store', 'two')).rejects.toThrow('does not belong');
+    database.close();
+  });
+
   it('rejects invalid restore data without replacing existing records', async () => {
     const database = await openLocalDatabase(config);
     await database.put('items', { id: 'existing', title: 'Keep this record' });
