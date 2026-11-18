@@ -16,7 +16,7 @@ Volgorde van de eerstvolgende PR's. Elke PR is één onderwerp, met tests en doc
 | 7 | SIDEQUEST | Quest-stappen, categorieën, deadlines — ✅ PR 8 |
 | 8 | SIDEQUEST | Levels (oplopende drempels, berekend uit punten) en badges (alleen erkenning, geen bonuspunten) — ✅ PR 9 |
 | 9 | SIDEQUEST | Statistieken en kalender-heatmap — ✅ PR 9 |
-| 10 | Koppeling | Sport → SIDEQUEST-punten, standaard uit |
+| 10 | Koppeling | Sport → SIDEQUEST-punten, standaard uit — ✅ PR 11 (10 punten per trainingsdag vanaf het aanzetten) |
 | 11 | Nieuw | Lichaam & gezondheid — ✅ PR 3 (eerder ingepland op verzoek van de eigenaar) |
 | 12 | Nieuw | Voeding met Open Food Facts en barcodescan — ✅ PR 5 |
 | 13 | Nieuw | Dagboek & stemming — ✅ PR 4 |

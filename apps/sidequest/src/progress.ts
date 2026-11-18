@@ -3,7 +3,7 @@
  * Alles wordt afgeleid uit gewoontechecks en quests; er wordt niets extra opgeslagen.
  * Badges zijn alleen erkenning en geven geen punten (besluit eigenaar, PR 9).
  */
-import { DEFAULT_QUEST_CATEGORY, HABIT_POINTS_PER_CHECK, type Habit, type HabitCheck, type Quest } from './domain';
+import { DEFAULT_QUEST_CATEGORY, HABIT_POINTS_PER_CHECK, SPORT_POINTS_PER_DAY, type Habit, type HabitCheck, type Quest } from './domain';
 
 /* ---------- Datums ---------- */
 
@@ -61,12 +61,13 @@ export function levelInfo(points: number): LevelInfo {
 export interface PointEvent {
   day: string;
   points: number;
-  kind: 'check' | 'quest';
+  kind: 'check' | 'quest' | 'sport';
 }
 
-/** Alle puntgebeurtenissen op datum, oudste eerst. Zelfde regels als `calculatePoints`. */
-export function pointEvents(checks: HabitCheck[], quests: Quest[]): PointEvent[] {
+/** Alle puntgebeurtenissen op datum, oudste eerst. Zelfde regels als `calculatePoints`; `sportDays` komt uit `sportPointDays`. */
+export function pointEvents(checks: HabitCheck[], quests: Quest[], sportDays: string[] = []): PointEvent[] {
   const events: PointEvent[] = checks.map((check) => ({ day: check.date, points: HABIT_POINTS_PER_CHECK, kind: 'check' }));
+  for (const day of new Set(sportDays)) events.push({ day, points: SPORT_POINTS_PER_DAY, kind: 'sport' });
   for (const quest of quests) {
     if (quest.status === 'completed' && quest.completedAt) events.push({ day: localDay(quest.completedAt), points: quest.rewardPoints, kind: 'quest' });
   }
@@ -143,14 +144,14 @@ function onTimeQuests(quests: Quest[]): Quest[] {
   return quests.filter((quest) => quest.status === 'completed' && quest.completedAt && quest.deadline && localDay(quest.completedAt) <= quest.deadline);
 }
 
-export function badges(habits: Habit[], checks: HabitCheck[], quests: Quest[]): Badge[] {
+export function badges(habits: Habit[], checks: HabitCheck[], quests: Quest[], sportDays: string[] = []): Badge[] {
   const checkDays = checks.map((check) => check.date).sort();
   const completedDays = quests
     .filter((quest) => quest.status === 'completed' && quest.completedAt)
     .map((quest) => localDay(quest.completedAt!))
     .sort();
   const onTimeDays = onTimeQuests(quests).map((quest) => localDay(quest.completedAt!)).sort();
-  const events = pointEvents(checks, quests);
+  const events = pointEvents(checks, quests, sportDays);
   const points = events.reduce((sum, event) => sum + event.points, 0);
   const longest = longestDailyStreak(checks, habits);
   const level = levelInfo(points).level;
@@ -223,11 +224,11 @@ export function sidequestStats(habits: Habit[], checks: HabitCheck[], quests: Qu
 }
 
 /** Punten per week (maandag–zondag), oudste eerst, `weeks` weken t/m de week van `today`. */
-export function pointsPerWeek(checks: HabitCheck[], quests: Quest[], today: string, weeks = 8): { weekStart: string; points: number }[] {
+export function pointsPerWeek(checks: HabitCheck[], quests: Quest[], today: string, weeks = 8, sportDays: string[] = []): { weekStart: string; points: number }[] {
   const current = mondayOf(today);
   const starts = Array.from({ length: weeks }, (_, index) => shiftDay(current, -7 * (weeks - 1 - index)));
   const totals = new Map(starts.map((start) => [start, 0]));
-  for (const event of pointEvents(checks, quests)) {
+  for (const event of pointEvents(checks, quests, sportDays)) {
     const start = mondayOf(event.day);
     if (totals.has(start)) totals.set(start, totals.get(start)! + event.points);
   }
@@ -236,7 +237,7 @@ export function pointsPerWeek(checks: HabitCheck[], quests: Quest[], today: stri
 
 export interface CalendarDay {
   date: string;
-  /** Aantal gewoontechecks en voltooide quests die dag. */
+  /** Aantal gewoontechecks en voltooide quests die dag (trainingsdagen tellen hier niet mee). */
   count: number;
   /** false voor dagen na vandaag in de laatste week (worden leeg getoond). */
   inRange: boolean;

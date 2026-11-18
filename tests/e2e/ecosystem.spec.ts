@@ -614,6 +614,69 @@ test('herinneringen: blok op het dashboard, teller in de modulebalk, vandaag ver
   expect(errors).toEqual([]);
 });
 
+test('koppeling Sport → SIDEQUEST: standaard uit, aanzetten geeft 10 punten per trainingsdag, uitzetten haalt ze weg', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto(`${base}/sport/activiteiten`);
+  await page.getByRole('button', { name: '＋ Toevoegen' }).click();
+  await page.getByLabel('Duur (minuten)').fill('30');
+  await page.getByRole('button', { name: /Activiteit opslaan/ }).click();
+  await page.getByRole('button', { name: '＋ Toevoegen' }).click();
+  await page.getByLabel('Duur (minuten)').fill('20');
+  await page.getByRole('button', { name: /Activiteit opslaan/ }).click();
+  await expect(page.getByText('20 min').first()).toBeVisible();
+
+  await page.goto(`${base}/quest`);
+  await expect(page.locator('.status-pill').filter({ hasText: /^0 punten$/ })).toBeVisible();
+
+  await page.goto(`${base}/quest/instellingen`);
+  const link = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Koppeling met Sport' }) });
+  await expect(link.getByText('Staat uit. Als je aanzet, tellen alleen trainingen vanaf vandaag mee')).toBeVisible();
+  await link.getByRole('checkbox', { name: /Punten voor trainingen/ }).click();
+  await expect(link.getByRole('checkbox', { name: /Punten voor trainingen/ })).toBeChecked();
+  await expect(link.getByText(/: 1 dag, 10 punten\./)).toBeVisible();
+
+  await page.goto(`${base}/quest`);
+  await expect(page.locator('.status-pill').filter({ hasText: /^10 punten$/ })).toBeVisible();
+  await expect(page.getByText(/plus 10 punten per dag met een training/)).toBeVisible();
+  await page.goto(`${base}/`);
+  await expect(page.getByText('Level 1 · nog 90 punten tot level 2')).toBeVisible();
+
+  await page.goto(`${base}/quest/instellingen`);
+  await link.getByRole('checkbox', { name: /Punten voor trainingen/ }).click();
+  await expect(link.getByRole('checkbox', { name: /Punten voor trainingen/ })).not.toBeChecked();
+  await expect(link.getByText(/Staat nu uit; aanzetten telt weer vanaf dezelfde datum\./)).toBeVisible();
+  await page.goto(`${base}/quest`);
+  await expect(page.locator('.status-pill').filter({ hasText: /^0 punten$/ })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('een SIDEQUEST-back-up van schema 1 (oud adres) is nog te herstellen', async ({ page }, testInfo) => {
+  const oldExport = {
+    format: 'personal-ecosystem-local-data',
+    appId: 'sidequest',
+    schemaVersion: 1,
+    exportedAt: '2026-11-10T08:00:00.000Z',
+    stores: {
+      goals: [],
+      habits: [],
+      habitChecks: [],
+      quests: [{ id: 'oud', title: 'Quest van het oude adres', description: '', target: 2, progress: 0, rewardPoints: 15, status: 'active', completedAt: null, createdAt: '2026-11-01T08:00:00.000Z' }]
+    }
+  };
+  const path = testInfo.outputPath('sidequest-v1.json');
+  await writeFile(path, JSON.stringify(oldExport));
+  await page.goto(`${base}/back-up`);
+  await page.getByLabel('Back-upbestand (JSON)').setInputFiles(path);
+  await expect(page.getByText('Bestand is in orde.')).toBeVisible();
+  await page.getByRole('button', { name: 'Herstel deze module' }).click();
+  await expect(page.getByText('Herstel voltooid.')).toBeVisible();
+  await page.goto(`${base}/quest/quests`);
+  await expect(page.getByText('Quest van het oude adres')).toBeVisible();
+  await page.goto(`${base}/quest/instellingen`);
+  await expect(page.getByText('SIDEQUEST · schema v2')).toBeVisible();
+  await expect(page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Koppeling met Sport' }) }).getByRole('checkbox')).not.toBeChecked();
+});
+
 for (const width of [375, 768, 1280]) {
   test(`Personal Ecosystem past op ${width}px zonder horizontaal scrollen`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });

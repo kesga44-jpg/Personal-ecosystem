@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   advanceQuest,
+  defaultSportLink,
+  sportPointDays,
+  toggleSportLink,
   calculateHabitStreak,
   daysUntilDeadline,
   editQuest,
@@ -225,3 +228,47 @@ describe('SIDEQUEST quest-stappen, categorieën en deadlines', () => {
     expect(sortActiveQuests([none, late, older, base]).map((quest) => quest.id)).toEqual(['q', 'late', 'none', 'older']);
   });
 });
+
+describe('koppeling Sport → SIDEQUEST', () => {
+  const days = ['2026-11-10', '2026-11-12', '2026-11-12', '2026-11-15', 'kapot'];
+
+  it('staat standaard uit en levert dan geen sportpunten op', () => {
+    expect(defaultSportLink).toEqual({ id: 'sport-link', enabled: false, since: null });
+    expect(sportPointDays(defaultSportLink, days)).toEqual([]);
+    expect(sportPointDays(undefined, days)).toEqual([]);
+    expect(calculatePoints([], [], sportPointDays(defaultSportLink, days))).toBe(0);
+  });
+
+  it('telt alleen unieke trainingsdagen vanaf het eerste aanzetten, 10 punten per dag', () => {
+    const on = toggleSportLink(defaultSportLink, true, '2026-11-12');
+    expect(on).toEqual({ id: 'sport-link', enabled: true, since: '2026-11-12' });
+    expect(sportPointDays(on, days)).toEqual(['2026-11-12', '2026-11-15']);
+    expect(calculatePoints([], [], sportPointDays(on, days))).toBe(20);
+    expect(calculatePoints([{ id: 'c', habitId: 'h', date: '2026-11-12' }], [], ['2026-11-12', '2026-11-12'])).toBe(15);
+  });
+
+  it('houdt de startdatum bij uit- en weer aanzetten, zodat punten reproduceerbaar blijven', () => {
+    const on = toggleSportLink(defaultSportLink, true, '2026-11-12');
+    const off = toggleSportLink(on, false, '2026-11-20');
+    expect(off).toEqual({ id: 'sport-link', enabled: false, since: '2026-11-12' });
+    expect(sportPointDays(off, days)).toEqual([]);
+    expect(toggleSportLink(off, true, '2026-11-25')).toEqual({ id: 'sport-link', enabled: true, since: '2026-11-12' });
+  });
+
+  it('accepteert back-ups zonder instellingen en controleert instellingen als ze er zijn', () => {
+    const base = { goals: [], habits: [], habitChecks: [], quests: [] };
+    expect(() => validateSidequestBackup({ stores: base })).not.toThrow();
+    expect(() => validateSidequestBackup({ stores: { ...base, settings: [] } })).not.toThrow();
+    expect(() => validateSidequestBackup({ stores: { ...base, settings: [{ id: 'sport-link', enabled: true, since: '2026-11-12' }] } })).not.toThrow();
+    for (const bad of [
+      [{ id: 'sport-link', enabled: true, since: null }],
+      [{ id: 'sport-link', enabled: 'ja', since: null }],
+      [{ id: 'iets-anders', enabled: false, since: null }],
+      [{ id: 'sport-link', enabled: false, since: '2026-02-30' }],
+      'kapot'
+    ]) {
+      expect(() => validateSidequestBackup({ stores: { ...base, settings: bad } })).toThrow('ongeldige instellingen');
+    }
+  });
+});
+

@@ -23,6 +23,11 @@ import {
   calculatePoints,
   currentPeriodChecks,
   daysUntilDeadline,
+  defaultSportLink,
+  SPORT_POINTS_PER_DAY,
+  sportPointDays,
+  toggleSportLink,
+  type SportLink,
   DEFAULT_QUEST_CATEGORY,
   editQuest,
   HABIT_POINTS_PER_CHECK,
@@ -45,15 +50,23 @@ import { activityCalendar, badges, levelInfo, levelThreshold, pointsPerWeek, sid
 export const databaseConfig = {
   appId: 'sidequest',
   databaseName: 'personal-ecosystem-sidequest',
-  version: 1,
-  stores: ['goals', 'habits', 'habitChecks', 'quests'],
+  version: 2,
+  stores: ['goals', 'habits', 'habitChecks', 'quests', 'settings'],
   migrations: {
     1: (database: IDBDatabase) => {
       database.createObjectStore('goals', { keyPath: 'id' });
       database.createObjectStore('habits', { keyPath: 'id' });
       database.createObjectStore('habitChecks', { keyPath: 'id' });
       database.createObjectStore('quests', { keyPath: 'id' });
+    },
+    // PR 11: instellingen (koppeling met Sport).
+    2: (database: IDBDatabase) => {
+      database.createObjectStore('settings', { keyPath: 'id' });
     }
+  },
+  // Back-ups van schema 1 blijven herstelbaar: zonder instellingen staat de koppeling uit.
+  exportUpgrades: {
+    2: (stores: Record<string, { id: string }[]>) => ({ ...stores, settings: [] })
   }
 } as const;
 
@@ -81,14 +94,20 @@ export interface AppProps {
   basename?: string;
   /** Links naar de andere modules; leeg als losse app. */
   moduleLinks?: ModuleLink[];
+  /**
+   * Dagen (JJJJ-MM-DD) met minstens één training uit Sport, Kracht of Duur, aangeleverd door Personal Ecosystem.
+   * Alleen datums (DATA_OWNERSHIP.md). Ontbreekt in de losse app; dan is de koppeling niet beschikbaar.
+   */
+  trainingDays?: string[];
 }
 
-function App({ basename = '/', moduleLinks = [] }: AppProps = {}) {
+function App({ basename = '/', moduleLinks = [], trainingDays }: AppProps = {}) {
   const [database, setDatabase] = useState<LocalDatabase | null>(null);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [habits, setHabits] = useState<Habit[]>([]);
   const [checks, setChecks] = useState<HabitCheck[]>([]);
   const [quests, setQuests] = useState<Quest[]>([]);
+  const [sportLink, setSportLink] = useState<SportLink>(defaultSportLink);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   /** Quest-wijzigingen lopen na elkaar, zodat snel afvinken nooit een eerdere klik overschrijft. */
@@ -101,12 +120,14 @@ function App({ basename = '/', moduleLinks = [] }: AppProps = {}) {
   }
 
   async function refresh(db: LocalDatabase) {
-    const [nextGoals, nextHabits, nextChecks, nextQuests] = await Promise.all([
+    const [nextGoals, nextHabits, nextChecks, nextQuests, nextLink] = await Promise.all([
       db.list<Goal>('goals'),
       db.list<Habit>('habits'),
       db.list<HabitCheck>('habitChecks'),
-      db.list<Quest>('quests')
+      db.list<Quest>('quests'),
+      db.get<SportLink>('settings', 'sport-link')
     ]);
+    setSportLink(nextLink ?? defaultSportLink);
     setGoals(nextGoals.sort((a, b) => a.targetDate.localeCompare(b.targetDate)));
     setHabits(nextHabits.sort((a, b) => a.title.localeCompare(b.title)));
     setChecks(nextChecks.sort((a, b) => b.date.localeCompare(a.date)));
@@ -147,6 +168,8 @@ function App({ basename = '/', moduleLinks = [] }: AppProps = {}) {
     );
   }
 
+  const sportDays = sportPointDays(sportLink, trainingDays ?? []);
+
   if (loading) return <LoadingState />;
   if (!database) return <main className="main-content"><ErrorBanner message={error || 'Lokale opslag is niet beschikbaar.'} /></main>;
 
@@ -154,7 +177,7 @@ function App({ basename = '/', moduleLinks = [] }: AppProps = {}) {
     <BrowserRouter basename={basename}>
       <AppFrame appName="SIDEQUEST" appMark="✦" navigation={navigation} moduleLinks={moduleLinks}>
         <Routes>
-          <Route path="/" element={<Dashboard goals={goals} habits={habits} checks={checks} quests={quests} error={error} />} />
+          <Route path="/" element={<Dashboard goals={goals} habits={habits} checks={checks} quests={quests} sportDays={sportDays} sportLinked={sportLink.enabled && trainingDays !== undefined} error={error} />} />
           <Route
             path="/doelen"
             element={
@@ -196,10 +219,20 @@ function App({ basename = '/', moduleLinks = [] }: AppProps = {}) {
               />
             }
           />
-          <Route path="/voortgang" element={<ProgressPage habits={habits} checks={checks} quests={quests} error={error} />} />
+          <Route path="/voortgang" element={<ProgressPage habits={habits} checks={checks} quests={quests} sportDays={sportDays} error={error} />} />
           <Route
             path="/instellingen"
-            element={<SettingsPage database={database} onRestore={(data) => runStorageAction((db) => db.restore(data))} error={error} />}
+            element={
+              <SettingsPage
+                database={database}
+                onRestore={(data) => runStorageAction((db) => db.restore(data))}
+                sportLink={sportLink}
+                sportDays={sportDays}
+                available={trainingDays !== undefined}
+                onSportLink={(enabled) => runStorageAction((db) => db.put('settings', toggleSportLink(sportLink, enabled, todayKey())))}
+                error={error}
+              />
+            }
           />
         </Routes>
       </AppFrame>
@@ -212,19 +245,23 @@ function Dashboard({
   habits,
   checks,
   quests,
+  sportDays,
+  sportLinked,
   error
 }: {
   goals: Goal[];
   habits: Habit[];
   checks: HabitCheck[];
   quests: Quest[];
+  sportDays: string[];
+  sportLinked: boolean;
   error: string;
 }) {
   const today = todayKey();
   const activeGoals = goals.filter((goal) => goal.status === 'active');
   const todayHabits = habits.filter((habit) => !habit.archived);
   const activeQuests = sortActiveQuests(quests.filter((quest) => quest.status === 'active'));
-  const points = calculatePoints(checks, quests);
+  const points = calculatePoints(checks, quests, sportDays);
   const level = levelInfo(points);
   const recent = useMemo(
     () => [
@@ -340,7 +377,7 @@ function Dashboard({
           )}
         </Card>
       </div>
-      <div className="notice">Puntenregels: {HABIT_POINTS_PER_CHECK} punten per geregistreerde gewoontecheck, plus de vooraf ingestelde beloning bij een voltooide quest. Punten worden niet willekeurig gegenereerd.</div>
+      <div className="notice">Puntenregels: {HABIT_POINTS_PER_CHECK} punten per geregistreerde gewoontecheck, plus de vooraf ingestelde beloning bij een voltooide quest{sportLinked ? `, plus ${SPORT_POINTS_PER_DAY} punten per dag met een training (koppeling met Sport staat aan)` : ''}. Punten worden niet willekeurig gegenereerd.</div>
     </div>
   );
 }
@@ -846,13 +883,13 @@ function ActivityCalendar({ weeks }: { weeks: CalendarDay[][] }) {
   );
 }
 
-function ProgressPage({ habits, checks, quests, error }: { habits: Habit[]; checks: HabitCheck[]; quests: Quest[]; error: string }) {
+function ProgressPage({ habits, checks, quests, sportDays, error }: { habits: Habit[]; checks: HabitCheck[]; quests: Quest[]; sportDays: string[]; error: string }) {
   const today = todayKey();
-  const points = calculatePoints(checks, quests);
+  const points = calculatePoints(checks, quests, sportDays);
   const level = levelInfo(points);
-  const badgeList = useMemo(() => badges(habits, checks, quests), [habits, checks, quests]);
+  const badgeList = useMemo(() => badges(habits, checks, quests, sportDays), [habits, checks, quests, sportDays]);
   const stats = useMemo(() => sidequestStats(habits, checks, quests), [habits, checks, quests]);
-  const weeks = useMemo(() => pointsPerWeek(checks, quests, today), [checks, quests, today]);
+  const weeks = useMemo(() => pointsPerWeek(checks, quests, today, 8, sportDays), [checks, quests, today, sportDays]);
   const calendar = useMemo(() => activityCalendar(checks, quests, today), [checks, quests, today]);
   const earned = badgeList.filter((badge) => badge.earnedOn);
   const percent = (value: number | null) => (value === null ? '—' : `${Math.round(value * 100)}%`);
@@ -925,10 +962,18 @@ function ProgressPage({ habits, checks, quests, error }: { habits: Habit[]; chec
 function SettingsPage({
   database,
   onRestore,
+  sportLink,
+  sportDays,
+  available,
+  onSportLink,
   error
 }: {
   database: LocalDatabase;
   onRestore: (data: unknown) => Promise<boolean>;
+  sportLink: SportLink;
+  sportDays: string[];
+  available: boolean;
+  onSportLink: (enabled: boolean) => Promise<boolean>;
   error: string;
 }) {
   const [storageSize, setStorageSize] = useState<number | null>(null);
@@ -975,10 +1020,33 @@ function SettingsPage({
           <Field label="Herstel uit JSON"><input type="file" accept="application/json,.json" onChange={(event) => void importData(event.currentTarget.files?.[0])} /></Field>
         </div>
       </Card>
+      <Card title="Koppeling met Sport">
+        {available ? (
+          <>
+            <label className="list-item sport-link-toggle">
+              <span>
+                <span className="item-title">Punten voor trainingen</span>
+                <span className="item-subtitle">{SPORT_POINTS_PER_DAY} punten per dag waarop je minstens één training vastlegde in Sport, Kracht of Duur. Meerdere trainingen op één dag tellen één keer.</span>
+              </span>
+              <input type="checkbox" checked={sportLink.enabled} onChange={(event) => void onSportLink(event.target.checked)} />
+            </label>
+            {sportLink.since ? (
+              <p className="item-subtitle">
+                Telt trainingen vanaf {formatDate(sportLink.since)}{sportLink.enabled ? `: ${sportDays.length} ${sportDays.length === 1 ? 'dag' : 'dagen'}, ${sportDays.length * SPORT_POINTS_PER_DAY} punten.` : '. Staat nu uit; aanzetten telt weer vanaf dezelfde datum.'}
+              </p>
+            ) : (
+              <p className="item-subtitle">Staat uit. Als je aanzet, tellen alleen trainingen vanaf vandaag mee; oudere trainingen niet.</p>
+            )}
+            <p className="item-subtitle">SIDEQUEST krijgt hiervoor alleen de datums van je trainingen, geen sport, duur, afstand, route of hartslag.</p>
+          </>
+        ) : (
+          <p className="item-subtitle">Alleen beschikbaar in Personal Ecosystem, waar Sport, Kracht en Duur ook staan.</p>
+        )}
+      </Card>
       <Card title="PWA en voortgang">
         <PwaInstallButton />
         <p className="item-subtitle">Offline worden alleen appbestanden gecachet; je persoonlijke gegevens blijven in de lokale database.</p>
-        <p className="item-subtitle">Punten: 5 per gewoontecheck, plus de zelf ingestelde beloning per afgeronde quest. Een gewoontecheck kan per dag maar één keer worden geregistreerd.</p>
+        <p className="item-subtitle">Punten: 5 per gewoontecheck, plus de zelf ingestelde beloning per afgeronde quest, plus (alleen met de koppeling met Sport) {SPORT_POINTS_PER_DAY} per trainingsdag. Een gewoontecheck kan per dag maar één keer worden geregistreerd.</p>
       </Card>
       <Link className="text-button" to="/">← Terug naar overzicht</Link>
     </div>
