@@ -1,6 +1,6 @@
 # ADR 0018 — Herinneringen in de Hub: uitgesteld
 
-- **Status:** uitgesteld (2026-11-07); herbeoordelen bij aangetoonde aanvullende behoefte
+- **Status:** uitgesteld (2026-11-07); deels herzien door [ADR 0022](0022-herinneringen-binnen-de-app.md) (2026-11-18): afgeleide herinneringen binnen Personal Ecosystem voor eigen module-items, zonder opslag
 - **Besluit-ID:** H-5
 
 ## Context

@@ -1,47 +1,17 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
-import { openLocalDatabase } from '@ecosystem/storage';
 import { BarChart, Button, Card, EmptyState, ErrorBanner, Field, Heatmap, LineChart, PageHeader, ProgressRing, StatusPill } from '@ecosystem/ui';
-import { databaseConfig as hubConfig } from '@ecosystem/hub/App';
-import { databaseConfig as sportConfig } from '@ecosystem/sportapp/App';
-import { databaseConfig as questConfig } from '@ecosystem/sidequest/App';
-import type { Shortcut } from '@ecosystem/hub/domain';
-import type { Activity } from '@ecosystem/sportapp/domain';
-import type { Habit, HabitCheck, Quest } from '@ecosystem/sidequest/domain';
 import { calculatePoints } from '@ecosystem/sidequest/domain';
 import { levelInfo } from '@ecosystem/sidequest/progress';
-import { databaseConfig as lichaamConfig } from '../modules/lichaam/storage';
-import type { BodyDay } from '../modules/lichaam/domain';
-import { databaseConfig as dagboekConfig } from '../modules/dagboek/storage';
-import type { JournalEntry } from '../modules/dagboek/domain';
-import { databaseConfig as voedingConfig } from '../modules/voeding/storage';
-import type { FoodEntry } from '../modules/voeding/domain';
-import { databaseConfig as krachtConfig } from '../modules/kracht/storage';
-import type { Session as StrengthSession } from '../modules/kracht/domain';
-import { databaseConfig as duurConfig } from '../modules/duur/storage';
-import type { Workout as EnduranceWorkout } from '../modules/duur/domain';
+import type { Activity } from '@ecosystem/sportapp/domain';
+import type { Shortcut } from '@ecosystem/hub/domain';
+import type { Habit, HabitCheck, Quest } from '@ecosystem/sidequest/domain';
+import { emptyData, lastBackup, loadData, type DashboardData } from './data';
+import { RemindersCard } from '../reminders/RemindersCard';
+import { reminderInput } from '../reminders/input';
 import { checkHeatmap, dagboekWrittenToday, daysSince, duurWeekTotals, krachtSessionsThisWeek, greeting, habitsToday, lichaamFilledToday, localDateKey, pointsPerDay, sportWeek, topStreaks, voedingLoggedToday } from './summary';
 import { moveWidget, readLayout, toggleWidget, widgetLabels, writeLayout, type WidgetId, type WidgetLayout } from './widgets';
 import { describeWeather, forecastUrl, geocodingUrl, parseForecast, parseGeocoding, readLocation, trainingAdvice, writeLocation, type WeatherLocation, type WeatherNow } from './weather';
 
-interface DashboardData {
-  activities: Activity[];
-  habits: Habit[];
-  checks: HabitCheck[];
-  quests: Quest[];
-  shortcuts: Shortcut[];
-  /** Alleen datums van Lichaam-registraties; geen waarden (ADR 0020 § 2). */
-  lichaamDates: { date: string }[];
-  /** Alleen datums van Dagboek-notities; geen stemming of tekst. */
-  dagboekDates: { date: string }[];
-  /** Alleen datums van Voeding-registraties; geen producten of hoeveelheden. */
-  voedingDates: { date: string }[];
-  /** Alleen datums van Kracht-trainingen; geen oefeningen of gewichten. */
-  krachtDates: { date: string }[];
-  /** Alleen datum, afstand en duur van Duur-trainingen; geen routes of hartslag. */
-  duurTotals: { date: string; distanceM: number | null; durationSec: number }[];
-}
-
-const emptyData: DashboardData = { activities: [], habits: [], checks: [], quests: [], shortcuts: [], lichaamDates: [], dagboekDates: [], voedingDates: [], krachtDates: [], duurTotals: [] };
 const externalApps = [
   { title: 'Samen Thuis', url: 'https://kesga44-jpg.github.io/Samen-thuis/' },
   { title: 'Coach', url: 'https://kesga44-jpg.github.io/Coach/' }
@@ -56,54 +26,10 @@ function displayName(): string {
   }
 }
 
-function lastBackup(): string {
-  try {
-    return localStorage.getItem('personal-ecosystem.backup.last-export') ?? '';
-  } catch {
-    return '';
-  }
-}
-
-/** Leest alleen samenvattingen uit de modules (ADR 0020 § 2); het dashboard schrijft nooit in andere modules. */
-async function loadData(): Promise<DashboardData> {
-  const [hub, sport, quest, lichaam, dagboek, voeding, kracht, duur] = await Promise.all([
-    openLocalDatabase(hubConfig),
-    openLocalDatabase(sportConfig),
-    openLocalDatabase(questConfig),
-    openLocalDatabase(lichaamConfig),
-    openLocalDatabase(dagboekConfig),
-    openLocalDatabase(voedingConfig),
-    openLocalDatabase(krachtConfig),
-    openLocalDatabase(duurConfig)
-  ]);
-  try {
-    const [shortcuts, activities, habits, checks, quests, bodyDays, journal, food, strength, endurance] = await Promise.all([
-      hub.list<Shortcut>('shortcuts'),
-      sport.list<Activity>('activities'),
-      quest.list<Habit>('habits'),
-      quest.list<HabitCheck>('habitChecks'),
-      quest.list<Quest>('quests'),
-      lichaam.list<BodyDay>('days'),
-      dagboek.list<JournalEntry>('entries'),
-      voeding.list<FoodEntry>('entries'),
-      kracht.list<StrengthSession>('sessions'),
-      duur.list<EnduranceWorkout>('workouts')
-    ]);
-    return { activities, habits, checks, quests, shortcuts, lichaamDates: bodyDays.map((day) => ({ date: day.date })), dagboekDates: journal.map((entry) => ({ date: entry.date })), voedingDates: food.map((entry) => ({ date: entry.date })), krachtDates: strength.map((session) => ({ date: session.date })), duurTotals: endurance.map((workout) => ({ date: workout.date, distanceM: workout.distanceM, durationSec: workout.durationSec })) };
-  } finally {
-    hub.close();
-    sport.close();
-    quest.close();
-    lichaam.close();
-    dagboek.close();
-    voeding.close();
-    kracht.close();
-    duur.close();
-  }
-}
 
 export default function WidgetDashboard() {
   const [data, setData] = useState<DashboardData>(emptyData);
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState('');
   const [layout, setLayout] = useState<WidgetLayout>(() => readLayout());
   const [editing, setEditing] = useState(false);
@@ -113,7 +39,11 @@ export default function WidgetDashboard() {
   useEffect(() => {
     let active = true;
     loadData()
-      .then((next) => active && setData(next))
+      .then((next) => {
+        if (!active) return;
+        setData(next);
+        setLoaded(true);
+      })
       .catch((cause: unknown) => active && setError(cause instanceof Error ? cause.message : 'Gegevens konden niet worden geladen.'));
     return () => {
       active = false;
@@ -152,6 +82,7 @@ export default function WidgetDashboard() {
         action={<Button variant="secondary" onClick={() => setEditing((value) => !value)} aria-pressed={editing}>{editing ? 'Klaar' : 'Widgets aanpassen'}</Button>}
       />
       {error && <ErrorBanner message={error} />}
+      <RemindersCard input={reminderInput(data)} now={now} today={today} loaded={loaded} />
       <div className="widget-grid">
         {visible.map((id, index) => {
           const hidden = layout.hidden.includes(id);

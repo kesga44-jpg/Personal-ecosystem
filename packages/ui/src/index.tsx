@@ -13,6 +13,10 @@ export interface ModuleLink {
   label: string;
   icon: string;
   active: boolean;
+  /** Optionele teller naast de link, bijv. het aantal herinneringen. */
+  badge?: number;
+  /** Voorleestekst voor de teller, bijv. "3 herinneringen". */
+  badgeLabel?: string;
 }
 
 export function AppFrame({
@@ -74,9 +78,16 @@ function ModuleSwitcher({ links, compact = false }: { links: ModuleLink[]; compa
   return (
     <nav className={`module-switcher${compact ? ' module-switcher-compact' : ''}`} aria-label="Modules">
       {links.map((link) => (
-        <a key={link.href} href={link.href} className={`module-link${link.active ? ' active' : ''}`} aria-current={link.active ? 'page' : undefined}>
+        <a
+          key={link.href}
+          href={link.href}
+          className={`module-link${link.active ? ' active' : ''}`}
+          aria-current={link.active ? 'page' : undefined}
+          aria-label={link.badge ? `${link.label}, ${link.badgeLabel ?? link.badge}` : undefined}
+        >
           <span aria-hidden="true">{link.icon}</span>
           {link.label}
+          {link.badge ? <span className="module-badge" aria-hidden="true">{link.badge}</span> : null}
         </a>
       ))}
     </nav>

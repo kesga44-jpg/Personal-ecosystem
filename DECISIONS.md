@@ -44,7 +44,7 @@ Ontwerp: [docs/hub/HUB_DESIGN.md](docs/hub/HUB_DESIGN.md) — in principe goedge
 | H-2 | Eigen snelkoppelingen | ✅ Akkoord | Gescheiden van het register; officiële apps alleen via register + PR | [0015](docs/adr/0015-hub-register-en-eigen-snelkoppelingen.md) |
 | H-3 | Gedeelde werkruimtes | ✅ Akkoord | Alleen gedeelde startpagina's; nooit toegang tot app-data; laatste onderdeel F3 | [0016](docs/adr/0016-hub-werkruimtes.md) |
 | H-4 | Inloggen en SSO | ✅ Akkoord | Per app inloggen, lange veilige sessies; OAuth 2.1 alleen als spike; niets in Supabase configureren zonder toestemming; eerst Free-plan, stabiliteit, voorwaarden bewijzen | [0017](docs/adr/0017-hub-inloggen-en-sso-spike.md) |
-| H-5 | Herinneringen | ⏸ Uitgesteld | Eerst overlap met Samen Thuis onderzoeken; geen dubbele functie of opslag | [0018](docs/adr/0018-hub-herinneringen-uitgesteld.md) |
+| H-5 | Herinneringen | ⏸ Uitgesteld (deels herzien door B-23) | Eerst overlap met Samen Thuis onderzoeken; geen dubbele functie of opslag | [0018](docs/adr/0018-hub-herinneringen-uitgesteld.md) |
 | H-6 | Iconen | ✅ Akkoord | Ingebouwde SVG, emoji, kleuren; geen uploads of nieuwe bucket | [0015](docs/adr/0015-hub-register-en-eigen-snelkoppelingen.md) |
 | H-7 | GitHub | ✅ Eigenaar regelt repo en koppeling | Tot dan alleen ontwerp en lokale voorbereiding; geen PR's of repoacties claimen | — |
 | H-8 | zod en lucide-react | ✅ Akkoord | Alleen indien noodzakelijk; licenties gedocumenteerd en gecontroleerd | — |
@@ -68,6 +68,7 @@ Ontwerp: [docs/hub/HUB_DESIGN.md](docs/hub/HUB_DESIGN.md) — in principe goedge
 | B-20 | Samen Thuis-migratie `20261014_household_state_sync` | ⏸ Uitgesteld door eigenaar | Inventarisatie 2026-11-16 (alleen lezen): alleen deze migratie ontbreekt in project A; zonder deze migratie werkt de huishoudsync niet. Uitvoeren pas na back-up en expliciet akkoord | — |
 | B-21 | Accounts voor Personal Ecosystem | ✅ Akkoord (ontwerp) | Zelf aanmaken met e-mail + wachtwoord + verplichte TOTP; inhoud eind-tot-eind versleuteld in de browser; schema `pe` in project A; livegang pas na poorten P-1 t/m P-6 | [0021](docs/adr/0021-accounts-met-eind-tot-eind-versleuteling.md) |
 | B-22 | Externe gegevens | ✅ Akkoord | Open-Meteo (weer), Open Food Facts (voeding), wger (oefeningen), OpenStreetMap (kaart); alleen gratis, voorwaarden per dienst in API_CATALOG.md; geen persoons- of gezondheidsgegevens naar buiten | — |
+| B-23 | Herinneringen binnen de app | ✅ Akkoord (2026-11-18) | Alleen binnen Personal Ecosystem, alleen eigen module-items, afgeleid zonder opslag; blok op het dashboard en teller in de modulebalk; aan/uit en "vandaag verbergen" per apparaat; geen meldingen buiten de app (web-push apart besluit) | [0022](docs/adr/0022-herinneringen-binnen-de-app.md) |
 
 ## Ontbrekende informatie (nog steeds open)
 

@@ -61,4 +61,16 @@ describe('gescheiden opslag per module', () => {
       }
     });
   }
+
+  it('herinneringen en dashboardgegevens lezen alleen en doen geen netwerkverzoeken (ADR 0022)', () => {
+    const files = [
+      ...readdirSync(join(process.cwd(), 'apps', 'ecosystem', 'src', 'reminders')).filter((name) => /\.(ts|tsx)$/.test(name) && !/\.test\./.test(name)).map((name) => join('reminders', name)),
+      join('dashboard', 'data.ts')
+    ];
+    for (const file of files) {
+      const source = readFileSync(join(process.cwd(), 'apps', 'ecosystem', 'src', file), 'utf8');
+      expect(/fetch\(|XMLHttpRequest|sendBeacon|WebSocket|Notification|serviceWorker|PushManager/.test(source), `${file} doet een netwerkverzoek of melding`).toBe(false);
+      expect(/\.(put|delete|restore|clear)\(/.test(source), `${file} schrijft in een moduledatabase`).toBe(false);
+    }
+  });
 });

@@ -13,7 +13,7 @@ Na [ADR 0020](docs/adr/0020-een-app-met-modules.md) draaien alle modules in éé
 
 | Module | Lokale bron van waarheid | Wat andere modules mogen lezen (leescontract) |
 |---|---|---|
-| Dashboard | IndexedDB `personal-ecosystem-hub`; weergavevoorkeuren in localStorage | Niets |
+| Dashboard | IndexedDB `personal-ecosystem-hub`; weergavevoorkeuren in localStorage, waaronder herinneringsinstellingen (`personal-ecosystem.reminders.settings`: welke soorten aan staan en wat vandaag verborgen is; geen herinneringen zelf, ADR 0022) | Niets |
 | Sport | IndexedDB `personal-ecosystem-sport` | Dashboard: aantallen, totale duur en afstand per periode. SIDEQUEST (alleen als de koppeling aan staat): ID, datum, sporttype en duur per activiteit |
 | SIDEQUEST | IndexedDB `personal-ecosystem-sidequest` | Dashboard: aantallen, streaks, punten |
 | Lichaam & gezondheid | IndexedDB `personal-ecosystem-lichaam` (stores `days`, `profile`) | Dashboard: alleen of er vandaag iets is ingevuld (`lichaamFilledToday`; het dashboard houdt alleen datums vast). Later, apart besluit: Sport-coach leest laatste slaap- en hersteltrend |

@@ -573,6 +573,47 @@ test('SIDEQUEST: voortgang toont level, badges, statistieken en kalender uit eig
   expect(errors).toEqual([]);
 });
 
+test('herinneringen: blok op het dashboard, teller in de modulebalk, vandaag verbergen en instellen', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto(`${base}/`);
+  await expect(page.getByText('Geen herinneringen voor nu.')).toBeVisible();
+
+  await page.goto(`${base}/quest/gewoontes`);
+  await page.getByRole('button', { name: '＋ Gewoonte maken' }).click();
+  await page.getByLabel('Gewoonte').fill('Wandelen');
+  await page.getByRole('button', { name: 'Gewoonte opslaan' }).click();
+  await expect(page.getByRole('button', { name: 'Vink vandaag af' })).toBeVisible();
+
+  const dashboardLink = page.locator('.sidebar .module-link').filter({ hasText: 'Dashboard' });
+  await page.goto(`${base}/quest`);
+  await expect(dashboardLink.locator('.module-badge')).toHaveText('2');
+  await expect(dashboardLink).toHaveAccessibleName('Dashboard, 2 herinneringen');
+
+  await page.goto(`${base}/`);
+  const card = page.locator('.reminders-card');
+  await expect(card.getByRole('heading', { name: 'Herinneringen · 2' })).toBeVisible();
+  await expect(card.getByRole('link', { name: '1 gewoonte nog af te vinken' })).toHaveAttribute('href', '/quest/gewoontes');
+  await expect(card.getByRole('link', { name: 'Nog geen back-up gemaakt' })).toBeVisible();
+
+  await card.getByRole('button', { name: '1 gewoonte nog af te vinken vandaag verbergen' }).click();
+  await expect(card.getByRole('heading', { name: 'Herinneringen · 1' })).toBeVisible();
+  await expect(dashboardLink.locator('.module-badge')).toHaveText('1');
+  await expect(dashboardLink).toHaveAccessibleName('Dashboard, 1 herinnering');
+
+  await card.getByRole('button', { name: 'Instellen' }).click();
+  await card.getByRole('checkbox', { name: 'Back-up ouder dan 14 dagen' }).uncheck();
+  await card.getByRole('button', { name: 'Klaar' }).click();
+  await expect(page.getByText('Geen herinneringen voor nu.')).toBeVisible();
+  await expect(dashboardLink.locator('.module-badge')).toHaveCount(0);
+
+  await page.reload();
+  await expect(page.getByText('Geen herinneringen voor nu.')).toBeVisible();
+  await page.goto(`${base}/quest/gewoontes`);
+  await page.getByRole('button', { name: 'Vink vandaag af' }).click();
+  await expect(page.getByRole('button', { name: 'Vandaag gedaan' })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 for (const width of [375, 768, 1280]) {
   test(`Personal Ecosystem past op ${width}px zonder horizontaal scrollen`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });

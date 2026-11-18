@@ -1,10 +1,11 @@
-import { StrictMode, Suspense, lazy, type ComponentType } from 'react';
+import { StrictMode, Suspense, lazy, useEffect, useState, type ComponentType } from 'react';
 import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import '@ecosystem/ui/styles.css';
 import '@ecosystem/hub/theme.css';
 import { LoadingState, type ModuleLink } from '@ecosystem/ui';
 import { moduleForPath, moduleLinksFor, type ModuleId } from './modules';
+import { REMINDERS_CHANGED } from './reminders/events';
 
 let updateSW: (reloadPage?: boolean) => Promise<void> = async () => {};
 updateSW = registerSW({
@@ -30,10 +31,39 @@ const loaders: Record<ModuleId, () => Promise<{ default: ComponentType<{ links: 
 const active = moduleForPath(window.location.pathname);
 const ActiveModule = lazy(loaders[active]);
 
+/** Teller bij Dashboard in de modulebalk: aantal herinneringen (ADR 0022). Wordt pas na het laden van de module berekend. */
+function Shell() {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    const run = () => {
+      void import('./reminders/input')
+        .then((module) => module.countVisibleReminders())
+        .then((next) => alive && setCount(next));
+    };
+    const first = window.setTimeout(run, 800);
+    const interval = window.setInterval(() => document.visibilityState === 'visible' && run(), 5 * 60_000);
+    const onVisible = () => document.visibilityState === 'visible' && run();
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener(REMINDERS_CHANGED, run);
+    return () => {
+      alive = false;
+      window.clearTimeout(first);
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener(REMINDERS_CHANGED, run);
+    };
+  }, []);
+  const links = moduleLinksFor(active).map((link) =>
+    link.href === '/' && count > 0 ? { ...link, badge: count, badgeLabel: `${count} ${count === 1 ? 'herinnering' : 'herinneringen'}` } : link
+  );
+  return <ActiveModule links={links} />;
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Suspense fallback={<LoadingState />}>
-      <ActiveModule links={moduleLinksFor(active)} />
+      <Shell />
     </Suspense>
   </StrictMode>
 );
