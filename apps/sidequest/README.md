@@ -12,7 +12,7 @@ npm test
 npm run test:e2e
 ```
 
-In de app kun je doelen met categorie/deadline/progressie vastleggen, dagelijkse of wekelijkse gewoontes registreren en quests met stappen en een vooraf gekozen puntenbeloning afronden. Punten worden berekend uit geregistreerde checks (5 per check) en eenmaal uit afgeronde questbeloningen. Gemiste dagen verlagen geen punten.
+In de app kun je doelen met categorie/deadline/progressie vastleggen, dagelijkse of wekelijkse gewoontes registreren en quests afronden met een categorie, een optionele deadline, een vooraf gekozen puntenbeloning en óf een teller óf benoemde stappen die je afvinkt (max. 30). Actieve quests staan op eerstvolgende deadline en zijn te filteren op categorie en te bewerken; een voltooide quest ligt vast. Punten worden berekend uit geregistreerde checks (5 per check) en eenmaal uit afgeronde questbeloningen. Gemiste dagen verlagen geen punten.
 
 SIDEQUEST-data staat in de IndexedDB-database `personal-ecosystem-sidequest`; export en herstel zijn appgebonden en herstel vraagt bevestiging. Doelen, gewoontes en quests worden niet gedeeld met huishoud-challenges in Samen Thuis.
 
