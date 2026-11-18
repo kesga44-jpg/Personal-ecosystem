@@ -687,10 +687,70 @@ test('dashboard: weekreview toont vorige week (ma–zo) met verschil t.o.v. de w
   expect(errors).toEqual([]);
 });
 
+test('Sport: weekdoel over Sport en Duur, training plannen en status volgt uit vastgelegde trainingen', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto(`${base}/sport/planning`);
+  await page.getByLabel('Trainingen per week').fill('2');
+  await page.getByRole('button', { name: 'Weekdoel opslaan' }).click();
+  await expect(page.getByText('Weekdoel opgeslagen')).toBeVisible();
+  await expect(page.getByText('Trainingen: 0 van 2')).toBeVisible();
+
+  await page.getByLabel('Naam').fill('Hardlopen');
+  await page.getByLabel('Minuten', { exact: true }).fill('30');
+  await page.getByRole('button', { name: 'Inplannen' }).click();
+  const todayCard = page.locator('.plan-day.today');
+  await expect(todayCard.getByText('Hardlopen · 30 min')).toBeVisible();
+  await expect(todayCard.locator('.status-pill')).toHaveText('Gepland');
+
+  await page.goto(`${base}/sport/activiteiten`);
+  await page.getByRole('button', { name: '＋ Toevoegen' }).click();
+  await page.getByLabel('Duur (minuten)').fill('30');
+  await page.getByRole('button', { name: /Activiteit opslaan/ }).click();
+  await expect(page.getByText('30 min').first()).toBeVisible();
+
+  await page.goto(`${base}/duur/toevoegen`);
+  await page.getByPlaceholder('45:00').fill('20:00');
+  await page.getByRole('button', { name: 'Opslaan' }).click();
+  await expect(page).toHaveURL(/\/duur\/activiteit\//);
+
+  await page.goto(`${base}/sport/planning`);
+  await expect(page.locator('.plan-day.today .status-pill')).toHaveText('Gedaan');
+  await expect(page.locator('.plan-day.today')).toContainText('2 trainingen · 50 min');
+  await page.goto(`${base}/sport`);
+  const goal = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Weekdoel' }) });
+  await expect(goal.getByText('Trainingen: 2 van 2')).toBeVisible();
+  await expect(goal.getByText('Gehaald')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('een Sport-back-up van schema 1 (oud adres) is nog te herstellen', async ({ page }, testInfo) => {
+  const oldExport = {
+    format: 'personal-ecosystem-local-data',
+    appId: 'sport',
+    schemaVersion: 1,
+    exportedAt: '2026-11-10T08:00:00.000Z',
+    stores: {
+      activities: [{ id: 'oud', startedAt: '2026-11-09T07:00:00.000Z', type: 'run', durationMinutes: 33, distanceKm: 5, notes: 'Van het oude adres' }],
+      trainings: []
+    }
+  };
+  const path = testInfo.outputPath('sport-v1.json');
+  await writeFile(path, JSON.stringify(oldExport));
+  await page.goto(`${base}/back-up`);
+  await page.getByLabel('Back-upbestand (JSON)').setInputFiles(path);
+  await expect(page.getByText('Bestand is in orde.')).toBeVisible();
+  await page.getByRole('button', { name: 'Herstel deze module' }).click();
+  await expect(page.getByText('Herstel voltooid.')).toBeVisible();
+  await page.goto(`${base}/sport/activiteiten`);
+  await expect(page.getByText('33 min').first()).toBeVisible();
+  await page.goto(`${base}/sport/planning`);
+  await expect(page.getByRole('heading', { level: 1, name: 'Planning' })).toBeVisible();
+});
+
 for (const width of [375, 768, 1280]) {
   test(`Personal Ecosystem past op ${width}px zonder horizontaal scrollen`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    for (const path of ['/', '/sport', '/quest', '/quest/quests', '/quest/voortgang', '/lichaam', '/lichaam/invoeren', '/voeding', '/voeding/toevoegen', '/kracht', '/kracht/training', '/kracht/oefeningen', '/kracht/schemas/nieuw', '/duur', '/duur/importeren', '/duur/toevoegen', '/dagboek', '/dagboek/schrijven', '/dagboek/archief', '/back-up']) {
+    for (const path of ['/', '/sport', '/sport/planning', '/quest', '/quest/quests', '/quest/voortgang', '/lichaam', '/lichaam/invoeren', '/voeding', '/voeding/toevoegen', '/kracht', '/kracht/training', '/kracht/oefeningen', '/kracht/schemas/nieuw', '/duur', '/duur/importeren', '/duur/toevoegen', '/dagboek', '/dagboek/schrijven', '/dagboek/archief', '/back-up']) {
       await page.goto(`${base}${path}`);
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
