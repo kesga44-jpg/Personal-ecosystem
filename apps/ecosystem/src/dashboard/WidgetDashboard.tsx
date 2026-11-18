@@ -15,7 +15,9 @@ import { databaseConfig as voedingConfig } from '../modules/voeding/storage';
 import type { FoodEntry } from '../modules/voeding/domain';
 import { databaseConfig as krachtConfig } from '../modules/kracht/storage';
 import type { Session as StrengthSession } from '../modules/kracht/domain';
-import { checkHeatmap, dagboekWrittenToday, daysSince, krachtSessionsThisWeek, greeting, habitsToday, lichaamFilledToday, localDateKey, pointsPerDay, sportWeek, topStreaks, voedingLoggedToday } from './summary';
+import { databaseConfig as duurConfig } from '../modules/duur/storage';
+import type { Workout as EnduranceWorkout } from '../modules/duur/domain';
+import { checkHeatmap, dagboekWrittenToday, daysSince, duurWeekTotals, krachtSessionsThisWeek, greeting, habitsToday, lichaamFilledToday, localDateKey, pointsPerDay, sportWeek, topStreaks, voedingLoggedToday } from './summary';
 import { moveWidget, readLayout, toggleWidget, widgetLabels, writeLayout, type WidgetId, type WidgetLayout } from './widgets';
 import { describeWeather, forecastUrl, geocodingUrl, parseForecast, parseGeocoding, readLocation, trainingAdvice, writeLocation, type WeatherLocation, type WeatherNow } from './weather';
 
@@ -33,9 +35,11 @@ interface DashboardData {
   voedingDates: { date: string }[];
   /** Alleen datums van Kracht-trainingen; geen oefeningen of gewichten. */
   krachtDates: { date: string }[];
+  /** Alleen datum, afstand en duur van Duur-trainingen; geen routes of hartslag. */
+  duurTotals: { date: string; distanceM: number | null; durationSec: number }[];
 }
 
-const emptyData: DashboardData = { activities: [], habits: [], checks: [], quests: [], shortcuts: [], lichaamDates: [], dagboekDates: [], voedingDates: [], krachtDates: [] };
+const emptyData: DashboardData = { activities: [], habits: [], checks: [], quests: [], shortcuts: [], lichaamDates: [], dagboekDates: [], voedingDates: [], krachtDates: [], duurTotals: [] };
 const externalApps = [
   { title: 'Samen Thuis', url: 'https://kesga44-jpg.github.io/Samen-thuis/' },
   { title: 'Coach', url: 'https://kesga44-jpg.github.io/Coach/' }
@@ -60,17 +64,18 @@ function lastBackup(): string {
 
 /** Leest alleen samenvattingen uit de modules (ADR 0020 § 2); het dashboard schrijft nooit in andere modules. */
 async function loadData(): Promise<DashboardData> {
-  const [hub, sport, quest, lichaam, dagboek, voeding, kracht] = await Promise.all([
+  const [hub, sport, quest, lichaam, dagboek, voeding, kracht, duur] = await Promise.all([
     openLocalDatabase(hubConfig),
     openLocalDatabase(sportConfig),
     openLocalDatabase(questConfig),
     openLocalDatabase(lichaamConfig),
     openLocalDatabase(dagboekConfig),
     openLocalDatabase(voedingConfig),
-    openLocalDatabase(krachtConfig)
+    openLocalDatabase(krachtConfig),
+    openLocalDatabase(duurConfig)
   ]);
   try {
-    const [shortcuts, activities, habits, checks, quests, bodyDays, journal, food, strength] = await Promise.all([
+    const [shortcuts, activities, habits, checks, quests, bodyDays, journal, food, strength, endurance] = await Promise.all([
       hub.list<Shortcut>('shortcuts'),
       sport.list<Activity>('activities'),
       quest.list<Habit>('habits'),
@@ -79,9 +84,10 @@ async function loadData(): Promise<DashboardData> {
       lichaam.list<BodyDay>('days'),
       dagboek.list<JournalEntry>('entries'),
       voeding.list<FoodEntry>('entries'),
-      kracht.list<StrengthSession>('sessions')
+      kracht.list<StrengthSession>('sessions'),
+      duur.list<EnduranceWorkout>('workouts')
     ]);
-    return { activities, habits, checks, quests, shortcuts, lichaamDates: bodyDays.map((day) => ({ date: day.date })), dagboekDates: journal.map((entry) => ({ date: entry.date })), voedingDates: food.map((entry) => ({ date: entry.date })), krachtDates: strength.map((session) => ({ date: session.date })) };
+    return { activities, habits, checks, quests, shortcuts, lichaamDates: bodyDays.map((day) => ({ date: day.date })), dagboekDates: journal.map((entry) => ({ date: entry.date })), voedingDates: food.map((entry) => ({ date: entry.date })), krachtDates: strength.map((session) => ({ date: session.date })), duurTotals: endurance.map((workout) => ({ date: workout.date, distanceM: workout.distanceM, durationSec: workout.durationSec })) };
   } finally {
     hub.close();
     sport.close();
@@ -90,6 +96,7 @@ async function loadData(): Promise<DashboardData> {
     dagboek.close();
     voeding.close();
     kracht.close();
+    duur.close();
   }
 }
 
@@ -123,6 +130,7 @@ export default function WidgetDashboard() {
     streaks: <StreaksWidget data={data} today={today} />,
     points: <PointsWidget data={data} today={today} />,
     lichaam: <LichaamWidget filled={lichaamFilledToday(data.lichaamDates, today)} />,
+    duur: <DuurWidget totals={duurWeekTotals(data.duurTotals, today)} />,
     kracht: <KrachtWidget count={krachtSessionsThisWeek(data.krachtDates, today)} />,
     voeding: <VoedingWidget logged={voedingLoggedToday(data.voedingDates, today)} />,
     dagboek: <DagboekWidget written={dagboekWrittenToday(data.dagboekDates, today)} />,
@@ -241,6 +249,20 @@ function LichaamWidget({ filled }: { filled: boolean }) {
   );
 }
 
+function DuurWidget({ totals }: { totals: { sessions: number; km: number; minutes: number } }) {
+  return (
+    <>
+      <StatusPill tone={totals.sessions ? 'good' : 'neutral'}>{totals.sessions ? `${totals.sessions} ${totals.sessions === 1 ? 'training' : 'trainingen'} deze week` : 'Deze week nog geen duurtraining'}</StatusPill>
+      {totals.sessions > 0 && <p className="item-title">{totals.km.toLocaleString('nl-NL', { maximumFractionDigits: 1 })} km · {totals.minutes} min</p>}
+      <p className="item-subtitle">Routes en hartslag blijven in Duur. Het dashboard ziet alleen de totalen van deze week.</p>
+      <div className="chip-row">
+        <a className="chip" href="/duur/importeren">⇧ Importeren</a>
+        <a className="chip" href="/duur">Overzicht</a>
+      </div>
+    </>
+  );
+}
+
 function KrachtWidget({ count }: { count: number }) {
   return (
     <>
@@ -308,6 +330,7 @@ function AppsWidget({ shortcuts }: { shortcuts: Shortcut[] }) {
     <div className="chip-row">
       <a className="chip" href="/sport">↗ Sport</a>
       <a className="chip" href="/kracht">▲ Kracht</a>
+      <a className="chip" href="/duur">〰 Duur</a>
       <a className="chip" href="/quest">✦ SIDEQUEST</a>
       <a className="chip" href="/lichaam">♥ Lichaam</a>
       <a className="chip" href="/voeding">◔ Voeding</a>

@@ -1,5 +1,6 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
+import { fit, gpx, tcx } from '../../apps/ecosystem/src/modules/duur/fixtures';
 
 const base = 'http://127.0.0.1:4177';
 
@@ -27,6 +28,10 @@ for (const [path, text] of [
   ['/kracht/schemas', 'Schema’s'],
   ['/kracht/oefeningen', 'Oefeningen'],
   ['/kracht/voortgang', 'Voortgang'],
+  ['/duur', 'Duursport'],
+  ['/duur/importeren', 'Importeren'],
+  ['/duur/toevoegen', 'Training toevoegen'],
+  ['/duur/instellingen', 'Instellingen'],
   ['/dagboek', 'Hoe was je dag?'],
   ['/dagboek/schrijven', 'Schrijven'],
   ['/back-up', 'Back-up']
@@ -373,10 +378,99 @@ test('Kracht: oefening uit wger overnemen met licentie en auteur, en fouten duid
   await expect(page.getByRole('status').filter({ hasText: 'niet bereikbaar' })).toBeVisible();
 });
 
+// Lege kaarttegel: E2E-tests mogen geen verkeer naar tile.openstreetmap.org veroorzaken.
+const EMPTY_PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
+
+async function stubTiles(page: Page): Promise<string[]> {
+  const tiles: string[] = [];
+  await page.route('https://tile.openstreetmap.org/**', (route) => {
+    tiles.push(route.request().url());
+    return route.fulfill({ status: 200, contentType: 'image/png', body: EMPTY_PNG });
+  });
+  return tiles;
+}
+
+test('Duur: FIT, TCX en GPX importeren, dubbel herkennen, route met kaart en dashboard ziet alleen totalen', async ({ page }) => {
+  const errors = collectErrors(page);
+  const tiles = await stubTiles(page);
+  await page.goto(`${base}/duur/importeren`);
+  await page.getByLabel('Bestanden kiezen').setInputFiles([
+    { name: 'loop.fit', mimeType: 'application/octet-stream', buffer: Buffer.from(fit()) },
+    { name: 'rit.tcx', mimeType: 'application/xml', buffer: Buffer.from(tcx()) },
+    { name: 'wandeling.gpx', mimeType: 'application/gpx+xml', buffer: Buffer.from(gpx('hiking')) }
+  ]);
+  await expect(page.getByText('loop.fit')).toBeVisible();
+  await expect(page.getByLabel('Sport voor loop.fit')).toHaveValue('hardlopen');
+  await expect(page.getByLabel('Sport voor rit.tcx')).toHaveValue('fietsen');
+  await expect(page.getByLabel('Sport voor wandeling.gpx')).toHaveValue('wandelen');
+  await page.getByRole('button', { name: '3 trainingen opslaan' }).click();
+  await expect(page).toHaveURL(`${base}/duur/geschiedenis`);
+  await expect(page.getByRole('button', { name: /^Bekijk / })).toHaveCount(3);
+
+  await page.goto(`${base}/duur/importeren`);
+  await page.getByLabel('Bestanden kiezen').setInputFiles({ name: 'wandeling-kopie.gpx', mimeType: 'application/gpx+xml', buffer: Buffer.from(gpx('hiking')) });
+  await expect(page.getByText('Al geïmporteerd')).toBeVisible();
+  await expect(page.getByRole('button', { name: /opslaan/ })).toBeDisabled();
+
+  await page.goto(`${base}/duur/geschiedenis`);
+  await page.getByRole('button', { name: 'Hardlopen', exact: true }).click();
+  await page.getByRole('button', { name: /^Bekijk Hardlopen/ }).click();
+  await expect(page.locator('.metric').filter({ hasText: 'Afstand' }).locator('.metric-value')).toHaveText('1 km');
+  await expect(page.locator('.metric').filter({ hasText: 'Tempo' }).locator('.metric-value')).toHaveText('4:50 /km');
+  await expect(page.getByRole('img', { name: /Route van Hardlopen/ })).toBeVisible();
+  await expect(page.locator('.leaflet-control-attribution')).toContainText('OpenStreetMap');
+  await expect.poll(() => tiles.length).toBeGreaterThan(0);
+  expect(tiles.every((url) => /^https:\/\/tile\.openstreetmap\.org\/\d+\/\d+\/\d+\.png$/.test(url))).toBe(true);
+  await expect(page.locator('.split-table tbody tr')).toHaveCount(1);
+  await expect(page.getByRole('img', { name: 'Hartslag over de training' })).toBeVisible();
+  await expect(page.getByText('Stel je maximale hartslag in')).toBeVisible();
+
+  await page.goto(`${base}/duur/instellingen`);
+  await page.getByLabel('Maximale hartslag (bpm)').fill('300');
+  await page.getByRole('button', { name: 'Opslaan' }).click();
+  await expect(page.getByRole('alert')).toContainText('120 en 230');
+  await page.getByLabel('Maximale hartslag (bpm)').fill('190');
+  await page.getByRole('button', { name: 'Opslaan' }).click();
+  await expect(page.getByText('Opgeslagen')).toBeVisible();
+  await page.goto(`${base}/duur/geschiedenis`);
+  await page.getByRole('button', { name: /^Bekijk Hardlopen/ }).click();
+  await expect(page.getByLabel('Tijd per hartslagzone')).toContainText('Zone 3 · tempo');
+
+  await page.goto(base);
+  const widget = page.locator('.widget').filter({ has: page.getByRole('heading', { name: 'Duur' }) });
+  await expect(widget).toContainText('3 trainingen deze week');
+  await expect(widget).not.toContainText('♥');
+  await expect(widget).not.toContainText('52,');
+  expect(errors).toEqual([]);
+});
+
+test('Duur: training zelf invoeren, fout tonen, aanpassen en verwijderen', async ({ page }) => {
+  await page.goto(`${base}/duur/toevoegen`);
+  await page.getByRole('button', { name: 'Opslaan' }).click();
+  await expect(page.getByRole('alert')).toContainText('Vul de duur in');
+  await page.getByPlaceholder('45:00').fill('42:30');
+  await page.getByLabel('Afstand (km)').fill('8,5');
+  await page.getByLabel('Gemiddelde hartslag').fill('150');
+  await page.getByRole('button', { name: 'Opslaan' }).click();
+  await expect(page).toHaveURL(/\/duur\/activiteit\//);
+  await expect(page.locator('.metric').filter({ hasText: 'Afstand' }).locator('.metric-value')).toHaveText('8,5 km');
+  await expect(page.locator('.metric').filter({ hasText: 'Tempo' }).locator('.metric-value')).toHaveText('5:00 /km');
+  await expect(page.getByText('Zelf ingevoerd.')).toBeVisible();
+  await expect(page.locator('.route-map')).toHaveCount(0);
+
+  await page.getByLabel('Naam').fill('Rondje park');
+  await page.getByRole('button', { name: 'Wijzigingen opslaan' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Rondje park' })).toBeVisible();
+  page.once('dialog', (dialog) => void dialog.accept());
+  await page.getByRole('button', { name: 'Rondje park verwijderen' }).click();
+  await expect(page).toHaveURL(`${base}/duur/geschiedenis`);
+  await expect(page.getByText('Geen trainingen')).toBeVisible();
+});
+
 for (const width of [375, 768, 1280]) {
   test(`Personal Ecosystem past op ${width}px zonder horizontaal scrollen`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    for (const path of ['/', '/sport', '/quest', '/lichaam', '/lichaam/invoeren', '/voeding', '/voeding/toevoegen', '/kracht', '/kracht/training', '/kracht/oefeningen', '/kracht/schemas/nieuw', '/dagboek', '/dagboek/schrijven', '/dagboek/archief', '/back-up']) {
+    for (const path of ['/', '/sport', '/quest', '/lichaam', '/lichaam/invoeren', '/voeding', '/voeding/toevoegen', '/kracht', '/kracht/training', '/kracht/oefeningen', '/kracht/schemas/nieuw', '/duur', '/duur/importeren', '/duur/toevoegen', '/dagboek', '/dagboek/schrijven', '/dagboek/archief', '/back-up']) {
       await page.goto(`${base}${path}`);
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
@@ -398,7 +492,7 @@ test('centrale back-up: exporteren, ongeldig bestand weigeren en herstellen', as
   await download.saveAs(exportPath);
   const backup = JSON.parse(await readFile(exportPath, 'utf8')) as { format: string; modules: Record<string, { stores: Record<string, unknown[]> }> };
   expect(backup.format).toBe('personal-ecosystem-backup');
-  expect(Object.keys(backup.modules).sort()).toEqual(['dagboek', 'hub', 'kracht', 'lichaam', 'sidequest', 'sport', 'voeding']);
+  expect(Object.keys(backup.modules).sort()).toEqual(['dagboek', 'duur', 'hub', 'kracht', 'lichaam', 'sidequest', 'sport', 'voeding']);
   expect(backup.modules.sport?.stores.activities).toHaveLength(1);
   await expect(page.getByText(/Laatste back-up op dit apparaat: (?!nog niet)/)).toBeVisible();
 

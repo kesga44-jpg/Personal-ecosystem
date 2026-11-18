@@ -8,6 +8,8 @@ De lockfile bevat exacte installatieversies. Onderstaande inventaris is voor de 
 |---|---|---|---|
 | React / React DOM | alle apps | MIT | Nee |
 | React Router DOM | alle apps | MIT | Nee |
+| `fit-file-parser` 6.2.7 (+ `buffer` 6.0.3 MIT, `base64-js` 1.5.1 MIT, `ieee754` 1.2.1 BSD-3-Clause) | Personal Ecosystem — Duur, FIT-import (lazy geladen) | MIT | Nee |
+| `leaflet` 1.9.4 | Personal Ecosystem — Duur, routekaart (lazy geladen) | BSD-2-Clause | Ja: de browser haalt kaarttegels bij tile.openstreetmap.org (IP-adres en kaartgebied); kaartgegevens © OpenStreetMap-bijdragers (ODbL) |
 | `vite-plugin-pwa`/Workbox output | builds van alle apps | MIT | Nee; offline precache bevat alleen statische appbestanden |
 
 `@ecosystem/core`, `@ecosystem/storage` en `@ecosystem/ui` zijn interne workspacepackages, niet gepubliceerd. De repository heeft volgens ADR 0012 nog geen algemene licentie.
@@ -21,6 +23,7 @@ De lockfile bevat exacte installatieversies. Onderstaande inventaris is voor de 
 | Vitest, Testing Library, jsdom, fake-indexeddb | Tests | MIT |
 | Playwright | Chromium E2E | Apache-2.0 |
 | TypeScript en Node types | Typecheck | Apache-2.0 / MIT |
+| `@types/leaflet` 1.9.12 (+ `@types/geojson`) | Typecheck | MIT |
 | Wrangler 4.162.0 | Alleen deploy-tooling; geen app-runtimecode | MIT OR Apache-2.0 |
 
 ## Licentiebesluiten (2026-11-15, besluit eigenaar)

@@ -17,6 +17,8 @@ import { databaseConfig as voedingConfig } from './modules/voeding/storage';
 import { validateVoedingBackup } from './modules/voeding/domain';
 import { databaseConfig as krachtConfig } from './modules/kracht/storage';
 import { validateKrachtBackup } from './modules/kracht/domain';
+import { databaseConfig as duurConfig } from './modules/duur/storage';
+import { validateDuurBackup } from './modules/duur/domain';
 import {
   MODULE_IDS,
   backupFileName,
@@ -27,7 +29,7 @@ import {
   type RestorePlan
 } from './backup';
 
-const configs = { hub: hubConfig, sport: sportConfig, sidequest: questConfig, lichaam: lichaamConfig, dagboek: dagboekConfig, voeding: voedingConfig, kracht: krachtConfig } as const;
+const configs = { hub: hubConfig, sport: sportConfig, sidequest: questConfig, lichaam: lichaamConfig, dagboek: dagboekConfig, voeding: voedingConfig, kracht: krachtConfig, duur: duurConfig } as const;
 const domainValidators: Record<BackupModuleId, (data: unknown) => void> = {
   hub: validateHubBackup,
   sport: validateSportBackup,
@@ -35,7 +37,8 @@ const domainValidators: Record<BackupModuleId, (data: unknown) => void> = {
   lichaam: validateLichaamBackup,
   dagboek: validateDagboekBackup,
   voeding: validateVoedingBackup,
-  kracht: validateKrachtBackup
+  kracht: validateKrachtBackup,
+  duur: validateDuurBackup
 };
 const lastExportKey = 'personal-ecosystem.backup.last-export';
 const navigation = [{ to: '/', label: 'Back-up', icon: '⇩' }];
@@ -162,7 +165,7 @@ function BackupPage() {
       <PageHeader
         eyebrow="Jouw gegevens"
         title="Back-up"
-        description="Eén bestand met de gegevens van Dashboard, Sport, SIDEQUEST, Lichaam, Dagboek, Voeding en Kracht. Je gegevens staan alleen op dit apparaat; maak regelmatig een back-up. Het bestand bevat ook gezondheidsgegevens en je dagboek: bewaar het veilig."
+        description="Eén bestand met de gegevens van Dashboard, Sport, SIDEQUEST, Lichaam, Dagboek, Voeding, Kracht en Duur. Je gegevens staan alleen op dit apparaat; maak regelmatig een back-up. Het bestand bevat ook gezondheidsgegevens, je dagboek en je GPS-routes: bewaar het veilig."
       />
       {error && <ErrorBanner message={error} />}
       {message && <p role="status"><StatusPill tone="good">{message}</StatusPill></p>}

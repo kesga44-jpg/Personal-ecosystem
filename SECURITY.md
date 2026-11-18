@@ -55,6 +55,8 @@ img-src 'self' data: blob:; connect-src 'self'; object-src 'none';
 base-uri 'self'; frame-ancestors 'none'
 ```
 
+Uitzondering in `apps/ecosystem` (Personal Ecosystem): `connect-src` staat ook `https://api.open-meteo.com` en `https://geocoding-api.open-meteo.com` toe (weerwidget, PR 2), `img-src` ook `https://tile.openstreetmap.org` (routekaart in Duur, PR 7) en `Permissions-Policy` staat de camera toe voor dezelfde site (barcodescanner in Voeding, PR 5).
+
 Inline styles worden momenteel door React-layouts gebruikt; scripts zijn self-hosted en `connect-src` staat geen externe API's toe. Voeg externe hosts alleen toe bij een afzonderlijk beoordeelde integratie en werk dan het exacte `_headers`-beleid bij. Verder gelden `Referrer-Policy: strict-origin-when-cross-origin`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` en een `Permissions-Policy` die camera, microfoon en geolocatie weigert.
 
 ### Secrets
