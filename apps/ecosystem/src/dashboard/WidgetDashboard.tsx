@@ -7,6 +7,7 @@ import type { Activity } from '@ecosystem/sportapp/domain';
 import type { Shortcut } from '@ecosystem/hub/domain';
 import type { Habit, HabitCheck, Quest } from '@ecosystem/sidequest/domain';
 import { emptyData, lastBackup, loadData, type DashboardData } from './data';
+import { difference, weekReview } from './review';
 import { RemindersCard } from '../reminders/RemindersCard';
 import { reminderInput } from '../reminders/input';
 import { checkHeatmap, dagboekWrittenToday, daysSince, duurWeekTotals, krachtSessionsThisWeek, greeting, habitsToday, lichaamFilledToday, localDateKey, pointsPerDay, sportWeek, topStreaks, voedingLoggedToday } from './summary';
@@ -60,6 +61,7 @@ export default function WidgetDashboard() {
   const widgets: Record<WidgetId, ReactNode> = {
     today: <TodayWidget data={data} today={today} />,
     'sport-week': <SportWeekWidget activities={data.activities} today={today} />,
+    review: <ReviewWidget data={data} today={today} />,
     streaks: <StreaksWidget data={data} today={today} />,
     points: <PointsWidget data={data} today={today} />,
     lichaam: <LichaamWidget filled={lichaamFilledToday(data.lichaamDates, today)} />,
@@ -159,8 +161,42 @@ function StreaksWidget({ data, today }: { data: DashboardData; today: string }) 
   );
 }
 
+function dashboardSportDays(data: DashboardData): string[] {
+  return sportPointDays(data.sportLink, trainingDaysFrom({ activityStarts: data.activities.map((activity) => activity.startedAt), krachtDates: data.krachtDates.map((item) => item.date), duurDates: data.duurTotals.map((item) => item.date) }));
+}
+
+function ReviewWidget({ data, today }: { data: DashboardData; today: string }) {
+  const { last, before } = weekReview(data, today, dashboardSportDays(data));
+  const day = (value: string) => new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'short' }).format(new Date(`${value}T12:00:00`));
+  const rows: [string, number, number][] = [
+    ['Trainingen', last.workouts, before.workouts],
+    ['Beweegminuten', last.activeMinutes, before.activeMinutes],
+    ['Gewoontes afgevinkt', last.habitChecks, before.habitChecks],
+    ['Quests voltooid', last.questsCompleted, before.questsCompleted],
+    ['Punten', last.points, before.points],
+    ['Dagen met dagboek', last.journalDays, before.journalDays],
+    ['Dagen met Lichaam', last.bodyDays, before.bodyDays],
+    ['Dagen met Voeding', last.foodDays, before.foodDays]
+  ];
+  return (
+    <>
+      <p className="item-subtitle">{day(last.start)} t/m {day(last.end)}, vergeleken met de week ervoor.</p>
+      <table className="review-table">
+        <thead>
+          <tr><th scope="col">Onderdeel</th><th scope="col">Vorige week</th><th scope="col">Verschil</th></tr>
+        </thead>
+        <tbody>
+          {rows.map(([label, current, previous]) => (
+            <tr key={label}><th scope="row">{label}</th><td>{current}</td><td className="muted">{difference(current, previous)}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </>
+  );
+}
+
 function PointsWidget({ data, today }: { data: DashboardData; today: string }) {
-  const sportDays = sportPointDays(data.sportLink, trainingDaysFrom({ activityStarts: data.activities.map((activity) => activity.startedAt), krachtDates: data.krachtDates.map((item) => item.date), duurDates: data.duurTotals.map((item) => item.date) }));
+  const sportDays = dashboardSportDays(data);
   const points = pointsPerDay(data.checks, data.quests, today, 14, sportDays);
   const total = points.reduce((sum, point) => sum + point.value, 0);
   const level = levelInfo(calculatePoints(data.checks, data.quests, sportDays));
