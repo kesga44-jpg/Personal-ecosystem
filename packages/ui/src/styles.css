@@ -199,6 +199,10 @@ h1 { margin: 0; color: #17212b; font-size: clamp(28px, 4vw, 38px); line-height: 
 .widget { display: grid; gap: 12px; }
 .widget-wide { grid-column: 1 / -1; }
 .widget-stat { display: flex; align-items: baseline; gap: 8px; color: var(--text); font-size: 28px; font-weight: 760; letter-spacing: -.04em; }
+.review-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.review-table th, .review-table td { padding: 6px 4px; border-bottom: 1px solid var(--border, #e3e8ea); text-align: right; }
+.review-table th[scope='row'], .review-table thead th:first-child { text-align: left; font-weight: 600; }
+.review-table thead th { color: var(--text-muted); font-size: 11px; font-weight: 700; }
 .widget-stat small { color: var(--text-muted); font-size: 12px; font-weight: 600; letter-spacing: 0; }
 .widget-row { display: flex; align-items: center; gap: 16px; }
 .widget-foot { color: var(--text-muted); font-size: 11px; }

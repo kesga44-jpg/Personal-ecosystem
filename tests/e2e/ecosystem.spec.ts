@@ -677,6 +677,16 @@ test('een SIDEQUEST-back-up van schema 1 (oud adres) is nog te herstellen', asyn
   await expect(page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Koppeling met Sport' }) }).getByRole('checkbox')).not.toBeChecked();
 });
 
+test('dashboard: weekreview toont vorige week (ma–zo) met verschil t.o.v. de week ervoor', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto(`${base}/`);
+  const review = page.locator('.widget').filter({ has: page.getByRole('heading', { name: 'Vorige week' }) });
+  await expect(review.getByText(/t\/m .*vergeleken met de week ervoor\./)).toBeVisible();
+  await expect(review.getByRole('row', { name: /Trainingen/ })).toContainText('gelijk');
+  await expect(review.getByRole('rowheader')).toHaveText(['Trainingen', 'Beweegminuten', 'Gewoontes afgevinkt', 'Quests voltooid', 'Punten', 'Dagen met dagboek', 'Dagen met Lichaam', 'Dagen met Voeding']);
+  expect(errors).toEqual([]);
+});
+
 for (const width of [375, 768, 1280]) {
   test(`Personal Ecosystem past op ${width}px zonder horizontaal scrollen`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
