@@ -531,10 +531,52 @@ test('SIDEQUEST: quest met categorie, deadline en benoemde stappen afvinken, bew
   expect(errors).toEqual([]);
 });
 
+test('SIDEQUEST: voortgang toont level, badges, statistieken en kalender uit eigen gegevens', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto(`${base}/quest/voortgang`);
+  await expect(page.getByRole('heading', { level: 1, name: 'Voortgang' })).toBeVisible();
+  await expect(page.getByText('Badges · 0 van 9')).toBeVisible();
+  await expect(page.getByText('Nog geen quests')).toBeVisible();
+
+  await page.goto(`${base}/quest/gewoontes`);
+  await page.getByRole('button', { name: '＋ Gewoonte maken' }).click();
+  await page.getByLabel('Gewoonte').fill('Lezen');
+  await page.getByRole('button', { name: 'Gewoonte opslaan' }).click();
+  await page.getByRole('button', { name: 'Vink vandaag af' }).click();
+  await expect(page.getByRole('button', { name: 'Vandaag gedaan' })).toBeVisible();
+
+  await page.goto(`${base}/quest/quests`);
+  await page.getByRole('button', { name: '＋ Quest maken' }).click();
+  await page.getByLabel('Naam').fill('Kast opruimen');
+  await page.getByLabel('Categorie').fill('Huis');
+  await page.getByLabel('Punten bij voltooien').fill('120');
+  await page.getByLabel('Aantal stappen').fill('1');
+  await page.getByRole('button', { name: 'Quest opslaan' }).click();
+  await page.getByRole('button', { name: 'Registreer stap' }).click();
+  await expect(page.getByText('Huis · +120 punten')).toBeVisible();
+
+  await page.goto(`${base}/quest`);
+  await expect(page.getByText('Level 2', { exact: true })).toBeVisible();
+  await expect(page.getByText('Nog 125 punten tot level 3')).toBeVisible();
+
+  await page.getByRole('link', { name: 'Voortgang →' }).click();
+  await expect(page).toHaveURL(`${base}/quest/voortgang`);
+  await expect(page.locator('.status-pill').filter({ hasText: '125 punten' })).toBeVisible();
+  await expect(page.getByRole('progressbar', { name: 'Voortgang naar level 3' })).toHaveAttribute('aria-valuenow', '125');
+  await expect(page.getByText('Badges · 2 van 9')).toBeVisible();
+  await expect(page.locator('.badge.earned')).toHaveCount(2);
+  await expect(page.locator('.badge.earned').filter({ hasText: 'Eerste vinkje' })).toContainText('Behaald op');
+  await expect(page.locator('.badge').filter({ hasText: 'Questjager' })).toContainText('1 van 10');
+  await expect(page.locator('.metric').filter({ hasText: 'Voltooide quests' }).locator('.metric-value')).toHaveText('1');
+  await expect(page.getByRole('img', { name: /Activiteit per dag, laatste 16 weken: 1 van \d+ dagen actief/ })).toBeVisible();
+  await expect(page.getByRole('row', { name: /Huis/ })).toContainText('120');
+  expect(errors).toEqual([]);
+});
+
 for (const width of [375, 768, 1280]) {
   test(`Personal Ecosystem past op ${width}px zonder horizontaal scrollen`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    for (const path of ['/', '/sport', '/quest', '/quest/quests', '/lichaam', '/lichaam/invoeren', '/voeding', '/voeding/toevoegen', '/kracht', '/kracht/training', '/kracht/oefeningen', '/kracht/schemas/nieuw', '/duur', '/duur/importeren', '/duur/toevoegen', '/dagboek', '/dagboek/schrijven', '/dagboek/archief', '/back-up']) {
+    for (const path of ['/', '/sport', '/quest', '/quest/quests', '/quest/voortgang', '/lichaam', '/lichaam/invoeren', '/voeding', '/voeding/toevoegen', '/kracht', '/kracht/training', '/kracht/oefeningen', '/kracht/schemas/nieuw', '/duur', '/duur/importeren', '/duur/toevoegen', '/dagboek', '/dagboek/schrijven', '/dagboek/archief', '/back-up']) {
       await page.goto(`${base}${path}`);
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);

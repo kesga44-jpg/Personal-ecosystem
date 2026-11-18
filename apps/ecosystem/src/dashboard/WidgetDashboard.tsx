@@ -7,6 +7,8 @@ import { databaseConfig as questConfig } from '@ecosystem/sidequest/App';
 import type { Shortcut } from '@ecosystem/hub/domain';
 import type { Activity } from '@ecosystem/sportapp/domain';
 import type { Habit, HabitCheck, Quest } from '@ecosystem/sidequest/domain';
+import { calculatePoints } from '@ecosystem/sidequest/domain';
+import { levelInfo } from '@ecosystem/sidequest/progress';
 import { databaseConfig as lichaamConfig } from '../modules/lichaam/storage';
 import type { BodyDay } from '../modules/lichaam/domain';
 import { databaseConfig as dagboekConfig } from '../modules/dagboek/storage';
@@ -228,10 +230,12 @@ function StreaksWidget({ data, today }: { data: DashboardData; today: string }) 
 function PointsWidget({ data, today }: { data: DashboardData; today: string }) {
   const points = pointsPerDay(data.checks, data.quests, today);
   const total = points.reduce((sum, point) => sum + point.value, 0);
+  const level = levelInfo(calculatePoints(data.checks, data.quests));
   return (
     <>
       <p className="widget-stat">{total}<small>punten in 14 dagen</small></p>
       <LineChart title="Verdiende punten per dag, laatste 14 dagen" points={points} unit="punten" />
+      <p className="item-subtitle">Level {level.level} · nog {level.nextAt - level.points} punten tot level {level.level + 1}</p>
     </>
   );
 }

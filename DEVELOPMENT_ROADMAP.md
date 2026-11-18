@@ -14,8 +14,8 @@ Volgorde van de eerstvolgende PR's. Elke PR is één onderwerp, met tests en doc
 | 5 | Sport | Doelen en planning: weekdoelen, trainingskalender |
 | 6 | Sport | Regelgebaseerde coach (logica herschreven in TypeScript; Samen Thuis blijft ongewijzigd) |
 | 7 | SIDEQUEST | Quest-stappen, categorieën, deadlines — ✅ PR 8 |
-| 8 | SIDEQUEST | Levels (oplopende drempels, berekend uit punten) en badges (alleen erkenning, geen bonuspunten) — gepland samen met 9 als PR 9 |
-| 9 | SIDEQUEST | Statistieken en kalender-heatmap — gepland in PR 9 |
+| 8 | SIDEQUEST | Levels (oplopende drempels, berekend uit punten) en badges (alleen erkenning, geen bonuspunten) — ✅ PR 9 |
+| 9 | SIDEQUEST | Statistieken en kalender-heatmap — ✅ PR 9 |
 | 10 | Koppeling | Sport → SIDEQUEST-punten, standaard uit |
 | 11 | Nieuw | Lichaam & gezondheid — ✅ PR 3 (eerder ingepland op verzoek van de eigenaar) |
 | 12 | Nieuw | Voeding met Open Food Facts en barcodescan — ✅ PR 5 |
