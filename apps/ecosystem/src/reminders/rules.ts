@@ -199,7 +199,8 @@ export function readReminderSettings(): ReminderSettings {
 
 export function writeReminderSettings(settings: ReminderSettings): void {
   try {
-    // Oude "vandaag verborgen"-datums hoeven niet bewaard te blijven; alleen voorkeuren.
+    // Bewaart welke soorten aan staan en per soort de datum van "Vandaag verborgen".
+    // Een oudere datum heeft geen effect meer (alleen de datum van vandaag telt) en wordt bij de volgende keer verbergen overschreven.
     localStorage.setItem(storageKey, JSON.stringify(settings));
   } catch {
     // Alleen een voorkeur; zonder opslag staan alle herinneringen aan.
