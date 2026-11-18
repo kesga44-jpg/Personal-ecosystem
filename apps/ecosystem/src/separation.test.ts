@@ -62,10 +62,11 @@ describe('gescheiden opslag per module', () => {
     });
   }
 
-  it('herinneringen en dashboardgegevens lezen alleen en doen geen netwerkverzoeken (ADR 0022)', () => {
+  it('herinneringen, dashboardgegevens en trainingsdagen lezen alleen en doen geen netwerkverzoeken (ADR 0022, PR 11)', () => {
     const files = [
       ...readdirSync(join(process.cwd(), 'apps', 'ecosystem', 'src', 'reminders')).filter((name) => /\.(ts|tsx)$/.test(name) && !/\.test\./.test(name)).map((name) => join('reminders', name)),
-      join('dashboard', 'data.ts')
+      join('dashboard', 'data.ts'),
+      join('integrations', 'trainingDays.ts')
     ];
     for (const file of files) {
       const source = readFileSync(join(process.cwd(), 'apps', 'ecosystem', 'src', file), 'utf8');
