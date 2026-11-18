@@ -4,7 +4,8 @@
 
 ```sh
 npm ci
-npm audit --audit-level=high
+npm audit --omit=dev --audit-level=high   # blokkerend
+npm audit --audit-level=high              # in CI alleen waarschuwing
 npm run typecheck
 npm test
 npm run build:all

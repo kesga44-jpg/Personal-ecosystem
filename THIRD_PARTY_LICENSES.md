@@ -33,6 +33,7 @@ De lockfile bevat exacte installatieversies. Onderstaande inventaris is voor de 
 
 - `npm audit --omit=dev`: 0 bevindingen.
 - `npm audit --audit-level=high`: geen high/critical; de lockfile rapporteert nog enkele low/moderate bevindingen in dev-only Workbox transitives (`deepmerge`, `glob`/`minimatch`). `npm audit fix --force` zou de PWA-plugin downgraden, dus is niet toegepast.
+- 18-11-2026: nieuw high-advies voor `picomatch` ([GHSA-fc5q-39xc-vjpf](https://github.com/advisories/GHSA-fc5q-39xc-vjpf), ReDoS bij herhaalde extglobs; alle versies t/m 4.0.7, nog geen patch). Zit alleen in dev-tooling (Vite, Vitest, Tailwind, Workbox); de gebouwde apps bevatten het niet en `npm audit --omit=dev` blijft 0. De patronen komen uit onze eigen buildconfiguratie, niet van gebruikers. Daarom blokkeert CI sindsdien alleen op runtime-afhankelijkheden; de volledige audit draait als waarschuwing. Zodra er een patch is, wordt de lockfile bijgewerkt.
 - Vitest is naar 5.1.0 geüpgraded na een critical `tinypool`-advies in de eerste lockfile.
 - Geen GPX/FIT/TCX parserdependency in de huidige build. FIT-kandidaat en uitgestelde TCX-library staan in `API_CATALOG.md`.
 - Met Wrangler 4.162.0: `npm audit` meldt 2 low en 4 moderate bevindingen, geen high/critical; de meldingen betreffen de bestaande PWA-buildketen.

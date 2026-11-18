@@ -77,7 +77,8 @@ Inline styles worden momenteel door React-layouts gebruikt; scripts zijn self-ho
 
 - Dependabot (gratis) wekelijks voor npm en GitHub Actions.
 - GitHub Actions: acties pinnen op commit-SHA; `permissions: contents: read` als standaard.
-- `npm audit --audit-level=high` blokkeert merge.
+- `npm audit --omit=dev --audit-level=high` blokkeert merge: alles wat in de gebouwde apps terechtkomt.
+- `npm audit --audit-level=high` over alle afhankelijkheden draait ook in CI, maar blokkeert niet. High/critical-bevindingen in dev-tooling worden bij elke PR beoordeeld en in `THIRD_PARTY_LICENSES.md` vastgelegd.
 
 ## 6. Back-ups en herstel
 
