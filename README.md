@@ -10,7 +10,7 @@ Sinds [ADR 0020](docs/adr/0020-een-app-met-modules.md) draaien Hub, Sportapp en 
 
 | App | Eigenaar van | Starten | Productiebuild |
 |---|---|---|---|
-| Personal Ecosystem | Eén app met de modules Dashboard, Sport, Kracht, SIDEQUEST, Lichaam, Voeding en Dagboek, plus centrale back-up | `npm run dev:ecosystem` | `npm run build:ecosystem` |
+| Personal Ecosystem | Eén app met de modules Dashboard, Sport, Kracht, Duur, SIDEQUEST, Lichaam, Voeding en Dagboek, plus centrale back-up | `npm run dev:ecosystem` | `npm run build:ecosystem` |
 | Hub | Startpagina, app-links, eigen snelkoppelingen en app-openingen | `npm run dev:hub` | `npm run build:hub` |
 | Sportapp | Sportactiviteiten, trainingsplannen, GPX-samenvattingen en statistieken | `npm run dev:sportapp` | `npm run build:sportapp` |
 | SIDEQUEST | Persoonlijke doelen, gewoontes, quests, punten en streaks | `npm run dev:sidequest` | `npm run build:sidequest` |
