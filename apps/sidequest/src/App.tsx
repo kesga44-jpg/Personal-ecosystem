@@ -8,6 +8,7 @@ import {
   Card,
   ConfirmAction,
   EmptyState,
+  BarChart,
   ErrorBanner,
   Field,
   LoadingState,
@@ -39,6 +40,7 @@ import {
   type Quest,
   type QuestStep
 } from './domain';
+import { activityCalendar, badges, levelInfo, levelThreshold, pointsPerWeek, sidequestStats, type CalendarDay } from './progress';
 
 export const databaseConfig = {
   appId: 'sidequest',
@@ -60,6 +62,7 @@ const navigation = [
   { to: '/doelen', label: 'Doelen', icon: '◎' },
   { to: '/gewoontes', label: 'Gewoontes', icon: '↻' },
   { to: '/quests', label: 'Quests', icon: '✦' },
+  { to: '/voortgang', label: 'Voortgang', icon: '★' },
   { to: '/instellingen', label: 'Instellingen', icon: '⚙' }
 ];
 
@@ -193,6 +196,7 @@ function App({ basename = '/', moduleLinks = [] }: AppProps = {}) {
               />
             }
           />
+          <Route path="/voortgang" element={<ProgressPage habits={habits} checks={checks} quests={quests} error={error} />} />
           <Route
             path="/instellingen"
             element={<SettingsPage database={database} onRestore={(data) => runStorageAction((db) => db.restore(data))} error={error} />}
@@ -221,6 +225,7 @@ function Dashboard({
   const todayHabits = habits.filter((habit) => !habit.archived);
   const activeQuests = sortActiveQuests(quests.filter((quest) => quest.status === 'active'));
   const points = calculatePoints(checks, quests);
+  const level = levelInfo(points);
   const recent = useMemo(
     () => [
       ...checks.map((check) => ({ id: check.id, label: 'Gewoonte afgevinkt', date: check.date })),
@@ -242,6 +247,19 @@ function Dashboard({
         description="Werk aan doelen, bouw gewoontes op en vier voortgang die je zelf hebt vastgelegd."
         action={<StatusPill tone="good">{points} punten</StatusPill>}
       />
+      <Card className="level-card">
+        <div className="level-row">
+          <div className="level-badge" aria-hidden="true">{level.level}</div>
+          <div style={{ flex: 1 }}>
+            <p className="item-title">Level {level.level}</p>
+            <div className="progress-track" style={{ marginTop: 8 }} role="progressbar" aria-label={`Voortgang naar level ${level.level + 1}`} aria-valuemin={level.levelStart} aria-valuemax={level.nextAt} aria-valuenow={level.points}>
+              <span style={{ width: `${Math.round(level.progress * 100)}%` }} />
+            </div>
+            <p className="item-subtitle">Nog {level.nextAt - level.points} punten tot level {level.level + 1}</p>
+          </div>
+          <Link className="text-button" to="/voortgang">Voortgang →</Link>
+        </div>
+      </Card>
       <div className="grid grid-4">
         <Metric label="Actieve doelen" value={activeGoals.length.toString()} />
         <Metric label="Gewoontes vandaag" value={`${todayHabits.filter((habit) => checks.some((check) => check.habitId === habit.id && check.date === today)).length}/${todayHabits.length}`} />
@@ -797,6 +815,110 @@ function QuestForm({
         <div className="form-actions"><Button type="button" variant="secondary" onClick={onCancel}>Annuleren</Button><Button type="submit">Quest opslaan</Button></div>
       </form>
     </Card>
+  );
+}
+
+function shortDay(day: string): string {
+  return new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'short' }).format(new Date(`${day}T12:00:00`));
+}
+
+function ActivityCalendar({ weeks }: { weeks: CalendarDay[][] }) {
+  const max = Math.max(1, ...weeks.flat().map((day) => day.count));
+  const level = (count: number) => (count <= 0 ? 0 : Math.min(4, Math.ceil((count / max) * 4)));
+  const active = weeks.flat().filter((day) => day.inRange && day.count > 0).length;
+  const total = weeks.flat().filter((day) => day.inRange).length;
+  const monthLabel = (date: string) => new Intl.DateTimeFormat('nl-NL', { month: 'short' }).format(new Date(`${date}T12:00:00`));
+  return (
+    <figure className="chart calendar-heatmap">
+      <div className="calendar-grid" role="img" aria-label={`Activiteit per dag, laatste ${weeks.length} weken: ${active} van ${total} dagen actief`}>
+        <div className="calendar-weekdays" aria-hidden="true"><span /><span>ma</span><span /><span>wo</span><span /><span>vr</span><span /><span>zo</span></div>
+        {weeks.map((week, index) => (
+          <div className="calendar-week" key={week[0]!.date}>
+            <span className="calendar-month" aria-hidden="true">{index === 0 || week[0]!.date.slice(5, 7) !== weeks[index - 1]![0]!.date.slice(5, 7) ? monthLabel(week[0]!.date) : ''}</span>
+            {week.map((day) => (
+              <span key={day.date} className={day.inRange ? `heat heat-${level(day.count)}` : 'heat heat-empty'} title={day.inRange ? `${shortDay(day.date)}: ${day.count}` : undefined} />
+            ))}
+          </div>
+        ))}
+      </div>
+      <figcaption className="calendar-legend" aria-hidden="true">Minder <span className="heat heat-0" /><span className="heat heat-1" /><span className="heat heat-2" /><span className="heat heat-3" /><span className="heat heat-4" /> Meer</figcaption>
+    </figure>
+  );
+}
+
+function ProgressPage({ habits, checks, quests, error }: { habits: Habit[]; checks: HabitCheck[]; quests: Quest[]; error: string }) {
+  const today = todayKey();
+  const points = calculatePoints(checks, quests);
+  const level = levelInfo(points);
+  const badgeList = useMemo(() => badges(habits, checks, quests), [habits, checks, quests]);
+  const stats = useMemo(() => sidequestStats(habits, checks, quests), [habits, checks, quests]);
+  const weeks = useMemo(() => pointsPerWeek(checks, quests, today), [checks, quests, today]);
+  const calendar = useMemo(() => activityCalendar(checks, quests, today), [checks, quests, today]);
+  const earned = badgeList.filter((badge) => badge.earnedOn);
+  const percent = (value: number | null) => (value === null ? '—' : `${Math.round(value * 100)}%`);
+
+  return (
+    <div className="stack">
+      {error && <ErrorBanner message={error} />}
+      <PageHeader eyebrow="Wat je al gedaan hebt" title="Voortgang" description="Level, badges en statistieken, berekend uit je eigen gewoontechecks en quests." action={<StatusPill tone="good">{points} punten</StatusPill>} />
+      <Card title={`Level ${level.level}`}>
+        <div className="level-row">
+          <div className="level-badge large" aria-hidden="true">{level.level}</div>
+          <div style={{ flex: 1 }}>
+            <div className="progress-track" role="progressbar" aria-label={`Voortgang naar level ${level.level + 1}`} aria-valuemin={level.levelStart} aria-valuemax={level.nextAt} aria-valuenow={level.points}>
+              <span style={{ width: `${Math.round(level.progress * 100)}%` }} />
+            </div>
+            <p className="item-subtitle">{level.points - level.levelStart} van {level.nextAt - level.levelStart} punten in dit level · nog {level.nextAt - level.points} tot level {level.level + 1}</p>
+          </div>
+        </div>
+        <p className="item-subtitle">Elk level kost 50 punten meer dan het vorige: level 2 bij {levelThreshold(2)}, 3 bij {levelThreshold(3)}, 4 bij {levelThreshold(4)}, 5 bij {levelThreshold(5)} punten. Levels komen alleen uit je punten; er gaat nooit iets af.</p>
+      </Card>
+      <Card title={`Badges · ${earned.length} van ${badgeList.length}`}>
+        <ul className="badge-grid">
+          {badgeList.map((badge) => (
+            <li key={badge.id} className={badge.earnedOn ? 'badge earned' : 'badge'}>
+              <span className="badge-icon" aria-hidden="true">{badge.icon}</span>
+              <span className="badge-text">
+                <span className="item-title">{badge.title}</span>
+                <span className="item-subtitle">{badge.description}</span>
+                <span className="item-subtitle">{badge.earnedOn ? `Behaald op ${shortDay(badge.earnedOn)}` : `${badge.current} van ${badge.target}`}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+        <p className="item-subtitle">Badges zijn erkenning; ze geven geen extra punten.</p>
+      </Card>
+      <div className="grid grid-4">
+        <Metric label="Gewoontechecks" value={stats.totalChecks.toString()} />
+        <Metric label="Voltooide quests" value={stats.completedQuests.toString()} />
+        <Metric label="Op tijd (met deadline)" value={percent(stats.onTimeRate)} />
+        <Metric label="Langste reeks" value={`${stats.longestStreak} ${stats.longestStreak === 1 ? 'dag' : 'dagen'}`} />
+      </div>
+      <div className="grid grid-2">
+        <Card title="Activiteit">
+          <ActivityCalendar weeks={calendar} />
+          <p className="item-subtitle">Gewoontechecks en voltooide quests per dag, laatste {calendar.length} weken.</p>
+        </Card>
+        <Card title="Punten per week">
+          <BarChart title="Punten per week, laatste 8 weken" points={weeks.map((week) => ({ label: shortDay(week.weekStart), value: week.points }))} unit="punten" />
+          <p className="item-subtitle">Gemiddelde doorlooptijd van een quest: {stats.averageDaysToComplete === null ? '—' : `${stats.averageDaysToComplete.toLocaleString('nl-NL')} dagen`}.</p>
+        </Card>
+      </div>
+      <Card title="Per categorie">
+        {stats.categories.length ? (
+          <table className="category-table">
+            <thead><tr><th scope="col">Categorie</th><th scope="col">Actief</th><th scope="col">Voltooid</th><th scope="col">Punten</th></tr></thead>
+            <tbody>
+              {stats.categories.map((item) => (
+                <tr key={item.category}><th scope="row">{item.category}</th><td>{item.active}</td><td>{item.completed}</td><td>{item.points}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <EmptyState title="Nog geen quests">Maak een quest met een categorie om hier per categorie je voortgang te zien.</EmptyState>
+        )}
+      </Card>
+    </div>
   );
 }
 
