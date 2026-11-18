@@ -14,6 +14,9 @@ export { loggedToday as voedingLoggedToday } from '../modules/voeding/domain';
 /** Kracht: alleen het aantal trainingen deze week, nooit oefeningen of gewichten (DATA_OWNERSHIP.md). */
 export { sessionsThisWeek as krachtSessionsThisWeek } from '../modules/kracht/domain';
 
+/** Duur: alleen totalen van deze week (aantal, km, minuten), nooit routes of hartslag (DATA_OWNERSHIP.md). */
+export { weekTotals as duurWeekTotals } from '../modules/duur/domain';
+
 /**
  * Leescontracten voor het dashboard (ADR 0020 § 2, DATA_OWNERSHIP.md).
  * Alleen samenvattingen: aantallen, totalen en streaks. Geen notities of andere inhoud.
