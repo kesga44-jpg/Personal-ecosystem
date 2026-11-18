@@ -431,7 +431,7 @@ test('Duur: FIT, TCX en GPX importeren, dubbel herkennen, route met kaart en das
   await expect(page.getByRole('alert')).toContainText('120 en 230');
   await page.getByLabel('Maximale hartslag (bpm)').fill('190');
   await page.getByRole('button', { name: 'Opslaan' }).click();
-  await expect(page.getByText('Opgeslagen')).toBeVisible();
+  await expect(page.getByText('Opgeslagen', { exact: true })).toBeVisible();
   await page.goto(`${base}/duur/geschiedenis`);
   await page.getByRole('button', { name: /^Bekijk Hardlopen/ }).click();
   await expect(page.getByLabel('Tijd per hartslagzone')).toContainText('Zone 3 · tempo');
