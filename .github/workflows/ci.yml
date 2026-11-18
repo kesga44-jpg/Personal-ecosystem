@@ -19,7 +19,14 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm audit --audit-level=high
+      # Blokkerend: alles wat in de gebouwde apps terechtkomt.
+      - name: Audit runtime-afhankelijkheden (blokkerend)
+        run: npm audit --omit=dev --audit-level=high
+      # Niet blokkerend: dev-tooling (build, test, lint). Bevindingen blijven
+      # zichtbaar in de log en worden handmatig beoordeeld.
+      - name: Audit alle afhankelijkheden (waarschuwing)
+        run: npm audit --audit-level=high
+        continue-on-error: true
       - run: npm run typecheck
       - run: npm test
       - run: npm run build:all
