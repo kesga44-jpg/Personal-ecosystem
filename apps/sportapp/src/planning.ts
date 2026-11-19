@@ -4,10 +4,11 @@
  * Of een geplande training gedaan is, volgt uit vastgelegde trainingen op die dag; er wordt niets dubbel opgeslagen.
  */
 
-/** Een vastgelegde training uit Sport, Kracht of Duur: alleen datum en minuten. */
+/** Een vastgelegde training uit Sport, Kracht of Duur: alleen datum, minuten en (voor de coach) een grove discipline. */
 export interface SessionDay {
   date: string;
   minutes: number;
+  discipline?: 'running' | 'strength' | 'cardio';
 }
 
 export interface WeekGoal {

@@ -11,3 +11,17 @@
 .plan-day-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
 .plan-item { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; }
 .plan-item > span:first-child { flex: 1; min-width: 0; }
+
+.day-picker { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 14px 0; padding: 10px 12px; border: 1px solid var(--border, #e3e8ea); border-radius: 12px; }
+.day-picker legend { padding: 0 4px; font-size: 12px; font-weight: 600; }
+.check-row { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.form-section-title { margin: 18px 0 6px; font-size: 14px; }
+.coach-program { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--border, #e3e8ea); border-radius: 12px; }
+.coach-program-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.coach-program-head > div { flex: 1; min-width: 0; }
+.coach-program details summary { cursor: pointer; font-size: 13px; font-weight: 600; }
+.coach-list { display: grid; gap: 6px; margin: 8px 0; padding-left: 18px; font-size: 13px; overflow-wrap: anywhere; }
+.coach-weeks { display: grid; gap: 10px; margin: 8px 0; padding-left: 18px; }
+.coach-blocked, .coach-alert { display: grid; gap: 4px; margin-top: 12px; padding: 12px 14px; color: #843e39; background: #fff0ef; border: 1px solid #f3d4d1; border-radius: 10px; font-size: 13px; }
+.coach-blocked ul { margin: 0; padding-left: 18px; }
+.coach-feedback, .coach-evaluation { display: grid; gap: 8px; padding-top: 10px; border-top: 1px solid var(--border, #e3e8ea); }

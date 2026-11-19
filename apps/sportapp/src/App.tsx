@@ -41,12 +41,14 @@ import {
   type SessionDay,
   type WeekGoal
 } from './planning';
+import { CoachPage } from './CoachPage';
+import type { CoachLog, CoachRecord } from './coach';
 
 export const databaseConfig = {
   appId: 'sport',
   databaseName: 'personal-ecosystem-sport',
-  version: 2,
-  stores: ['activities', 'trainings', 'planning'],
+  version: 3,
+  stores: ['activities', 'trainings', 'planning', 'coach'],
   migrations: {
     1: (database: IDBDatabase) => {
       database.createObjectStore('activities', { keyPath: 'id' });
@@ -55,11 +57,16 @@ export const databaseConfig = {
     // PR 13: weekdoel en geplande trainingen.
     2: (database: IDBDatabase) => {
       database.createObjectStore('planning', { keyPath: 'id' });
+    },
+    // PR 15: coachprofiel, programma's en terugkoppeling.
+    3: (database: IDBDatabase) => {
+      database.createObjectStore('coach', { keyPath: 'id' });
     }
   },
-  // Back-ups van schema 1 blijven herstelbaar: zonder planning.
+  // Back-ups van schema 1 en 2 blijven herstelbaar: zonder planning en coachgegevens.
   exportUpgrades: {
-    2: (stores: Record<string, { id: string }[]>) => ({ ...stores, planning: [] })
+    2: (stores: Record<string, { id: string }[]>) => ({ ...stores, planning: [] }),
+    3: (stores: Record<string, { id: string }[]>) => ({ ...stores, coach: [] })
   }
 } as const;
 
@@ -68,8 +75,11 @@ const navigation = [
   { to: '/activiteiten', label: 'Activiteiten', icon: '↗' },
   { to: '/trainingen', label: 'Trainingen', icon: '◉' },
   { to: '/planning', label: 'Planning', icon: '▦' },
+  { to: '/coach', label: 'Coach', icon: '✦' },
   { to: '/instellingen', label: 'Instellingen', icon: '⚙' }
 ];
+
+const activityDiscipline: Record<SportType, CoachLog['discipline']> = { run: 'running', strength: 'strength', walk: 'cardio', bike: 'cardio', swim: 'cardio', other: undefined };
 
 function localDateTime(value?: string): string {
   const date = value ? new Date(value) : new Date();
@@ -91,16 +101,19 @@ function App({ basename = '/', moduleLinks = [], otherSessions = [] }: AppProps 
   const [activities, setActivities] = useState<Activity[]>([]);
   const [trainings, setTrainings] = useState<Training[]>([]);
   const [planning, setPlanning] = useState<PlanningRecord[]>([]);
+  const [coach, setCoach] = useState<CoachRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   async function refresh(db: LocalDatabase) {
-    const [nextActivities, nextTrainings, nextPlanning] = await Promise.all([
+    const [nextActivities, nextTrainings, nextPlanning, nextCoach] = await Promise.all([
       db.list<Activity>('activities'),
       db.list<Training>('trainings'),
-      db.list<PlanningRecord>('planning')
+      db.list<PlanningRecord>('planning'),
+      db.list<CoachRecord>('coach')
     ]);
     setPlanning(nextPlanning);
+    setCoach(nextCoach);
     setActivities(nextActivities.sort((a, b) => b.startedAt.localeCompare(a.startedAt)));
     setTrainings(nextTrainings.sort((a, b) => a.title.localeCompare(b.title)));
   }
@@ -144,6 +157,11 @@ function App({ basename = '/', moduleLinks = [], otherSessions = [] }: AppProps 
   const sessions: SessionDay[] = [
     ...activities.map((activity) => ({ date: localDay(new Date(activity.startedAt)), minutes: activity.durationMinutes })),
     ...otherSessions
+  ];
+  // Belasting voor de coach: vastgelegde trainingen met een grove discipline.
+  const coachLogs: CoachLog[] = [
+    ...activities.map((activity) => ({ date: localDay(new Date(activity.startedAt)), discipline: activityDiscipline[activity.type], completed: true, durationMinutes: activity.durationMinutes })),
+    ...otherSessions.map((session) => ({ date: session.date, discipline: session.discipline, completed: true, durationMinutes: session.minutes }))
   ];
 
   if (loading) return <LoadingState />;
@@ -203,6 +221,24 @@ function App({ basename = '/', moduleLinks = [], otherSessions = [] }: AppProps 
                 onGoal={(next) => runStorageAction((db) => db.put('planning', next))}
                 onPlan={(plan) => runStorageAction((db) => db.put('planning', plan))}
                 onDelete={(id) => runStorageAction((db) => db.remove('planning', id))}
+                error={error}
+              />
+            }
+          />
+          <Route
+            path="/coach"
+            element={
+              <CoachPage
+                records={coach}
+                logs={coachLogs}
+                onSave={(record) => runStorageAction((db) => db.put('coach', record))}
+                onSaveMany={(records) => runStorageAction(async (db) => {
+                  for (const record of records) await db.put('coach', record);
+                })}
+                onDelete={(id) => runStorageAction((db) => db.remove('coach', id))}
+                onPlan={(plans) => runStorageAction(async (db) => {
+                  for (const plan of plans) await db.put('planning', plan);
+                })}
                 error={error}
               />
             }
