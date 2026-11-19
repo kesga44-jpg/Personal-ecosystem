@@ -12,7 +12,7 @@ Volgorde van de eerstvolgende PR's. Elke PR is één onderwerp, met tests en doc
 | 3 | Sport | Krachttraining: oefeningenbibliotheek, schema's, sets/herhalingen/gewicht, records — ✅ PR 6 als eigen module Kracht (`/kracht`), met wger en Darebee-links |
 | 4 | Sport | Duursport: FIT/TCX-import, tempo- en hartslagzones, weekvolume; kaart pas na controle tegelvoorwaarden — ✅ PR 7 als eigen module Duur (`/duur`), met FIT/TCX/GPX en OSM-kaart |
 | 5 | Sport | Doelen en planning: weekdoelen, trainingskalender — ✅ PR 13 |
-| 6 | Sport | Regelgebaseerde coach (logica herschreven in TypeScript; Samen Thuis blijft ongewijzigd) |
+| 6 | Sport | Regelgebaseerde coach (logica herschreven in TypeScript; Samen Thuis blijft ongewijzigd) — ✅ PR 15 ([docs/COACH.md](docs/COACH.md)) |
 | 7 | SIDEQUEST | Quest-stappen, categorieën, deadlines — ✅ PR 8 |
 | 8 | SIDEQUEST | Levels (oplopende drempels, berekend uit punten) en badges (alleen erkenning, geen bonuspunten) — ✅ PR 9 |
 | 9 | SIDEQUEST | Statistieken en kalender-heatmap — ✅ PR 9 |
