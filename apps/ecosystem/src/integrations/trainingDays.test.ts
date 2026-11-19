@@ -17,18 +17,19 @@ describe('trainingsdagen voor de koppeling Sport → SIDEQUEST', () => {
     expect(points.map((point) => point.value)).toEqual([0, 10, 0]);
   });
 
-  it('geeft voor het weekdoel van Sport alleen datum en minuten uit Kracht en Duur', () => {
+  it('geeft voor het weekdoel en de coach van Sport alleen datum, minuten en een grove discipline uit Kracht en Duur', () => {
     expect(otherSessionsFrom({
       kracht: [
         { date: '2026-11-16', startedAt: '2026-11-16T18:00:00.000Z', finishedAt: '2026-11-16T18:50:00.000Z' },
         { date: '2026-11-17', startedAt: 'kapot', finishedAt: 'kapot' },
         { date: 'nooit', startedAt: '2026-11-16T18:00:00.000Z', finishedAt: '2026-11-16T18:50:00.000Z' }
       ],
-      duur: [{ date: '2026-11-18', durationSec: 1830 }]
+      duur: [{ date: '2026-11-18', durationSec: 1830, sport: 'hardlopen' }, { date: '2026-11-19', durationSec: 3600, sport: 'fietsen' }]
     })).toEqual([
-      { date: '2026-11-16', minutes: 50 },
-      { date: '2026-11-17', minutes: 0 },
-      { date: '2026-11-18', minutes: 31 }
+      { date: '2026-11-16', minutes: 50, discipline: 'strength' },
+      { date: '2026-11-17', minutes: 0, discipline: 'strength' },
+      { date: '2026-11-18', minutes: 31, discipline: 'running' },
+      { date: '2026-11-19', minutes: 60, discipline: 'cardio' }
     ]);
   });
 });
