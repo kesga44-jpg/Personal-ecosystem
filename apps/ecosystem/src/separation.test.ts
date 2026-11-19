@@ -69,6 +69,16 @@ describe('gescheiden opslag per module', () => {
     }
   });
 
+  it('het kluisprototype (P-1) doet geen netwerkverzoeken en wordt door de app niet gebruikt (ADR 0021)', () => {
+    const srcDir = join(process.cwd(), 'apps', 'ecosystem', 'src');
+    for (const file of readdirSync(join(srcDir, 'vault')).filter((name) => /\.(ts|tsx)$/.test(name) && !/\.test\./.test(name))) {
+      const source = readFileSync(join(srcDir, 'vault', file), 'utf8');
+      expect(/fetch\(|XMLHttpRequest|sendBeacon|WebSocket|https?:\/\/|localStorage|indexedDB/.test(source), `vault/${file} praat met buiten of slaat iets op`).toBe(false);
+    }
+    const appFiles = readdirSync(srcDir, { recursive: true, encoding: 'utf8' }).filter((name) => /\.(ts|tsx)$/.test(name) && !name.startsWith('vault') && !/\.test\./.test(name));
+    for (const file of appFiles) expect(/from ['"][./]*vault\//.test(readFileSync(join(srcDir, file), 'utf8')), `${file} gebruikt het kluisprototype`).toBe(false);
+  });
+
   it('herinneringen, dashboardgegevens en trainingsdagen lezen alleen en doen geen netwerkverzoeken (ADR 0022, PR 11)', () => {
     const files = [
       ...readdirSync(join(process.cwd(), 'apps', 'ecosystem', 'src', 'reminders')).filter((name) => /\.(ts|tsx)$/.test(name) && !/\.test\./.test(name)).map((name) => join('reminders', name)),
