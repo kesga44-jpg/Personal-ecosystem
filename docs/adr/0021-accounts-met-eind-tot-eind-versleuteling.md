@@ -1,6 +1,6 @@
 # ADR 0021 — Eigen account met eind-tot-eind-versleuteling voor Personal Ecosystem
 
-- **Status:** geaccepteerd als ontwerp (2026-11-16); uitvoering in productie pas na de poorten in § 6
+- **Status:** geaccepteerd als ontwerp (2026-11-16); uitvoering in productie pas na de poorten in § 6. P-1: lokaal prototype in PR 16 ([docs/accounts/P-1_PROTOTYPE.md](../accounts/P-1_PROTOTYPE.md)), wacht op akkoord eigenaar
 - **Besluit-ID:** B-21
 - **Bouwt voort op:** [ADR 0001](0001-supabase-project-a-schema-isolatie.md), [ADR 0013](0013-app-gebonden-sessies-en-verplichte-totp.md), [ADR 0014](0014-backuptoegang-zonder-service-key.md), [ADR 0020](0020-een-app-met-modules.md)
 
@@ -25,7 +25,7 @@ Alle inhoud wordt **in de browser** versleuteld vóórdat hij de server bereikt.
 | Onderdeel | Keuze |
 |---|---|
 | Gegevenssleutel (DEK) | Willekeurige AES-GCM-sleutel van 256 bit, eenmalig gemaakt bij het aanmaken van de kluis |
-| Versleuteling per record | AES-GCM met een willekeurige IV van 96 bit per versie; record-ID en module als *additional authenticated data* |
+| Versleuteling per record | AES-GCM met een willekeurige IV van 96 bit per versie; record-ID, module en versie als *additional authenticated data* (versie toegevoegd in P-1) |
 | Sleutel om de DEK te beschermen (KEK) | Afgeleid van een **kluiswachtwoord** met PBKDF2-SHA-256 (Web Crypto, minimaal 600.000 iteraties, eigen salt) |
 | Herstelcode | Tweede KEK uit een willekeurige herstelcode (minimaal 128 bit, eenmalig getoond, door de gebruiker zelf te bewaren) |
 | Opslag van de sleutels | Alleen de **ingepakte** DEK (versleuteld met KEK) staat op de server, één keer per kluiswachtwoord en één keer per herstelcode |
