@@ -687,6 +687,64 @@ test('dashboard: weekreview toont vorige week (ma–zo) met verschil t.o.v. de w
   expect(errors).toEqual([]);
 });
 
+test('Sport-coach: profiel, voorstel als concept, bevestigen, inplannen en terugkoppeling leidt tot een nieuw concept', async ({ page }) => {
+  const errors = collectErrors(page);
+  const field = (text: string) => page.locator('label.field').filter({ hasText: text }).locator('input, select, textarea');
+  await page.goto(`${base}/sport/coach`);
+  await expect(page.getByRole('heading', { level: 1, name: 'Coach' })).toBeVisible();
+  await expect(page.getByText('Eerst je sportprofiel')).toBeVisible();
+
+  await field('Huidige activiteit').fill('Wandelt dagelijks, loopt soms 2 km');
+  await field('Beschikbare minuten per week').fill('150');
+  await field('Huidige trainingsminuten per week').fill('60');
+  await field('Astma').selectOption('yes');
+  await page.getByRole('button', { name: 'Profiel opslaan' }).click();
+  await expect(page.getByText('Profiel opgeslagen')).toBeVisible();
+
+  await field('Bijv. 5 km rustig kunnen lopen').fill('5 km rustig lopen');
+  await page.getByRole('button', { name: 'Voorstel maken' }).click();
+  await expect(page.getByText(/Concept opgeslagen/)).toBeVisible();
+  const program = page.getByRole('article', { name: 'Hardlopen · 5 km rustig lopen' });
+  await expect(program.locator('.status-pill')).toHaveText('Concept');
+  await program.getByText('Onderbouwing en aandachtspunten').click();
+  await expect(program.getByText(/sluit geen sport of trainingsvorm automatisch uit/)).toBeVisible();
+
+  await program.getByRole('button', { name: 'Bevestigen' }).click();
+  await expect(program.locator('.status-pill')).toHaveText('Actief');
+  await program.getByRole('button', { name: 'Week 1 inplannen' }).click();
+  await expect(page.getByText(/van week 1 staan in Planning/)).toBeVisible();
+
+  await program.getByLabel('Minuten').fill('30');
+  await program.getByLabel('Ervaren inspanning (RPE)').selectOption('9');
+  await program.getByLabel('Herstel').selectOption('slecht');
+  await program.getByRole('button', { name: 'Terugkoppeling opslaan' }).click();
+  await expect(program.getByText('Terugkoppeling opgeslagen')).toBeVisible();
+  await expect(program.getByText(/het herstel vraagt aandacht/)).toBeVisible();
+  await program.getByRole('button', { name: 'Aanpassing voorstellen' }).click();
+  await expect(page.getByText(/Het huidige programma is niet gewijzigd/)).toBeVisible();
+  await expect(page.getByRole('article', { name: 'Hardlopen · 5 km rustig lopen' })).toHaveCount(2);
+  await expect(page.getByText(/versie 2/)).toBeVisible();
+
+  await page.goto(`${base}/sport/planning`);
+  await expect(page.getByText(/Coach: /).first()).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('Sport-coach maakt geen voorstel bij ingevulde fysieke aandachtspunten', async ({ page }) => {
+  const field = (text: string) => page.locator('label.field').filter({ hasText: text }).locator('input, select, textarea');
+  await page.goto(`${base}/sport/coach`);
+  await field('Huidige activiteit').fill('Wandelt dagelijks');
+  await field('Beschikbare minuten per week').fill('150');
+  await field('Fysieke aandachtspunten').fill('Knieklachten');
+  await page.getByRole('button', { name: 'Profiel opslaan' }).click();
+  await expect(page.getByText('Profiel opgeslagen')).toBeVisible();
+  await field('Bijv. 5 km rustig kunnen lopen').fill('5 km');
+  await page.getByRole('button', { name: 'Voorstel maken' }).click();
+  await expect(page.getByText('Geen voorstel gemaakt')).toBeVisible();
+  await expect(page.getByText(/bevoegde professional/)).toBeVisible();
+  await expect(page.getByText('Nog geen programma\'s')).toBeVisible();
+});
+
 test('Sport: weekdoel over Sport en Duur, training plannen en status volgt uit vastgelegde trainingen', async ({ page }) => {
   const errors = collectErrors(page);
   await page.goto(`${base}/sport/planning`);
@@ -745,12 +803,14 @@ test('een Sport-back-up van schema 1 (oud adres) is nog te herstellen', async ({
   await expect(page.getByText('33 min').first()).toBeVisible();
   await page.goto(`${base}/sport/planning`);
   await expect(page.getByRole('heading', { level: 1, name: 'Planning' })).toBeVisible();
+  await page.goto(`${base}/sport/coach`);
+  await expect(page.getByRole('heading', { level: 1, name: 'Coach' })).toBeVisible();
 });
 
 for (const width of [375, 768, 1280]) {
   test(`Personal Ecosystem past op ${width}px zonder horizontaal scrollen`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    for (const path of ['/', '/sport', '/sport/planning', '/quest', '/quest/quests', '/quest/voortgang', '/lichaam', '/lichaam/invoeren', '/voeding', '/voeding/toevoegen', '/kracht', '/kracht/training', '/kracht/oefeningen', '/kracht/schemas/nieuw', '/duur', '/duur/importeren', '/duur/toevoegen', '/dagboek', '/dagboek/schrijven', '/dagboek/archief', '/back-up']) {
+    for (const path of ['/', '/sport', '/sport/planning', '/sport/coach', '/quest', '/quest/quests', '/quest/voortgang', '/lichaam', '/lichaam/invoeren', '/voeding', '/voeding/toevoegen', '/kracht', '/kracht/training', '/kracht/oefeningen', '/kracht/schemas/nieuw', '/duur', '/duur/importeren', '/duur/toevoegen', '/dagboek', '/dagboek/schrijven', '/dagboek/archief', '/back-up']) {
       await page.goto(`${base}${path}`);
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
