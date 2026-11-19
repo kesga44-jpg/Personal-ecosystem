@@ -1,3 +1,4 @@
+import { validateCoachStore } from './coach';
 import { validatePlanningStore } from './planning';
 
 export type SportType = 'run' | 'walk' | 'bike' | 'swim' | 'strength' | 'other';
@@ -82,6 +83,8 @@ export function validateSportBackup(input: unknown): void {
   }
   // Sinds schema 2 (PR 13); oudere back-ups hebben geen planning.
   validatePlanningStore(stores.planning);
+  // Sinds schema 3 (PR 15); oudere back-ups hebben geen coachgegevens.
+  validateCoachStore(stores.coach);
 
   const fingerprints = new Set<string>();
   for (const value of activities) {

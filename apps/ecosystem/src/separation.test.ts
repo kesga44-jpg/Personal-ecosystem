@@ -62,6 +62,13 @@ describe('gescheiden opslag per module', () => {
     });
   }
 
+  it('de coach van Sport (met gezondheidsgegevens) doet geen netwerkverzoeken (PR 15)', () => {
+    for (const file of ['coach.ts', 'CoachPage.tsx']) {
+      const source = readFileSync(join(process.cwd(), 'apps', 'sportapp', 'src', file), 'utf8');
+      expect(/fetch\(|XMLHttpRequest|sendBeacon|WebSocket|https?:\/\//.test(source), `sportapp/src/${file} doet een netwerkverzoek`).toBe(false);
+    }
+  });
+
   it('herinneringen, dashboardgegevens en trainingsdagen lezen alleen en doen geen netwerkverzoeken (ADR 0022, PR 11)', () => {
     const files = [
       ...readdirSync(join(process.cwd(), 'apps', 'ecosystem', 'src', 'reminders')).filter((name) => /\.(ts|tsx)$/.test(name) && !/\.test\./.test(name)).map((name) => join('reminders', name)),

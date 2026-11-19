@@ -70,6 +70,7 @@ Ontwerp: [docs/hub/HUB_DESIGN.md](docs/hub/HUB_DESIGN.md) — in principe goedge
 | B-22 | Externe gegevens | ✅ Akkoord | Open-Meteo (weer), Open Food Facts (voeding), wger (oefeningen), OpenStreetMap (kaart); alleen gratis, voorwaarden per dienst in API_CATALOG.md; geen persoons- of gezondheidsgegevens naar buiten | — |
 | B-23 | Herinneringen binnen de app | ✅ Akkoord (2026-11-18) | Alleen binnen Personal Ecosystem, alleen eigen module-items, afgeleid zonder opslag; blok op het dashboard en teller in de modulebalk; aan/uit en "vandaag verbergen" per apparaat; geen meldingen buiten de app (web-push apart besluit) | [0022](docs/adr/0022-herinneringen-binnen-de-app.md) |
 | B-24 | Koppeling Sport → SIDEQUEST | ✅ Akkoord (2026-11-18) | Standaard uit; 10 punten per dag met minstens één training (Sport, Kracht of Duur); alleen trainingen vanaf het eerste aanzetten; SIDEQUEST krijgt alleen datums; berekend, niet geboekt | [INTEGRATIONS.md](INTEGRATIONS.md) (I-5 lokaal) |
+| B-25 | Coach in Sport | ✅ Akkoord (2026-11-19) | Volledige regelgebaseerde coach uit Samen Thuis in TypeScript, inclusief gezondheidsvragen (lokaal); voorstel als concept, alleen actief na bevestigen; aanpassing altijd als nieuw concept; bevestigde programmaweken met één knop naar Planning | [docs/COACH.md](docs/COACH.md) |
 
 ## Ontbrekende informatie (nog steeds open)
 
