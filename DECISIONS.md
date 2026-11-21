@@ -72,6 +72,37 @@ Ontwerp: [docs/hub/HUB_DESIGN.md](docs/hub/HUB_DESIGN.md) — in principe goedge
 | B-24 | Koppeling Sport → SIDEQUEST | ✅ Akkoord (2026-11-18) | Standaard uit; 10 punten per dag met minstens één training (Sport, Kracht of Duur); alleen trainingen vanaf het eerste aanzetten; SIDEQUEST krijgt alleen datums; berekend, niet geboekt | [INTEGRATIONS.md](INTEGRATIONS.md) (I-5 lokaal) |
 | B-25 | Coach in Sport | ✅ Akkoord (2026-11-19) | Volledige regelgebaseerde coach uit Samen Thuis in TypeScript, inclusief gezondheidsvragen (lokaal); voorstel als concept, alleen actief na bevestigen; aanpassing altijd als nieuw concept; bevestigde programmaweken met één knop naar Planning | [docs/COACH.md](docs/COACH.md) |
 
+## Besluitronde 4 (2026-11-21): Notion-migratie en nieuwe modules
+
+Akkoord van de eigenaar op de richting uit het analyse- en ontwerprapport (fase 1–3), met acht besluiten:
+
+1. Volledige Notion-export als ZIP (Markdown, CSV, bijlagen), met controle op volledigheid.
+2. Twee sporen tegelijk, alleen voor onafhankelijk werk; poorten P-1 t/m P-6 en hun akkoorden blijven volledig intact.
+3. TOTP blijft verplicht.
+4. Zonder kluiswachtwoord én herstelcode zijn gegevens niet terug te halen; bewaren van de herstelcode is verplicht en wordt gecontroleerd.
+5. Groei en Kennis & Ontwikkeling delen één database, maar zijn twee onderdelen in de navigatie.
+6. Geen spelersgegevens uit O23.
+7. Alleen eigen financiële gegevens; niets van Daphne en geen gezamenlijke administratie.
+8. Accountverwijdering en volledige export in P-6.
+
+| # | Besluit | Uitkomst | Uitwerking | ADR |
+|---|---|---|---|---|
+| B-26 | Modulestructuur | Akkoord op richting (2026-11-21); definitief na controle PR 20 | Groei, Kennis & Ontwikkeling (gedeelde database), Financiën, Voetbal, Reizen; geen extra apps | [0023](docs/adr/0023-modulestructuur-groei-kennis-financien-voetbal-reizen.md) |
+| B-27 | Koppelingen tussen modules | Akkoord op richting (2026-11-21); definitief na controle PR 20 | Koppelrecord bij de bron, met uitbreidbare relatiecategorie; Lichaam en Dagboek nooit als doel | [0024](docs/adr/0024-koppelingen-tussen-modules.md) |
+| B-28 | Notion-import | Akkoord op richting (2026-11-21); definitief na controle PR 20 | Herhaalbaar en idempotent; Notion-ID en herkomst bewaard; conflicten; overzicht; droogloop en proefimport; back-up vooraf; nooit verwijderen | [0025](docs/adr/0025-notion-import.md) |
+| B-29 | Voeding | Akkoord op richting (2026-11-21); definitief na controle PR 20 | Schema 2: ingrediënten (bestaande `products`), recepten, plannen; registratie met kopie; planner met voorkeuren en uitsluitingen, zonder AI | [0026](docs/adr/0026-voedingsmodel-recepten-en-plannen.md) |
+| B-30 | Persoonlijke financiën | Akkoord op richting (2026-11-21); definitief na controle PR 20 | Eén transactiemodel in centen; gepland en werkelijk apart; 10/10-regel in Groei | [0027](docs/adr/0027-persoonlijke-financien-en-10-10-regel.md) |
+| B-31 | Gegevens van anderen | Akkoord op richting (2026-11-21); definitief na controle PR 20 | Geen spelers, geen gegevens van Daphne of het huishouden, geen voorbeelddata | [0028](docs/adr/0028-gegevens-van-anderen.md) |
+| B-32 | Accountverwijdering, export, herstelcode | Akkoord op richting (2026-11-21); definitief na controle PR 20 | Herziet ADR 0021 en ADR 0019 (alleen voor Personal Ecosystem); login blijft bestaan vanwege Samen Thuis | [0029](docs/adr/0029-accountverwijdering-export-en-herstelcode.md) |
+| K-A | Eigenaar doelen en gewoontes | ✅ Akkoord (2026-11-21) | Groei is eigenaar; SIDEQUEST verwijst ernaar | 0023 |
+| K-B | Financiën persoonlijk tegenover huishouden | ✅ Akkoord (2026-11-21) | Persoonlijke financiën en beleggingsplan in Personal Ecosystem; huishouden in Samen Thuis | 0023, 0027 |
+| K-C | Voetbal tegenover Coach | ✅ Akkoord (2026-11-21) | Persoonlijke trainerskennis in Personal Ecosystem; team en spelers in Coach | 0023, 0028 |
+| K-D | Voedingsplan tegenover weekmenu en boodschappen | ✅ Akkoord onder voorwaarde (2026-11-21) | Persoonlijk plan hier; weekmenu en boodschappen in Samen Thuis; geen automatische koppeling met of wijziging van Samen Thuis zonder afzonderlijke toestemming | 0026 |
+
+Verduidelijkingen van de eigenaar (2026-11-21), verwerkt in PR 20: Personal Ecosystem heeft een eigen accountlevenscyclus en verwijderen raakt nooit Samen Thuis of Coach (ADR 0029 § 3); een nieuwe herstelcode alleen na TOTP en een geslaagde opening van de bestaande kluis (ADR 0029 § 1); een import is pas geslaagd als ook relaties, historie, bijlagen en Notion-ID's zijn gecontroleerd (ADR 0025 § 11).
+
+Uitvoering: [IMPLEMENTATIEPLAN_NOTION_EN_MODULES.md](docs/IMPLEMENTATIEPLAN_NOTION_EN_MODULES.md).
+
 ## Ontbrekende informatie (nog steeds open)
 
 Zie [REPO_ANALYSIS.md § Ontbrekende informatie](REPO_ANALYSIS.md#ontbrekende-informatie-expliciet). Voor F1 zijn vooral nodig: punt 2 (anon-toegang ingetrokken?), 3 (Coach-backend), 4 (gedeployde Edge Functions) en 5 (database- en storagegebruik).
