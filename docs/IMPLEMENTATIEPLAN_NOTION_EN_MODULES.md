@@ -1,6 +1,6 @@
 # Implementatieplan: Notion-migratie, nieuwe modules en accounts
 
-**Status:** voorgesteld (2026-11-21). Er wordt pas gebouwd na het definitieve akkoord van de eigenaar op ADR 0023 t/m 0029 (na controle van PR 20). K-A t/m K-D zijn beslist. Elke stap is een eigen PR met tests, documentatie en een risico-inschatting; de eigenaar merget; Claude controleert daarna live, alleen lezend.
+**Status:** ADR 0023 t/m 0029 geaccepteerd (2026-11-21); K-A t/m K-D beslist. Bouwen begint pas na goedkeuring van de inventaris (A3), per stap met een eigen PR en akkoord. Elke stap is een eigen PR met tests, documentatie en een risico-inschatting; de eigenaar merget; Claude controleert daarna live, alleen lezend.
 
 ## Regels voor twee sporen
 
@@ -23,7 +23,7 @@
 | Stap | Wat | Wie | Hangt af van | Omvang |
 |---|---|---|---|---|
 | A1 | Volledige Notion-export als ZIP (Markdown & CSV, "Everything", subpagina's in mappen, met bijlagen) in `C:\Kees` | Eigenaar | — | — |
-| A2 | Inventaris en volledigheidscontrole (ADR 0025 § 1), met markering eigen, van anderen, gezamenlijk, template, voorbeeld, leeg of twijfel. In de repo komt alleen de structuur (namen, ID's, aantallen, kolommen), **geen inhoud** | Claude, alleen lezen | A1 | S |
+| A2 | Inventaris en volledigheidscontrole (ADR 0025 § 1), met markering eigen, van anderen, gezamenlijk, template, voorbeeld, leeg of twijfel. Alleen lezen: geen wijziging aan de export, geen import. Het rapport gaat **alleen privé naar de eigenaar** (de repository is openbaar); er komt **geen** Notion-inhoud, databasenaam of aantal in de repository | Claude, alleen lezen | A1 | S |
 | A3 | Akkoord op de inventaris: per database importeren ja of nee, de bron van waarheid bij dubbelen, de uitsluitlijst | Eigenaar | A2 | — |
 | A4 | PR: gedeelde basis in `packages/core` — `ModuleLink`, relatiecategorieën met toegestane combinaties, `ImportOrigin`, `Lookup`- en `linksTo`-contracten | Claude | ADR-akkoord | M |
 | A5 | PR: Groei (database `-groei`): doelen en subdoelen, vaardigheden, gewoontes, acties, evaluaties, The Ultimate Growth System, 10/10-regel; navigatie-item Groei | Claude | A4, K-A | L |
