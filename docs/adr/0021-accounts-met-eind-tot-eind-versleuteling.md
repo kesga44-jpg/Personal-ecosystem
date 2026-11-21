@@ -85,7 +85,7 @@ Record-ID's worden willekeurig gegenereerd (geen afleidbare informatie).
 | # | Poort |
 |---|---|
 | P-1 | Dit ontwerp plus een lokaal prototype van versleuteling, sleutelbeheer en sync, met tests (geen productie) — ✅ 2026-11-21, ontwerp goedgekeurd door de eigenaar ([prototype](../accounts/P-1_PROTOTYPE.md)) |
-| P-2 | Back-ups van project A volgens ADR 0014, met een geslaagde hersteltest |
+| P-2 | Back-ups van project A volgens ADR 0014, met een geslaagde hersteltest — in voorbereiding ([stappenplan](../backups/P-2_STAPPENPLAN.md)) |
 | P-3 | Uitgestelde Samen Thuis-migratie `20261014_household_state_sync` uitgevoerd (B-20) — ✅ 2026-11-21, vóór P-2 met akkoord eigenaar ([verslag](../backups/P-3_UITVOERING.md)) |
 | P-4 | Samen Thuis-PR voor ISO-17: sessies van Personal Ecosystem hebben geen toegang tot `public` en de Samen Thuis-buckets |
 | P-5 | Migratie schema `pe` op project A met RLS-tests (eigenaar mag, ander account mag niet, anon niets, `aal1` niets) en isolatierapport |
