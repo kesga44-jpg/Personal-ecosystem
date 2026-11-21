@@ -7,6 +7,7 @@ Elke app in de monorepo krijgt een eigen sectie zodra die bestaat. Bestaande app
 
 ### Gewijzigd
 
+- Documentatie: P-3 (Samen Thuis-migratie `20261014_household_state_sync`) is op 2026-11-21 in project A uitgevoerd, vóór P-2 en met akkoord van de eigenaar; verslag in `docs/backups/P-3_UITVOERING.md`. Lokaal onderzoek voor P-2 (back-uprol met alleen leesrechten, dump en hersteltest in een lokale PostgreSQL 16) in `docs/backups/P-2_ONDERZOEK.md` met het testscript `p2-lokale-simulatie.sh`. Geen codewijziging.
 - CI: `actions/checkout` en `actions/setup-node` van v4 naar v7. De v4-versies draaien op Node.js 20; GitHub voerde ze al gedwongen op Node.js 24 uit en gaf daarbij een waarschuwing. De v7-versies draaien zelf op Node.js 24. Geen wijziging aan de stappen of aan de Node-versie waarmee de apps worden gebouwd (24).
 - Herinneringen: de toelichting in `writeReminderSettings` beschrijft nu wat er echt wordt bewaard (ook de datum van "Vandaag verborgen"). Alleen een codecommentaar; geen gedragswijziging.
 - CI: `npm audit --audit-level=high` blokkeert alleen nog op runtime-afhankelijkheden (`--omit=dev`). De volledige audit draait door als niet-blokkerende waarschuwing. Aanleiding: een nieuw high-advies voor `picomatch` zonder patch, alleen in dev-tooling, liet elke PR en `main` vóór typecheck, tests en build stoppen.
