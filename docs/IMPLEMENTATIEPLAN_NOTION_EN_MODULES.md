@@ -1,6 +1,6 @@
 # Implementatieplan: Notion-migratie, nieuwe modules en accounts
 
-**Status:** voorgesteld (2026-11-21). Er wordt pas gebouwd na akkoord van de eigenaar op ADR 0023 t/m 0029 en op de open besluiten K-A t/m K-D. Elke stap is een eigen PR met tests, documentatie en een risico-inschatting; de eigenaar merget; Claude controleert daarna live, alleen lezend.
+**Status:** voorgesteld (2026-11-21). Er wordt pas gebouwd na het definitieve akkoord van de eigenaar op ADR 0023 t/m 0029 (na controle van PR 20). K-A t/m K-D zijn beslist. Elke stap is een eigen PR met tests, documentatie en een risico-inschatting; de eigenaar merget; Claude controleert daarna live, alleen lezend.
 
 ## Regels voor twee sporen
 
@@ -9,14 +9,14 @@
 - Een stap uit A draait alleen naast B als hij geen bestand, store of contract van een openstaande B-stap aanraakt. Botst dat, dan wacht A.
 - Geen definitieve Notion-import zonder goedgekeurde inventaris, een proefimport door Claude, en een overzicht dat de eigenaar heeft gezien.
 
-## Open besluiten (uit de ADR's)
+## Besluiten K-A t/m K-D (akkoord 2026-11-21)
 
-| # | Vraag | Voorstel | ADR |
+| # | Vraag | Uitkomst | ADR |
 |---|---|---|---|
-| K-A | Wie is eigenaar van doelen en gewoontes: SIDEQUEST of Groei? | Groei; SIDEQUEST verwijst ernaar. Bestaande SIDEQUEST-doelen en -gewoontes worden na back-up en bevestiging overgezet | 0023 |
-| K-B | Financiën splitsen: persoonlijk in Personal Ecosystem, huishouden en vermogensbeheer in Samen Thuis? | Ja; Personal Ecosystem bewaart alleen een persoonlijk beleggingsplan, geen posities | 0023, 0027 |
-| K-C | Voetbal splitsen: persoonlijke kennis in Personal Ecosystem, alles van een team of speler in Coach? | Ja | 0023, 0028 |
-| K-D | Persoonlijk voedingsplan in Personal Ecosystem, huishoudweekmenu en boodschappen in Samen Thuis; boodschappenlijst alleen afgeleid, niet opgeslagen? | Ja | 0026 |
+| K-A | Wie is eigenaar van doelen en gewoontes: SIDEQUEST of Groei? | Akkoord: Groei; SIDEQUEST verwijst ernaar. Bestaande SIDEQUEST-doelen en -gewoontes worden na back-up en bevestiging overgezet | 0023 |
+| K-B | Financiën splitsen: persoonlijk in Personal Ecosystem, huishouden en vermogensbeheer in Samen Thuis? | Akkoord; Personal Ecosystem bewaart alleen een persoonlijk beleggingsplan, geen posities | 0023, 0027 |
+| K-C | Voetbal splitsen: persoonlijke kennis in Personal Ecosystem, alles van een team of speler in Coach? | Akkoord | 0023, 0028 |
+| K-D | Persoonlijk voedingsplan in Personal Ecosystem, huishoudweekmenu en boodschappen in Samen Thuis; boodschappenlijst alleen afgeleid, niet opgeslagen? | Akkoord onder voorwaarde: geen automatische koppeling met of wijziging van Samen Thuis zonder afzonderlijke toestemming | 0026 |
 
 ## Spoor A — modules en import
 
@@ -39,7 +39,7 @@
 | A15 | PR: overige Notion-bronnen uit de inventaris (Fitness, Workout Tracker, Habit Tracker) naar bestaande modules, waar de inventaris dat aanwijst | Claude | A3, A8 | M |
 | A16 | PR: dashboard uitbreiden — prioriteiten, actieve doelen, gewoontes, recente inzichten; per blok aan of uit | Claude | A5, A6 | M |
 
-Elke import na A10 volgt dezelfde stappen: proefimport door Claude → overzicht → akkoord → de eigenaar importeert.
+Elke import na A10 volgt dezelfde stappen: proefimport door Claude → overzicht met de vijf controles uit ADR 0025 § 11 → akkoord → de eigenaar importeert → controle na de import.
 
 ## Spoor B — accounts (ongewijzigd ADR 0021, aangevuld met ADR 0029)
 
