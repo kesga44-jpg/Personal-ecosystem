@@ -1,6 +1,6 @@
 # ADR 0014 — Back-uptoegang zonder service key: ontwerp, sleutelbeheer, retentie en herstel
 
-- **Status:** voorgesteld (2026-11-07), ter beoordeling. **PR-3 wordt pas gebouwd na akkoord.**
+- **Status:** voorgesteld (2026-11-07). Akkoord eigenaar op K-1 en K-3 (2026-11-21); lokaal onderzoek in [docs/backups/P-2_ONDERZOEK.md](../backups/P-2_ONDERZOEK.md). K-2 en K-4 staan nog open. **PR-3 wordt pas gebouwd na akkoord.**
 - **Besluit-ID:** B-14 (uitwerking van ADR 0010)
 - **Voorwaarden eigenaar:** geen service key zonder akkoord; eerst onderzoeken of een aparte S3-sleutel kan, anders een alternatief ontwerp; nooit een sleutel met volledige toegang in applicatiecode, de Hub of een gedeelde omgeving; encryptie, sleutelbeheer, retentie en hersteltests uitwerken.
 
