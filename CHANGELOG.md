@@ -7,6 +7,7 @@ Elke app in de monorepo krijgt een eigen sectie zodra die bestaat. Bestaande app
 
 ### Gewijzigd
 
+- Documentatie: poort P-1 van ADR 0021 afgerond; de eigenaar heeft het ontwerp (kluiswachtwoord plus herstelcode, server ziet alleen versleutelde blokken met willekeurige ID's, conflicten nooit stil opgelost) op 2026-11-21 goedgekeurd. Vastgelegd in ADR 0021, `DECISIONS.md` (B-21) en `docs/accounts/P-1_PROTOTYPE.md`. P-2, P-4, P-5 en P-6 vragen elk nog apart akkoord. Geen codewijziging.
 - Documentatie: P-3 (Samen Thuis-migratie `20261014_household_state_sync`) is op 2026-11-21 in project A uitgevoerd, vóór P-2 en met akkoord van de eigenaar; verslag in `docs/backups/P-3_UITVOERING.md`. Lokaal onderzoek voor P-2 (back-uprol met alleen leesrechten, dump en hersteltest in een lokale PostgreSQL 16) in `docs/backups/P-2_ONDERZOEK.md` met het testscript `p2-lokale-simulatie.sh`. Geen codewijziging.
 - CI: `actions/checkout` en `actions/setup-node` van v4 naar v7. De v4-versies draaien op Node.js 20; GitHub voerde ze al gedwongen op Node.js 24 uit en gaf daarbij een waarschuwing. De v7-versies draaien zelf op Node.js 24. Geen wijziging aan de stappen of aan de Node-versie waarmee de apps worden gebouwd (24).
 - Herinneringen: de toelichting in `writeReminderSettings` beschrijft nu wat er echt wordt bewaard (ook de datum van "Vandaag verborgen"). Alleen een codecommentaar; geen gedragswijziging.
