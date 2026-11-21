@@ -1,0 +1,88 @@
+# Wekelijkse back-up van project A (Samen Thuis-database) met directe hersteltest (ADR 0014, poort P-2).
+# Hoort in de privé-repo ecosystem-backups onder .github/workflows/.
+name: Back-up project A
+
+on:
+  schedule:
+    - cron: '17 3 * * 0' # zondag 03:17 UTC
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: backup-a
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write # alleen voor het aanmaken en opschonen van releases
+    env:
+      PG_BIN: /usr/lib/postgresql/17/bin
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Gereedschap installeren (PostgreSQL 17 en age)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q postgresql-common
+          echo 'create_main_cluster = false' | sudo tee -a /etc/postgresql-common/createcluster.conf >/dev/null
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y -q postgresql-17 postgresql-client-17 age
+          "$PG_BIN/pg_dump" --version
+          age --version
+
+      - name: Back-up maken (alleen lezen, als backup_reader)
+        id: backup
+        env:
+          DB_URL: ${{ secrets.DB_A_URL }}
+          RECIPIENTS: recipients.txt
+        run: PATH="$PG_BIN:$PATH" bash scripts/backup.sh "$RUNNER_TEMP/out"
+
+      - name: Hersteltest van deze back-up (lokale PostgreSQL 17)
+        id: restore
+        env:
+          AGE_RESTORE_KEY: ${{ secrets.AGE_RESTORE_KEY }}
+          REPORT: ${{ runner.temp }}/report.md
+        run: |
+          umask 077
+          printf '%s\n' "$AGE_RESTORE_KEY" >"$RUNNER_TEMP/restore.key"
+          sudo pg_createcluster 17 herstel --port 5499 --start -- --auth=trust >/dev/null
+          AGE_IDENTITY="$RUNNER_TEMP/restore.key" RESTORE_CONNINFO="host=/var/run/postgresql port=5499 user=postgres" \
+            PATH="$PG_BIN:$PATH" bash scripts/restore-test.sh "$RUNNER_TEMP/out" "${{ steps.backup.outputs.stamp }}"
+
+      - name: Rapport
+        if: always() && steps.backup.outcome == 'success'
+        run: |
+          rm -f "$RUNNER_TEMP/restore.key"
+          { echo "## Back-up ${{ steps.backup.outputs.stamp }}"; echo;
+            echo "${{ steps.backup.outputs.tables }} tabellen, ${{ steps.backup.outputs.rows }} rijen."; echo;
+            cat "$RUNNER_TEMP/report.md" 2>/dev/null || echo "Geen hersteltestrapport."; } >"$RUNNER_TEMP/notes.md"
+          cat "$RUNNER_TEMP/notes.md" >>"$GITHUB_STEP_SUMMARY"
+
+      - name: Release maken (alleen versleutelde bestanden)
+        if: always() && steps.backup.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          STAMP: ${{ steps.backup.outputs.stamp }}
+          TESTED: ${{ steps.restore.outcome }}
+        run: |
+          flags=()
+          if [ "$TESTED" != success ]; then flags+=(--prerelease); fi
+          gh release create "backup-a-$STAMP" "${flags[@]}" \
+            --title "Back-up A $STAMP$([ "$TESTED" = success ] || echo ' (hersteltest niet geslaagd)')" \
+            --notes-file "$RUNNER_TEMP/notes.md" \
+            "$RUNNER_TEMP/out/db-$STAMP.dump.age" "$RUNNER_TEMP/out/counts-$STAMP.txt.age" "$RUNNER_TEMP/out/MANIFEST-$STAMP.sha256"
+
+      - name: Oude back-ups opschonen
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PRUNE: ${{ vars.PRUNE }}
+        run: bash scripts/prune.sh backup-a-

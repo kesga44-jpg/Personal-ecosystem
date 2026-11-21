@@ -1,0 +1,55 @@
+# Maandelijkse hersteltest van de laatste back-up van project A (ADR 0014 § 8).
+# Hoort in de privé-repo ecosystem-backups onder .github/workflows/.
+name: Hersteltest project A
+
+on:
+  schedule:
+    - cron: '43 4 2 * *' # de 2e van elke maand, 04:43 UTC
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  restore-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      PG_BIN: /usr/lib/postgresql/17/bin
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Gereedschap installeren (PostgreSQL 17 en age)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q postgresql-common
+          echo 'create_main_cluster = false' | sudo tee -a /etc/postgresql-common/createcluster.conf >/dev/null
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y -q postgresql-17 postgresql-client-17 age
+
+      - name: Laatste geteste back-up ophalen
+        id: fetch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          tag=$(gh release list --exclude-pre-releases --limit 100 --json tagName --jq '[.[] | select(.tagName | startswith("backup-a-"))][0].tagName')
+          [ -n "$tag" ] || { echo "Geen back-up gevonden."; exit 1; }
+          mkdir -p "$RUNNER_TEMP/in"
+          gh release download "$tag" --dir "$RUNNER_TEMP/in"
+          echo "stamp=${tag#backup-a-}" >>"$GITHUB_OUTPUT"
+
+      - name: Hersteltest
+        env:
+          AGE_RESTORE_KEY: ${{ secrets.AGE_RESTORE_KEY }}
+          REPORT: ${{ runner.temp }}/report.md
+        run: |
+          umask 077
+          printf '%s\n' "$AGE_RESTORE_KEY" >"$RUNNER_TEMP/restore.key"
+          sudo pg_createcluster 17 herstel --port 5499 --start -- --auth=trust >/dev/null
+          trap 'rm -f "$RUNNER_TEMP/restore.key"; cat "$RUNNER_TEMP/report.md" >>"$GITHUB_STEP_SUMMARY" 2>/dev/null || true' EXIT
+          AGE_IDENTITY="$RUNNER_TEMP/restore.key" RESTORE_CONNINFO="host=/var/run/postgresql port=5499 user=postgres" \
+            PATH="$PG_BIN:$PATH" bash scripts/restore-test.sh "$RUNNER_TEMP/in" "${{ steps.fetch.outputs.stamp }}"

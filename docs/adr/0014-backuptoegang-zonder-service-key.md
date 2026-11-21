@@ -1,6 +1,6 @@
 # ADR 0014 — Back-uptoegang zonder service key: ontwerp, sleutelbeheer, retentie en herstel
 
-- **Status:** voorgesteld (2026-11-07). Akkoord eigenaar op K-1 en K-3 (2026-11-21); lokaal onderzoek in [docs/backups/P-2_ONDERZOEK.md](../backups/P-2_ONDERZOEK.md). K-2 en K-4 staan nog open. **PR-3 wordt pas gebouwd na akkoord.**
+- **Status:** voorgesteld (2026-11-07). Akkoord eigenaar op K-1 en K-3 (2026-11-21); lokaal onderzoek in [docs/backups/P-2_ONDERZOEK.md](../backups/P-2_ONDERZOEK.md). K-2: CI-sleutel (2026-11-21); back-up in een privé GitHub-repo, eerst alleen de database ([stappenplan](../backups/P-2_STAPPENPLAN.md), scripts in `tools/ecosystem-backups/`). K-4 (rol in project A) staat nog open.
 - **Besluit-ID:** B-14 (uitwerking van ADR 0010)
 - **Voorwaarden eigenaar:** geen service key zonder akkoord; eerst onderzoeken of een aparte S3-sleutel kan, anders een alternatief ontwerp; nooit een sleutel met volledige toegang in applicatiecode, de Hub of een gedeelde omgeving; encryptie, sleutelbeheer, retentie en hersteltests uitwerken.
 
@@ -121,6 +121,6 @@ Regels:
 | # | Keuze | Aanbeveling |
 |---|---|---|
 | K-1 | Ontwerp A (aparte identiteiten met alleen leesrechten) in plaats van een S3-sleutel of service key | Ja |
-| K-2 | CI-hersteltestsleutel (automatische maandelijkse hersteltest) **of** alleen handmatige hersteltests met de offline sleutel (automatische test controleert dan alleen hashes) | CI-sleutel |
+| K-2 | CI-hersteltestsleutel (automatische maandelijkse hersteltest) **of** alleen handmatige hersteltests met de offline sleutel (automatische test controleert dan alleen hashes) | CI-sleutel — ✅ gekozen (2026-11-21) |
 | K-3 | Akkoord om V1–V3 eerst lokaal te onderzoeken met de Supabase CLI (geen productie) | Ja |
 | K-4 | Daarna aparte goedkeuring voor de twee databasewijzigingen (rol + Storage-policy) in A en B | Bij de PR-3-aanvraag |
