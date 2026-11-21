@@ -136,8 +136,19 @@ Na het schrijven leest de import alles terug uit de database en controleert vijf
 | Historie | Datums, bedragen, hoeveelheden en momentopnamen (zoals voedingswaarden bij gegeten maaltijden) tegen de genormaliseerde bronwaarden | Gelijk; een andere datum, een ander bedrag of een andere waarde geldt als fout |
 | Bijlagen | Verwachte bijlagen (§ 8) tegen opgeslagen bijlagen, op SHA-256 | Elke verwachte bijlage is aanwezig met dezelfde hash; niet geïmporteerde bijlagen hebben een reden |
 
+- **Wanneer telt een ontbrekende relatie als verklaard?** Per bronrelatie (bronrij → doelpagina) is er precies één uitkomst:
+
+  | Uitkomst | Wanneer | Effect op de status |
+  |---|---|---|
+  | Overgenomen | Bron en doel zijn geïmporteerd en de verwijzing is opgeslagen | — |
+  | **Fout** | Bron en doel zijn **allebei geïmporteerd**, maar de verwijzing is niet opgeslagen of wijst naar een ander record | Blokkeert "Volledig gecontroleerd", altijd |
+  | **Fout** | Het doel staat niet in de export ("ontbreekt in export") en de eigenaar heeft dat niet vooraf in de goedgekeurde inventaris geaccepteerd | Blokkeert "Volledig gecontroleerd" |
+  | Verklaard | Het doel is bewust niet geïmporteerd: het staat op de goedgekeurde uitsluitlijst (bijvoorbeeld een speler of een template), of is overgeslagen met een reden uit § 7, of de eigenaar heeft "ontbreekt in export" in de inventaris geaccepteerd | Blokkeert niet; telt mee in een aparte regel "verklaarde relaties", met aantallen per reden |
+
+  Een relatie is dus alleen verklaard als de reden vóór de import al vastlag in de goedgekeurde inventaris of in § 7. Een reden die pas tijdens of na de import ontstaat, telt als fout.
+
 - De eindstatus van een import is één van:
-  - **Volledig gecontroleerd**: alle vijf controles geslaagd;
+  - **Volledig gecontroleerd**: alle vijf controles geslaagd, nul fouten; verklaarde relaties worden apart genoemd;
   - **Geïmporteerd met afwijkingen**: alles geschreven, maar minstens één controle niet geslaagd, met per afwijking de reden;
   - **Mislukt**: niets geschreven of teruggezet naar de back-up van § 9.
 - "Geïmporteerd met afwijkingen" is nooit een stille succesmelding. De app toont de afwijkingen bovenaan en de eigenaar beslist: zo laten, de mapper laten verbeteren, of de back-up terugzetten.
