@@ -2,6 +2,7 @@
 
 - **Status:** geaccepteerd als ontwerp (2026-11-16); uitvoering in productie pas na de poorten in § 6. P-1: lokaal prototype in PR 16 ([docs/accounts/P-1_PROTOTYPE.md](../accounts/P-1_PROTOTYPE.md)) — ✅ ontwerp goedgekeurd door de eigenaar (2026-11-21)
 - **Besluit-ID:** B-21
+- **Aangevuld door:** [ADR 0029](0029-accountverwijdering-export-en-herstelcode.md) (2026-11-21): herstelcode verplicht en gecontroleerd; nieuwe herstelcode alleen na TOTP en een geslaagde opening van de kluis; eigen accountlevenscyclus; `pe.delete_my_data()` in P-5; export en verwijderen in P-6. TOTP en de poorten P-1 t/m P-6 blijven ongewijzigd.
 - **Bouwt voort op:** [ADR 0001](0001-supabase-project-a-schema-isolatie.md), [ADR 0013](0013-app-gebonden-sessies-en-verplichte-totp.md), [ADR 0014](0014-backuptoegang-zonder-service-key.md), [ADR 0020](0020-een-app-met-modules.md)
 
 ## Context

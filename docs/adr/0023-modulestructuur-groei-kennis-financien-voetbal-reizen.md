@@ -1,6 +1,6 @@
 # ADR 0023 — Modulestructuur: Groei, Kennis & Ontwikkeling, Financiën, Voetbal en Reizen
 
-- **Status:** voorgesteld (2026-11-21). Akkoord eigenaar op de richting en op K-A t/m K-D (K-D onder voorwaarde), 2026-11-21; definitief na controle van de verduidelijkingen in deze PR.
+- **Status:** geaccepteerd (2026-11-21), na controle van PR 20 (#38)
 - **Besluit-ID:** B-26
 - **Bouwt voort op:** [ADR 0020](0020-een-app-met-modules.md) (één app met modules), [ADR 0021](0021-accounts-met-eind-tot-eind-versleuteling.md) (accounts)
 - **Herziet deels:** [DATA_OWNERSHIP.md](../../DATA_OWNERSHIP.md) § 1 (zie "Conflicten")

@@ -1,6 +1,6 @@
 # ADR 0028 — Gegevens van anderen, voorbeelddata en templates
 
-- **Status:** voorgesteld (2026-11-21). Akkoord eigenaar op de richting (2026-11-21); definitief na controle van deze PR.
+- **Status:** geaccepteerd (2026-11-21), na controle van PR 20 (#38)
 - **Besluit-ID:** B-31
 - **Bouwt voort op:** [ADR 0025](0025-notion-import.md) § 7, [DATA_OWNERSHIP.md](../../DATA_OWNERSHIP.md) § 2, V-3 (Samen Thuis en Coach zelfstandig)
 

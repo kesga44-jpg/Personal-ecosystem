@@ -1,6 +1,6 @@
 # ADR 0024 — Koppelingen tussen modules
 
-- **Status:** voorgesteld (2026-11-21). Akkoord eigenaar op de richting (2026-11-21); definitief na controle van deze PR.
+- **Status:** geaccepteerd (2026-11-21), na controle van PR 20 (#38)
 - **Besluit-ID:** B-27
 - **Bouwt voort op:** [ADR 0020](0020-een-app-met-modules.md) § 2 (schrijven alleen in de eigen database, lezen via leescontracten)
 
