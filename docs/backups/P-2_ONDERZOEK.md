@@ -31,6 +31,8 @@ K-3 (eerst lokaal onderzoeken). **Geen verbinding met Supabase; niets in product
   controleren of pg_net in project A aan staat.
 - Na een wachtwoordwijziging kan de pooler ongeveer 15 seconden weigeren.
 
+Uitwerking: [P-2_STAPPENPLAN.md](P-2_STAPPENPLAN.md).
+
 ## Wat nodig is om P-2 te halen (elk met apart akkoord; stappen in het dashboard doet de eigenaar)
 
 1. In project A de drie SQL-regels uitvoeren (databasewijziging, K-4). Vooraf: de app-exports zijn er al.
