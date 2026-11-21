@@ -1,6 +1,6 @@
 # Poort P-1 — lokaal prototype van versleuteling, sleutelbeheer en sync (ADR 0021)
 
-**Status:** prototype klaar voor beoordeling (PR 16). Niet aangesloten op de app, geen netwerk, geen Supabase,
+**Status:** ✅ ontwerp goedgekeurd door de eigenaar (2026-11-21); prototype in PR 16. Niet aangesloten op de app, geen netwerk, geen Supabase,
 geen productie. Tot en met P-6 werkt Personal Ecosystem volledig lokaal, zoals nu.
 
 ## Wat er is

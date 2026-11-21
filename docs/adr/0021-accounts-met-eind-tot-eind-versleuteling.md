@@ -1,6 +1,6 @@
 # ADR 0021 — Eigen account met eind-tot-eind-versleuteling voor Personal Ecosystem
 
-- **Status:** geaccepteerd als ontwerp (2026-11-16); uitvoering in productie pas na de poorten in § 6. P-1: lokaal prototype in PR 16 ([docs/accounts/P-1_PROTOTYPE.md](../accounts/P-1_PROTOTYPE.md)), wacht op akkoord eigenaar
+- **Status:** geaccepteerd als ontwerp (2026-11-16); uitvoering in productie pas na de poorten in § 6. P-1: lokaal prototype in PR 16 ([docs/accounts/P-1_PROTOTYPE.md](../accounts/P-1_PROTOTYPE.md)) — ✅ ontwerp goedgekeurd door de eigenaar (2026-11-21)
 - **Besluit-ID:** B-21
 - **Bouwt voort op:** [ADR 0001](0001-supabase-project-a-schema-isolatie.md), [ADR 0013](0013-app-gebonden-sessies-en-verplichte-totp.md), [ADR 0014](0014-backuptoegang-zonder-service-key.md), [ADR 0020](0020-een-app-met-modules.md)
 
@@ -84,7 +84,7 @@ Record-ID's worden willekeurig gegenereerd (geen afleidbare informatie).
 
 | # | Poort |
 |---|---|
-| P-1 | Dit ontwerp plus een lokaal prototype van versleuteling, sleutelbeheer en sync, met tests (geen productie) |
+| P-1 | Dit ontwerp plus een lokaal prototype van versleuteling, sleutelbeheer en sync, met tests (geen productie) — ✅ 2026-11-21, ontwerp goedgekeurd door de eigenaar ([prototype](../accounts/P-1_PROTOTYPE.md)) |
 | P-2 | Back-ups van project A volgens ADR 0014, met een geslaagde hersteltest |
 | P-3 | Uitgestelde Samen Thuis-migratie `20261014_household_state_sync` uitgevoerd (B-20) — ✅ 2026-11-21, vóór P-2 met akkoord eigenaar ([verslag](../backups/P-3_UITVOERING.md)) |
 | P-4 | Samen Thuis-PR voor ISO-17: sessies van Personal Ecosystem hebben geen toegang tot `public` en de Samen Thuis-buckets |
