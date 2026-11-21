@@ -1,6 +1,6 @@
 # ADR 0029 — Accountverwijdering, volledige export en verplichte herstelcode (amendement op ADR 0021 en ADR 0019)
 
-- **Status:** voorgesteld (2026-11-21)
+- **Status:** voorgesteld (2026-11-21). Akkoord eigenaar nadat de accountverwijdering expliciet is afgebakend (§ 3) en het opnieuw maken van de herstelcode is aangescherpt (§ 1); definitief na controle van deze PR.
 - **Besluit-ID:** B-32
 - **Herziet deels:**
   - [ADR 0021](0021-accounts-met-eind-tot-eind-versleuteling.md): § 2 herstelcode, § 3 verwijderen, § 6 inhoud van P-6;
@@ -31,7 +31,12 @@ Feiten die het ontwerp bepalen:
 3. Op de accountpagina:
    - de datum van de laatste geslaagde controle;
    - **"Herstelcode testen"**: opent de kluis lokaal met de code en verandert niets;
-   - **"Nieuwe herstelcode maken"**: vraagt het kluiswachtwoord, pakt de gegevenssleutel opnieuw in met een nieuwe code en vervangt de oude ingepakte versie. Daarna dezelfde verplichte controle.
+   - **"Nieuwe herstelcode maken"**: alleen na drie controles:
+     1. een actieve sessie met TOTP (`aal2`), en een TOTP-code die op dat moment opnieuw wordt gevraagd;
+     2. het kluiswachtwoord, of de huidige herstelcode als het kluiswachtwoord kwijt is;
+     3. de app opent daarmee de bestaande kluis echt en controleert of een bestaand record te ontsleutelen is.
+
+     Pas dan maakt de app een nieuwe code, pakt de gegevenssleutel opnieuw in en vervangt op de server alleen `wrapped_dek_recovery`, met versiecontrole. Daarna volgt dezelfde verplichte controle als bij het aanmaken. De oude herstelcode werkt daarna niet meer. Is het kluiswachtwoord kwijt, dan stelt de gebruiker in dezelfde stap ook een nieuw kluiswachtwoord in.
 4. De app herinnert elke 6 maanden binnen de app aan "Herstelcode testen", als herinneringssoort volgens ADR 0022. Geen meldingen buiten de app.
 5. Het **inlogwachtwoord** herstellen gaat via Supabase (e-mail) en heeft geen invloed op de kluis. Bij inloggen met een nieuw wachtwoord vraagt de app het kluiswachtwoord of de herstelcode.
 
@@ -44,6 +49,14 @@ Feiten die het ontwerp bepalen:
 
 ### 3. Account verwijderen (alleen Personal Ecosystem)
 
+**Afbakening: Personal Ecosystem heeft een eigen accountlevenscyclus.**
+
+- De inlogidentiteit (Supabase Auth in project A) kan dezelfde zijn als die van Samen Thuis (ADR 0021 § 1). Het **Personal Ecosystem-account** is iets anders: het bestaat uit de kluis (`pe.vaults`), alle records in `pe.items`, en de lokale databases van Personal Ecosystem.
+- **Aanmaken** van een Personal Ecosystem-account = een kluis maken voor een bestaande of nieuwe login. **Verwijderen** = precies die onderdelen verwijderen, en verder niets.
+- Verwijderen van een Personal Ecosystem-account verwijdert **nooit** de login, en raakt **nooit** Samen Thuis (project A, schema `public` en zijn buckets) of Coach (project B). Dat geldt ook als de login alleen voor Personal Ecosystem werd gebruikt. Personal Ecosystem heeft daar geen rechten voor (geen service key, B-14), en de RPC uit § 4 raakt alleen het schema `pe`.
+- Na verwijderen kan dezelfde login later weer een nieuw, leeg Personal Ecosystem-account maken (nieuwe kluis, nieuwe herstelcode).
+- Een login helemaal verwijderen is geen functie van Personal Ecosystem. De app verwijst daarvoor naar de app waar de login ook voor dient, of naar een apart verzoek aan de beheerder (de eigenaar), los van deze ADR.
+
 **"Personal Ecosystem-account verwijderen"** doet, na de export (aangeboden, niet verplicht), het kluiswachtwoord en een TOTP-code:
 
 1. Op de server: alle rijen van de gebruiker in `pe.items` en `pe.vaults` worden verwijderd. Dat gaat via één RPC `pe.delete_my_data()`:
@@ -51,7 +64,7 @@ Feiten die het ontwerp bepalen:
    - alleen voor `auth.uid()` met `aal2`;
    - geeft het aantal verwijderde rijen terug.
 2. Op dit apparaat: alle Personal Ecosystem-databases en de sleutel worden gewist, en de gebruiker wordt uitgelogd.
-3. **De login zelf blijft bestaan**, omdat hij ook voor Samen Thuis kan dienen. De app zegt dat duidelijk, en vertelt hoe je de login apart kunt laten verwijderen. Personal Ecosystem raakt Samen Thuis-gegevens niet (V-3).
+3. **De login zelf blijft bestaan** (zie de afbakening hierboven). De app zegt dat in het bevestigingsscherm met zoveel woorden: "Je login en je gegevens in Samen Thuis en Coach blijven ongewijzigd."
 4. **Andere apparaten:** bij de volgende sync ziet de app dat de kluis weg is. Ze biedt dan aan de lokale gegevens te exporteren en te wissen. Ze wist niets zonder bevestiging.
 5. **Back-ups:** versleutelde gegevens blijven maximaal 6 maanden in de back-ups (ADR 0014 § 6). Bij een herstel van project A worden ze opnieuw verwijderd via de lijst met verwijderde `user_id`'s. Zonder kluiswachtwoord of herstelcode zijn ze voor niemand leesbaar.
 6. Verwijderen is definitief. Er is geen herstelknop; alleen de eigen export.
@@ -62,7 +75,8 @@ Feiten die het ontwerp bepalen:
 - RLS-tests in P-5:
   - de RPC verwijdert alleen eigen rijen;
   - zonder TOTP (`aal1`) of als `anon` lukt het niet;
-  - een ander account blijft onaangetast.
+  - een ander account blijft onaangetast;
+  - na de RPC zijn de rijen van dezelfde gebruiker in Samen Thuis-tabellen (schema `public`) en de login in `auth.users` ongewijzigd: aantal en inhoud-hash vóór en na gelijk (in de lokale simulatie van project A).
 
 ### 5. Wat P-6 nu bevat
 
@@ -89,7 +103,7 @@ Inloggen met e-mail en wachtwoord plus TOTP, een kluis met verplichte en gecontr
 - **Tests:**
   - de kluis wordt pas actief na een geslaagde controle van de herstelcode;
   - "Herstelcode testen" verandert niets;
-  - "Nieuwe herstelcode maken" maakt de oude ongeldig;
+  - "Nieuwe herstelcode maken" lukt niet zonder een nieuwe TOTP-code en het kluiswachtwoord of de huidige herstelcode, en maakt de oude code ongeldig;
   - de export bevat alle modules;
   - na verwijderen zijn de lokale databases leeg;
   - de RPC-tests uit § 4.

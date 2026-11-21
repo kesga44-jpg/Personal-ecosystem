@@ -1,6 +1,6 @@
 # ADR 0026 — Voeding: ingrediënten, recepten, voedingsplannen en registratie
 
-- **Status:** voorgesteld (2026-11-21)
+- **Status:** voorgesteld (2026-11-21). K-D akkoord onder voorwaarde (2026-11-21), zie "Conflicten".
 - **Besluit-ID:** B-29
 - **Bouwt voort op:** [ADR 0020](0020-een-app-met-modules.md) (Voeding als module), [ADR 0008](0008-ai-regelgebaseerd-eerst.md) (regelgebaseerd, geen betaalde AI), [ADR 0023](0023-modulestructuur-groei-kennis-financien-voetbal-reizen.md)
 - **Herziet deels:** de afbakening van Voeding in ADR 0020 (zie "Conflicten")
@@ -80,7 +80,9 @@ Open Food Facts blijft alleen voor barcode en zoekterm (B-22). Recepten, plannen
 
 | Bestaand | Conflict | Voorstel | Besluit nodig |
 |---|---|---|---|
-| ADR 0020, afbakening: weekmenu, boodschappen, voorraad en vriezer blijven in Samen Thuis | Voedingsplannen lijken op een weekmenu; Notion heeft een Shopping List | **Persoonlijk voedingsplan** (eigen doelen, eigen porties) hoort bij Personal Ecosystem; het **huishoudweekmenu** blijft in Samen Thuis. Een boodschappenlijst wordt **niet opgeslagen**: de app toont hem afgeleid uit een plan, om te kopiëren of af te drukken. De Notion-Shopping List wordt niet als store geïmporteerd. Geen koppeling met Samen Thuis | **Ja, K-D** |
+| ADR 0020, afbakening: weekmenu, boodschappen, voorraad en vriezer blijven in Samen Thuis | Voedingsplannen lijken op een weekmenu; Notion heeft een Shopping List | **Persoonlijk voedingsplan** (eigen doelen, eigen porties) hoort bij Personal Ecosystem; het **huishoudweekmenu** blijft in Samen Thuis. Een boodschappenlijst wordt **niet opgeslagen**: de app toont hem afgeleid uit een plan, om te kopiëren of af te drukken. De Notion-Shopping List wordt niet als store geïmporteerd. Geen koppeling met Samen Thuis | **Akkoord onder voorwaarde (2026-11-21)** |
+
+**Voorwaarde bij K-D:** er komt geen automatische koppeling met Samen Thuis, ook geen export naar of import uit het weekmenu of de boodschappen van Samen Thuis, en Personal Ecosystem wijzigt niets in Samen Thuis. Een eventuele koppeling later vraagt een afzonderlijk besluit en een afzonderlijke PR in Samen Thuis (B-11).
 
 ## Alternatieven
 

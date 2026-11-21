@@ -1,6 +1,6 @@
 # ADR 0023 — Modulestructuur: Groei, Kennis & Ontwikkeling, Financiën, Voetbal en Reizen
 
-- **Status:** voorgesteld (2026-11-21)
+- **Status:** voorgesteld (2026-11-21). Akkoord eigenaar op de richting en op K-A t/m K-D (K-D onder voorwaarde), 2026-11-21; definitief na controle van de verduidelijkingen in deze PR.
 - **Besluit-ID:** B-26
 - **Bouwt voort op:** [ADR 0020](0020-een-app-met-modules.md) (één app met modules), [ADR 0021](0021-accounts-met-eind-tot-eind-versleuteling.md) (accounts)
 - **Herziet deels:** [DATA_OWNERSHIP.md](../../DATA_OWNERSHIP.md) § 1 (zie "Conflicten")
@@ -46,6 +46,8 @@
 | DATA_OWNERSHIP § 1: "Financiën, potjes, inkomens, verdelingen" en "Beleggen en vermogensbeheer" horen bij Samen Thuis | Financiën in Personal Ecosystem | Splitsen: Samen Thuis blijft eigenaar van **huishoudfinanciën** en vermogensbeheer van het huishouden; Personal Ecosystem wordt eigenaar van **persoonlijke** financiën. Geen gegevens tussen beide (ADR 0027) | **Ja, K-B** |
 | DATA_OWNERSHIP § 1: Coach is eigenaar van "Clubs, teams, spelers, wedstrijden, tactiek" | Voetbal bevat tactische inzichten en oefeningen | Splitsen: Coach blijft eigenaar van alles wat aan een club, team of speler hangt; Voetbal bevat alleen persoonlijke kennis die nergens aan een team hangt. Geen gegevens tussen beide | **Ja, K-C** |
 | ADR 0020, afbakening Voeding: weekmenu en boodschappen blijven in Samen Thuis | Voedingsplannen en boodschappenlijst | Zie ADR 0026, "Conflicten met bestaande besluiten" | **Ja, K-D** |
+
+**Uitkomst (2026-11-21):** K-A, K-B en K-C akkoord zoals voorgesteld. K-D akkoord onder voorwaarde: persoonlijke voeding en voedingsplannen in Personal Ecosystem; weekmenu en boodschappen blijven in Samen Thuis; **geen automatische koppeling met Samen Thuis en geen wijziging van Samen Thuis zonder afzonderlijke toestemming.** Dat laatste geldt voor alle vier: Personal Ecosystem leest of schrijft niets in Samen Thuis of Coach.
 
 ## Alternatieven
 

@@ -1,6 +1,6 @@
 # ADR 0027 — Persoonlijke financiën en de 10/10-regel
 
-- **Status:** voorgesteld (2026-11-21)
+- **Status:** voorgesteld (2026-11-21). Akkoord eigenaar op de richting (2026-11-21); definitief na controle van deze PR.
 - **Besluit-ID:** B-30
 - **Bouwt voort op:** [ADR 0023](0023-modulestructuur-groei-kennis-financien-voetbal-reizen.md), [ADR 0025](0025-notion-import.md), [ADR 0028](0028-gegevens-van-anderen.md)
 - **Herziet deels:** [DATA_OWNERSHIP.md](../../DATA_OWNERSHIP.md) § 1, rijen "Financiën" en "Beleggen" (zie "Conflicten")
@@ -64,8 +64,8 @@ Er gaan geen gegevens tussen beide, in geen enkele richting, zonder apart beslui
 
 | Bestaand | Conflict | Voorstel | Besluit nodig |
 |---|---|---|---|
-| DATA_OWNERSHIP § 1: Samen Thuis is eigenaar van "Financiën, potjes, inkomens" en "Beleggen en vermogensbeheer" | Financiën in Personal Ecosystem | Eigenaarschap splitsen naar persoonlijk en huishouden (§ 1); DATA_OWNERSHIP aanpassen | **Ja, K-B** |
-| Ontwerpdossier beleggen in Samen Thuis (in voorbereiding) | Persoonlijk beleggingsplan | Personal Ecosystem bewaart alleen het **plan** (wat, hoeveel, hoe vaak); geen posities, koersen of vermogensbeheer. Die blijven bij Samen Thuis | **Ja, onderdeel van K-B** |
+| DATA_OWNERSHIP § 1: Samen Thuis is eigenaar van "Financiën, potjes, inkomens" en "Beleggen en vermogensbeheer" | Financiën in Personal Ecosystem | Eigenaarschap splitsen naar persoonlijk en huishouden (§ 1); DATA_OWNERSHIP aanpassen | **K-B akkoord (2026-11-21)** |
+| Ontwerpdossier beleggen in Samen Thuis (in voorbereiding) | Persoonlijk beleggingsplan | Personal Ecosystem bewaart alleen het **plan** (wat, hoeveel, hoe vaak); geen posities, koersen of vermogensbeheer. Die blijven bij Samen Thuis | **K-B akkoord (2026-11-21)** |
 
 ## Alternatieven
 

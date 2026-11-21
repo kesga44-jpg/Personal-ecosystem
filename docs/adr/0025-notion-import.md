@@ -1,6 +1,6 @@
 # ADR 0025 — Notion-import: herhaalbaar, idempotent en controleerbaar
 
-- **Status:** voorgesteld (2026-11-21)
+- **Status:** voorgesteld (2026-11-21). Akkoord eigenaar op de richting (2026-11-21), met de aanvulling dat een import pas "geslaagd" is als ook relaties, historie, bijlagen en Notion-ID's zijn gecontroleerd (§ 11); definitief na controle van deze PR.
 - **Besluit-ID:** B-28
 - **Bouwt voort op:** [ADR 0009](0009-geen-platformkoppelingen-bestandsimport.md) (import via bestanden), [ADR 0020](0020-een-app-met-modules.md) § 3 (back-up en herstel), [ADR 0023](0023-modulestructuur-groei-kennis-financien-voetbal-reizen.md), [ADR 0024](0024-koppelingen-tussen-modules.md)
 - **Herziet deels:** ADR 0020 § 3 — naast "herstel per module" (alles vervangen) komt "samenvoegen" voor imports
@@ -124,6 +124,25 @@ Vóór het schrijven maakt de import automatisch een volledige export van de bet
 - Per Notion-database een mapper in code (`apps/ecosystem/src/import/notion/<naam>.ts`), met versie en unit-tests op voorbeeldrijen.
 - Een verbeterde mapper krijgt een nieuwe versie. Een volgende import werkt alleen records bij die niet handmatig zijn gewijzigd (§ 4).
 
+### 11. Controle na de import: "geschreven" is niet "geslaagd"
+
+Na het schrijven leest de import alles terug uit de database en controleert vijf dingen apart. Elke controle krijgt een eigen uitkomst in het overzicht.
+
+| Controle | Wat wordt vergeleken | Geslaagd als |
+|---|---|---|
+| Records | Elke bronrij die niet is uitgesloten of overgeslagen, tegen de records met dezelfde `origin.notionId` | Elke rij heeft precies één record, of een genoemde reden |
+| Notion-ID's en herkomst | `origin` per record | Elk geïmporteerd record heeft een geldige `notionId`, `databaseId` en `mapper`; geen `notionId` komt twee keer voor in dezelfde module |
+| Relaties | Per relatiekolom: het aantal verwijzingen in de bron dat naar een geïmporteerde pagina wijst, tegen het aantal opgeslagen verwijzingen (ID-velden en koppelrecords) | Gelijk per kolom; elke ontbrekende relatie staat met bron en doel in het overzicht |
+| Historie | Datums, bedragen, hoeveelheden en momentopnamen (zoals voedingswaarden bij gegeten maaltijden) tegen de genormaliseerde bronwaarden | Gelijk; een andere datum, een ander bedrag of een andere waarde geldt als fout |
+| Bijlagen | Verwachte bijlagen (§ 8) tegen opgeslagen bijlagen, op SHA-256 | Elke verwachte bijlage is aanwezig met dezelfde hash; niet geïmporteerde bijlagen hebben een reden |
+
+- De eindstatus van een import is één van:
+  - **Volledig gecontroleerd**: alle vijf controles geslaagd;
+  - **Geïmporteerd met afwijkingen**: alles geschreven, maar minstens één controle niet geslaagd, met per afwijking de reden;
+  - **Mislukt**: niets geschreven of teruggezet naar de back-up van § 9.
+- "Geïmporteerd met afwijkingen" is nooit een stille succesmelding. De app toont de afwijkingen bovenaan en de eigenaar beslist: zo laten, de mapper laten verbeteren, of de back-up terugzetten.
+- De proefimport door Claude (§ 2) voert dezelfde vijf controles uit. Een definitieve import gebeurt pas als de proefimport "Volledig gecontroleerd" geeft, of als de eigenaar de genoemde afwijkingen uitdrukkelijk accepteert.
+
 ## Alternatieven
 
 | Optie | Voordelen | Nadelen |
@@ -144,5 +163,6 @@ Vóór het schrijven maakt de import automatisch een volledige export van de bet
   - de uitsluitlijst werkt;
   - relaties in twee rondes;
   - nagerekende formules;
-  - het rapport bevat geen bedragen of gezondheidswaarden.
+  - het rapport bevat geen bedragen of gezondheidswaarden;
+  - elk van de vijf controles uit § 11 slaagt en faalt op een bewust kapotte voorbeeldexport (ontbrekende relatie, gewijzigde datum, ontbrekende bijlage, dubbele Notion-ID).
 - Conflicten met bestaande besluiten: alleen de aanvulling op ADR 0020 § 3 (samenvoegen). Herstel blijft werken zoals nu.
