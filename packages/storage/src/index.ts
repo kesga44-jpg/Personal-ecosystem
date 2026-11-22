@@ -30,6 +30,8 @@ export interface LocalDatabase {
   /** Eén record op ID, of undefined. */
   get<T extends RecordValue>(store: string, id: string): Promise<T | undefined>;
   put<T extends RecordValue>(store: string, value: T): Promise<void>;
+  /** Atomisch invoegen als de ID nog niet bestaat; false als een andere transactie de ID al heeft. */
+  putIfAbsent<T extends RecordValue>(store: string, value: T): Promise<boolean>;
   remove(store: string, id: string): Promise<void>;
   exportData(): Promise<LocalExport>;
   validateRestore(data: unknown): void;
@@ -212,6 +214,19 @@ export async function openLocalDatabase(config: LocalDatabaseConfig): Promise<Lo
       await runTransaction(transaction, async () => {
         await requestResult(transaction.objectStore(store).put(value));
       });
+    },
+    async putIfAbsent<T extends RecordValue>(store: string, value: T): Promise<boolean> {
+      assertStore(store);
+      const transaction = database.transaction(store, 'readwrite');
+      try {
+        await runTransaction(transaction, async () => {
+          await requestResult(transaction.objectStore(store).add(value));
+        });
+        return true;
+      } catch (cause) {
+        if (cause instanceof DOMException && cause.name === 'ConstraintError') return false;
+        throw cause;
+      }
     },
     async remove(store: string, id: string): Promise<void> {
       assertStore(store);

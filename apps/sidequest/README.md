@@ -16,7 +16,7 @@ In de app kun je doelen met categorie/deadline/progressie vastleggen, dagelijkse
 
 Op de pagina Voortgang zie je je level (level 2 bij 100 punten; elk volgend level kost 50 punten meer dan het vorige), negen badges met de datum waarop je ze behaalde, statistieken, punten per week en een kalender-heatmap. Badges zijn alleen erkenning en geven geen punten. Alles wordt berekend uit je bestaande gewoontechecks en quests; er wordt niets extra opgeslagen.
 
-SIDEQUEST-data staat in de IndexedDB-database `personal-ecosystem-sidequest`; export en herstel zijn appgebonden en herstel vraagt bevestiging. Doelen, gewoontes en quests worden niet gedeeld met huishoud-challenges in Samen Thuis.
+Quests en instellingen staan in `personal-ecosystem-sidequest`; export en herstel zijn appgebonden en herstel vraagt bevestiging. In de Personal Ecosystem-module beheert Groei persoonlijke doelen, gewoontes en checks. SIDEQUEST leest deze Groei-records en verwijst voor beheer naar Groei; oude doelen/gewoontes/checks in de SIDEQUEST-database worden na de bevestigde A7-overdracht bewust als herstelbare kopie behouden, maar niet meer als runtimebron gebruikt. De losse SIDEQUEST-app behoudt de oude opslag voor compatibiliteit. Niets wordt gedeeld met huishoud-challenges in Samen Thuis.
 
 ## Scope en beperkingen
 

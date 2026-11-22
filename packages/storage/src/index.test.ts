@@ -52,6 +52,15 @@ describe('app-local IndexedDB', () => {
     database.close();
   });
 
+  it('inserts a record atomically only when its ID is absent', async () => {
+    const database = await openLocalDatabase(config);
+    const original = { id: 'one', title: 'Original' };
+    expect(await database.putIfAbsent('items', original)).toBe(true);
+    expect(await database.putIfAbsent('items', { id: 'one', title: 'Must not overwrite' })).toBe(false);
+    expect(await database.get('items', 'one')).toEqual(original);
+    database.close();
+  });
+
   it('rejects invalid restore data without replacing existing records', async () => {
     const database = await openLocalDatabase(config);
     await database.put('items', { id: 'existing', title: 'Keep this record' });
