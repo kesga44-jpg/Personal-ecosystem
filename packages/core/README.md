@@ -8,18 +8,22 @@ Gedeelde, zuivere code voor de apps in deze monorepo. Geen opslag, geen netwerk.
 
 ## Koppelingen tussen modules (ADR 0024) — `src/links.ts`
 
-- `ModuleLink`: een koppelrecord tussen records in **verschillende fysieke databases**. Het staat in de `links`-store van de module van de **bron**. De definitieve domeinnaam is `EcosystemModuleLink` (ADR 0024 § 1); de code gebruikt nog `ModuleLink` tot stap A4a.
-- `LINK_MODULE_IDS`, `KNOWN_LINK_CATEGORIES` en `LINK_CATEGORY_RULES`: de categorieën met hun toegestane combinaties (van → naar, eventueel per soort record).
-- `checkNewLink(input)`: controleert of een **nieuwe** koppeling mag. Het geeft `null` terug, of een reden: `unknown-category`, `target-forbidden`, `not-own-module`, `source-not-allowed`, `target-not-allowed` of `self-link`.
+- `EcosystemModuleLink`: een koppelrecord tussen records in **verschillende fysieke databases**. Het staat in de `links`-store van de module van de **bron**. (`ModuleLink` uit `@ecosystem/ui` is een navigatielink en heeft hier niets mee te maken.)
+- `PHYSICAL_DATABASE` en `sharesPhysicalDatabase(a, b)`: welke module in welke IndexedDB-database staat. Groei en Kennis delen `personal-ecosystem-groei`; relaties daartussen zijn ID-velden (ADR 0024 § 6).
+- `ECOSYSTEM_RECORD_KINDS`, `EcosystemRecordKind`, `RECORD_KIND_MEANING`: de gesloten set soorten `doel`, `vaardigheid`, `actie`, `quest`, `inzicht` (§ 3a).
+  - `parseRecordKind(value)`: een bekende waarde wordt `kind`, een onbekende wordt `unknownKind` (letterlijk, nooit omgezet), geen waarde betekent: buiten de vijf soorten.
+- `LINK_MODULE_IDS`, `KNOWN_LINK_CATEGORIES` en `LINK_CATEGORY_RULES`: de categorieën met hun toegestane combinaties.
+- `checkNewLink(input)`: controleert of een **nieuwe** koppeling mag. Het geeft `null` terug, of een reden: `unknown-category`, `target-forbidden`, `not-own-module`, `self-link`, `same-database`, `unknown-kind`, `source-not-allowed` of `target-not-allowed`.
   - Lichaam en Dagboek zijn nooit het doel.
-  - De soort van het doel (`kind`) komt uit de `Lookup` van de doelmodule.
-- `parseModuleLink(raw)`: leest een koppeling uit een back-up of import.
+  - De soort van het doel (`kind`) komt uit de `Lookup` van de doelmodule. Een record zonder soort kan alleen doel zijn van `related`.
+- `parseEcosystemModuleLink(raw)`: leest een koppeling uit een back-up of import.
   - Een **onbekende categorie blijft letterlijk bewaard** en heet in de weergave "Overige koppeling" (`linkCategoryLabel`).
+  - Een koppeling binnen één fysieke database wordt gemeld met `sameDatabase: true`, niet weggegooid.
   - Alleen records zonder geldige basisvelden worden geweigerd.
 
 ## Leescontracten (ADR 0024 § 3) — `src/contracts.ts`
 
-- `Lookup`: geeft per ID alleen `{ id, title, kind }` terug. Elke implementatie stuurt haar uitvoer door `toLookupItems`, zodat er geen andere velden meegaan.
+- `Lookup`: geeft per ID alleen `{ id, title, kind? }` terug, plus `unknownKind: true` bij een soort die deze versie niet kent. Elke implementatie stuurt haar uitvoer door `toLookupItems`, zodat er geen andere velden meegaan.
 - `LinksTo` en `summarizeLinksTo`: geven alleen terug wat bij een terugverwijzing hoort: koppel-ID, bron (module en ID), categorie en titel. Notities gaan niet mee.
 - `resolveTargets(ids, lookup)`: een doel dat niet meer bestaat, of een `Lookup` die faalt, levert "Niet meer beschikbaar" op. Er wordt nooit iets verwijderd.
 
@@ -40,9 +44,3 @@ Gedeelde, zuivere code voor de apps in deze monorepo. Geen opslag, geen netwerk.
 - Geen import, parser of mapper. Die komen in A8 en A9.
 - Geen opslag van koppelingen. Die komt per module, vanaf A5.
 - De echte import (A10) gebeurt pas na P-6 (ADR 0031 § 7).
-
-## Besluiten van 2026-11-22 die de code nog niet volgt (stap A4a)
-
-- **Naam.** `ModuleLink` in `@ecosystem/ui` is uitsluitend voor navigatie. Het koppelrecord heet definitief `EcosystemModuleLink`; een importalias mag tijdelijk.
-- **Groei en Kennis** delen één fysieke database. Relaties tussen hen zijn ID-velden, geen koppelrecord (ADR 0024 § 6). De huidige regels in `LINK_CATEGORY_RULES` staan `kennis → groei` en `groei → kennis` nog toe; dat vervalt.
-- **`kind`** wordt de gesloten union `EcosystemRecordKind`: `doel`, `vaardigheid`, `actie`, `quest`, `inzicht` (ADR 0024 § 3a). Nu is het nog een `string`. Een onbekende waarde wordt nooit naar een bestaande waarde omgezet.
