@@ -118,7 +118,7 @@ type RowMatch = {
   method: 'unique_title' | 'properties' | 'elimination' | 'manual_verification' | 'none';
   confidence: 'bevestigd' | 'aannemelijk' | 'onzeker' | 'handmatig_bevestigd' | 'niet_van_toepassing';
   candidates: number;        // aantal pagina's met dezelfde titel in de databasemap
-  comparedColumns: number;   // aantal gevulde kolommen dat met de pagina is vergeleken
+  comparedColumns: number;   // aantal kolommen buiten de titel dat in de CSV-rij gevuld is en volgens § 3f met de pagina is vergeleken
   verifiedAt?: string;       // alleen bij 'manual_verification'
   matchRules: 'match-1';     // versie van de vergelijkingsregels (§ 3f)
   ownerDecision?: {          // § 3a: bewuste keuze voor een replacement_key
@@ -133,9 +133,9 @@ type RowMatch = {
 
 | Methode | Wanneer | Zekerheid |
 |---|---|---|
-| `unique_title` | De titel is niet leeg, precies één pagina in de databasemap heeft dezelfde titel, en geen enkele gevulde kolom spreekt de eigenschappen van die pagina tegen | `bevestigd` |
-| `properties` | Meer pagina's hebben dezelfde titel (of de titel is leeg), maar precies één heeft voor alle gevulde kolommen dezelfde waarde, met minstens één vergeleken kolom | `aannemelijk` |
-| `elimination` | Geen eigenschap beslist, maar na het koppelen van alle andere rijen blijft precies één kandidaat over, en die spreekt geen enkele gevulde kolom tegen | `onzeker` |
+| `unique_title` | De titel is niet leeg, precies één pagina in de databasemap heeft dezelfde titel, en geen enkele kolom spreekt die pagina tegen volgens § 3f | `bevestigd` |
+| `properties` | Meer pagina's hebben dezelfde titel (of de titel is leeg), maar bij precies één spreekt geen enkele kolom de pagina tegen volgens § 3f, met `comparedColumns` van minstens 1 | `aannemelijk` |
+| `elimination` | Geen eigenschap beslist, maar na het koppelen van alle andere rijen blijft precies één kandidaat over, en geen enkele kolom spreekt die pagina tegen volgens § 3f | `onzeker` |
 | `manual_verification` | De eigenaar heeft de koppeling zelf bekeken en bevestigd, met datum | `handmatig_bevestigd` |
 | `none` | Geen pagina, of meerdere kandidaten die niet uit te sluiten zijn. Het record krijgt een `replacement_key` | `niet_van_toepassing` |
 
@@ -153,7 +153,8 @@ type RowMatch = {
 - **Bevestigen gebeurt nooit automatisch.** Geen import, mapper, steekproef of latere export verandert `aannemelijk` of `onzeker` in een bevestigde status. Alleen de eigenaar doet dat, per record, met `manual_verification`.
 - **Moment van bevestigen:** vóór de goedkeuring van de inventaris controleert Claude een steekproef. Die verandert de status niet. De eigenaar bevestigt de koppelingen na de echte import (A10, dus na P-6) in de app. Tot dan blijft de oorspronkelijke status staan.
 - Handmatig bevestigen verandert alleen `method`, `confidence` en `verifiedAt`. De eerdere methode komt in `note`.
-- Een kolom die de pagina tegenspreekt, maakt de koppeling ongeldig. Dan geldt de volgende methode in de tabel, nooit een gok.
+- Een kolom die de pagina tegenspreekt (§ 3f), maakt de koppeling ongeldig. Dan geldt de volgende methode in de tabel, nooit een gok.
+- **Tegenspraak en `comparedColumns`:** een tegenspraak geldt volgens § 3f ook voor een eigenschap die alleen op de pagina gevuld is en in de CSV-rij leeg (regel 3). Zo'n kolom telt wel als tegenspraak, maar niet mee in `comparedColumns`. Die telt alleen kolommen buiten de titel die in de CSV-rij gevuld zijn; een eigenschap die op de pagina ontbreekt, wordt daarbij als lege waarde vergeleken (regel 2).
 
 ### 3c. Oorspronkelijke rij en bronpositie (`sourceRow`)
 
@@ -313,7 +314,7 @@ Na het schrijven leest de import alles terug uit de database en controleert vijf
 | Controle | Wat wordt vergeleken | Geslaagd als |
 |---|---|---|
 | Records | Elke bronrij die niet is uitgesloten of overgeslagen, tegen de records met dezelfde sleutel (`origin.key.value`) | Elke rij heeft precies één record, of een genoemde reden |
-| Sleutels en herkomst | `origin` per record (§ 3 t/m § 3c) | Elk record heeft precies één sleutelsoort; een `notion_page_id` is 32 hex en komt letterlijk voor als bestandsnaam van een pagina in de export; een `replacement_key` geeft bij opnieuw berekenen uit de bewaarde invoer dezelfde waarde; geen sleutel komt twee keer voor in dezelfde module; elk record heeft `rowMatch` (met `matchRules`), `sourceRow`, `databaseId` en `mapper`; een record met `ownerDecision` heeft een `replacement_key`; geen record heeft zonder `manual_verification` een andere status gekregen dan bij de import; elk record met rijkoppeling `aannemelijk` of `onzeker` staat in de goedgekeurde inventaris |
+| Sleutels en herkomst | `origin` per record (§ 3 t/m § 3c en § 3f) | Elk record heeft precies één sleutelsoort; een `notion_page_id` is 32 hex en komt letterlijk voor als bestandsnaam van een pagina in de export; een `replacement_key` geeft bij opnieuw berekenen uit de bewaarde invoer dezelfde waarde; geen sleutel komt twee keer voor in dezelfde module; elk record heeft `rowMatch` met `matchRules` gelijk aan de versie uit § 3f waarmee de inventaris is goedgekeurd, `sourceRow`, `databaseId` en `mapper`; een record met `ownerDecision` heeft een `replacement_key`; geen record heeft zonder `manual_verification` een andere status gekregen dan bij de import; elk record met rijkoppeling `aannemelijk` of `onzeker` staat in de goedgekeurde inventaris |
 | Relaties | Per relatiekolom: het aantal relaties met status "oorspronkelijk uit de bron overgenomen" tegen het aantal opgeslagen verwijzingen met herkomst `export` (ID-velden en koppelrecords). Verwijzingen met herkomst `handmatig` tellen hier niet mee | Gelijk per kolom, en geen enkele relatie heeft de uitkomst "fout" (zie hieronder) |
 | Historie | Datums, bedragen, hoeveelheden en momentopnamen (zoals voedingswaarden bij gegeten maaltijden) tegen de genormaliseerde bronwaarden | Gelijk; een andere datum, een ander bedrag of een andere waarde geldt als fout |
 | Bijlagen | Verwachte bijlagen (§ 8) tegen opgeslagen bijlagen, op SHA-256 | Elke verwachte bijlage is aanwezig met dezelfde hash; niet geïmporteerde bijlagen hebben een reden |
@@ -386,3 +387,4 @@ Na het schrijven leest de import alles terug uit de database en controleert vijf
   - overzicht en controles aangepast aan de sleutelsoorten (§ 6, § 11); extra tests (Gevolgen);
   - de regel "Conflicten met bestaande besluiten" staat weer onder Gevolgen; die was in de vorige wijziging per ongeluk onder deze sectie beland.
 - **2026-11-22**, besluiten van de eigenaar bij de inventaris (PR 29): bewuste keuze voor een vervangende sleutel per record (§ 3a); statussen en bevestigen nooit automatisch, na de import (§ 3b); vergelijkingsregels met versie `match-1` (§ 3f); bijbehorende controle en tests.
+- **2026-11-22**, formulering (PR 30): § 3b verwijst bij `unique_title`, `properties` en `elimination` naar de vergelijkingsregels van § 3f; `comparedColumns` is nauwkeurig omschreven; de controle "Sleutels en herkomst" in § 11 controleert `matchRules` expliciet. Geen besluit of status gewijzigd.
