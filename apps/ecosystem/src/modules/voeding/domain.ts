@@ -1,8 +1,11 @@
 /**
- * Voeding (ADR 0020): persoonlijke inname per dag. Geen weekmenu, boodschappen of voorraad (dat blijft Samen Thuis).
- * Innamegegevens blijven op het apparaat; naar Open Food Facts gaat alleen een barcode of zoekterm.
+ * Voeding (ADR 0020, ADR 0026): persoonlijke inname, ingrediënten, recepten en een persoonlijke maaltijdplanning.
+ * Het gedeelde huishoudweekmenu, opgeslagen boodschappenlijsten en voorraad blijven in Samen Thuis (K-D);
+ * een boodschappenlijst wordt hier alleen tijdelijk afgeleid uit de eigen planning en niet opgeslagen.
+ * Gegevens blijven op het apparaat; naar Open Food Facts gaat alleen een barcode of zoekterm.
  */
 import type { Nutrients, OffProduct } from './product';
+import { validateIngredientFields, validatePrefs, type PlannerPrefs } from './schema2';
 
 export const MEALS = ['ontbijt', 'lunch', 'diner', 'tussendoor'] as const;
 export type Meal = (typeof MEALS)[number];
@@ -36,6 +39,8 @@ export interface FoodSettings {
   id: 'settings';
   kcalTarget: number | null;
   proteinTarget: number | null;
+  /** Voorkeuren en uitsluitingen voor de automatische planner (schema 2, optioneel). */
+  planner?: PlannerPrefs;
 }
 
 export const NUTRIENT_KEYS = ['kcal', 'protein', 'carbs', 'fat'] as const;
@@ -86,6 +91,7 @@ export function validateProduct(value: unknown): asserts value is FoodProduct {
     throw new Error('Portie moet tussen 0 en 2000 g liggen.');
   }
   validateNutrients(product.per100);
+  validateIngredientFields(product);
   if (typeof product.updatedAt !== 'string' || !Number.isFinite(Date.parse(product.updatedAt))) throw new Error('Product heeft een ongeldig tijdstip.');
 }
 
@@ -101,6 +107,10 @@ export function validateFoodEntry(value: unknown, today?: string): asserts value
   if (typeof entry.grams !== 'number' || !Number.isFinite(entry.grams) || entry.grams <= 0 || entry.grams > 5000) throw new Error('Hoeveelheid moet tussen 0 en 5000 g liggen.');
   validateNutrients(entry.per100);
   if (typeof entry.createdAt !== 'string' || !Number.isFinite(Date.parse(entry.createdAt))) throw new Error('Registratie heeft een ongeldig tijdstip.');
+  const links = value as { recipeId?: unknown; plannedMealId?: unknown; servings?: unknown };
+  if (links.recipeId !== undefined && (typeof links.recipeId !== 'string' || !links.recipeId)) throw new Error('Registratie heeft een ongeldig recept.');
+  if (links.plannedMealId !== undefined && (typeof links.plannedMealId !== 'string' || !links.plannedMealId)) throw new Error('Registratie heeft een ongeldige geplande maaltijd.');
+  if (links.servings !== undefined && !(typeof links.servings === 'number' && links.servings > 0 && links.servings <= 20)) throw new Error('Registratie heeft een ongeldig aantal porties.');
 }
 
 export function validateSettings(value: unknown): asserts value is FoodSettings {
@@ -112,20 +122,7 @@ export function validateSettings(value: unknown): asserts value is FoodSettings 
   if (!(settings.proteinTarget === null || (Number.isInteger(settings.proteinTarget) && settings.proteinTarget >= 10 && settings.proteinTarget <= 400))) {
     throw new Error('Doel voor eiwit moet tussen 10 en 400 g liggen.');
   }
-}
-
-export function validateVoedingBackup(input: unknown): void {
-  if (!input || typeof input !== 'object' || !('stores' in input) || !input.stores || typeof input.stores !== 'object') {
-    throw new Error('Back-up van Voeding heeft geen geldige gegevenssectie.');
-  }
-  const stores = input.stores as Record<string, unknown>;
-  if (!Array.isArray(stores.entries) || !Array.isArray(stores.products) || !Array.isArray(stores.settings)) {
-    throw new Error('Back-up van Voeding mist registraties, producten of instellingen.');
-  }
-  for (const entry of stores.entries) validateFoodEntry(entry);
-  for (const product of stores.products) validateProduct(product);
-  if (stores.settings.length > 1) throw new Error('Back-up van Voeding bevat meer dan één instelling.');
-  for (const settings of stores.settings) validateSettings(settings);
+  if (settings.planner !== undefined) validatePrefs(settings.planner);
 }
 
 export function productFromOff(product: OffProduct, now = new Date()): FoodProduct {

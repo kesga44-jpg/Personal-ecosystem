@@ -1,6 +1,6 @@
 /** Widgetindeling van het dashboard: volgorde en zichtbaarheid, per apparaat bewaard. */
 
-export const WIDGET_IDS = ['today', 'sport-week', 'review', 'streaks', 'points', 'lichaam', 'kracht', 'duur', 'voeding', 'dagboek', 'weather', 'habits-heatmap', 'backup', 'apps'] as const;
+export const WIDGET_IDS = ['today', 'sport-week', 'review', 'streaks', 'points', 'lichaam', 'kracht', 'duur', 'voeding', 'maaltijden', 'groei', 'kennis', 'financien', 'dagboek', 'weather', 'habits-heatmap', 'backup', 'apps'] as const;
 export type WidgetId = (typeof WIDGET_IDS)[number];
 
 export const widgetLabels: Record<WidgetId, string> = {
@@ -13,6 +13,10 @@ export const widgetLabels: Record<WidgetId, string> = {
   kracht: 'Kracht',
   duur: 'Duur',
   voeding: 'Voeding',
+  maaltijden: 'Maaltijdplanning',
+  groei: 'Groei',
+  kennis: 'Kennis',
+  financien: 'Financiën',
   dagboek: 'Dagboek',
   weather: 'Weer',
   'habits-heatmap': 'Gewoontes (4 weken)',
