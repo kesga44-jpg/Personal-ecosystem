@@ -7,6 +7,7 @@ Elke app in de monorepo krijgt een eigen sectie zodra die bestaat. Bestaande app
 
 ### Toegevoegd
 
+- `@ecosystem/core` (A4a): volgt de besluiten van 2026-11-22 (ADR 0024). Het koppelrecord heet `EcosystemModuleLink` (core exporteert geen `ModuleLink` meer); `PHYSICAL_DATABASE` en de weigering `same-database`, zodat Groei ↔ Kennis nooit een koppelrecord wordt; de gesloten set soorten `EcosystemRecordKind` met `parseRecordKind` en de weigering `unknown-kind`; `kind` is optioneel in de `Lookup`, met `unknownKind: true` bij een onbekende opgeslagen soort. Nog geen gebruik in de apps.
 - `@ecosystem/core` (A4): gedeelde basis voor koppelingen en import, alleen typen en zuivere functies. Het gaat om `ModuleLink` met de relatiecategorieën en hun toegestane combinaties, inclusief het behoud van onbekende categorieën (ADR 0024); de leescontracten `Lookup` en `linksTo`, die alleen `{ id, title, kind }` of ID's, categorie en titel teruggeven; en `ImportOrigin` met `notion_page_id` en `replacement_key` (`rk1`, met vaste testvectoren), de rijkoppeling met status, bevestigen alleen door de eigenaar, en de controles uit ADR 0025 § 11. Nog geen gebruik in de apps, geen opslag en geen import.
 
 ### Gewijzigd

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { UNAVAILABLE_TARGET_LABEL, resolveTargets, summarizeLinksTo, toLookupItems, type Lookup } from './contracts';
-import type { ModuleLink } from './links';
+import type { EcosystemModuleLink } from './links';
 
 describe('Lookup geeft alleen { id, title, kind } (ADR 0024 § 3)', () => {
   it('laat geen andere velden door', () => {
@@ -8,6 +8,18 @@ describe('Lookup geeft alleen { id, title, kind } (ADR 0024 § 3)', () => {
     const items = toLookupItems(records);
     expect(items).toEqual([{ id: 'g1', title: 'Marathon lopen', kind: 'doel' }]);
     expect(Object.keys(items[0]!).sort()).toEqual(['id', 'kind', 'title']);
+  });
+});
+
+describe('Lookup en soorten (ADR 0024 § 3a)', () => {
+  it('laat kind weg bij records buiten de vijf soorten', () => {
+    expect(toLookupItems([{ id: 'h1', title: 'Gewoonte' }])).toEqual([{ id: 'h1', title: 'Gewoonte' }]);
+  });
+
+  it('markeert een onbekende soort zonder de waarde door te geven of om te zetten', () => {
+    const items = toLookupItems([{ id: 'x', title: 'X', kind: 'Doel' }]);
+    expect(items).toEqual([{ id: 'x', title: 'X', unknownKind: true }]);
+    expect(JSON.stringify(items)).not.toContain('Doel');
   });
 });
 
@@ -37,7 +49,7 @@ describe('verwijderd doel breekt de bron niet (ADR 0024 § 5)', () => {
 });
 
 describe('linksTo geeft alleen ID\'s, categorie en titel', () => {
-  const links: ModuleLink[] = [
+  const links: EcosystemModuleLink[] = [
     {
       id: 'l1',
       category: 'tracks',

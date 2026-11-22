@@ -72,7 +72,8 @@ De opslagregel volgt uit de fysieke database:
    | `inzicht` | Kennis, reflectie of verworven begrip |
 
    - Een nieuwe waarde is een besluit van de eigenaar en een codewijziging met tests; ze komt er niet stilzwijgend bij.
-   - **Nog te beslissen vóór A4a:** welke `kind` een `Lookup` teruggeeft voor records die onder geen van de vijf vallen (bijvoorbeeld een gewoonte, evaluatie, bron, highlight, training of reis). Zo'n record kan alleen doel zijn van `related`, maar het contract vraagt een `kind`. Tot dat besluit wordt geen van de vijf waarden voor zulke records gebruikt.
+   - **Records buiten de vijf soorten** (bijvoorbeeld een gewoonte, evaluatie, bron, highlight, training of reis) hebben **geen** `kind`. In de `Lookup` ontbreekt het veld dan (`kind` is optioneel). Zo'n record kan alleen doel zijn van een categorie zonder soorteis (`related`). Besluit van de eigenaar, 2026-11-22.
+   - Een opgeslagen soort die deze versie niet kent, verschijnt in de `Lookup` als `unknownKind: true`, zonder de waarde zelf en zonder `kind`. `checkNewLink` weigert dan met `unknown-kind`.
    - **Onbekende waarde bij import:** de mapper zet een bronwaarde alleen om naar een van de vijf als die omzetting in de mapper staat en met een unit-test is aangetoond. Past een waarde niet, dan wordt ze **niet** naar een bestaande waarde omgezet. Het overzicht (ADR 0025 § 6) meldt het record als "onbekende soort" en de eigenaar beslist.
    - **Onbekende waarde bij synchronisatie, back-up of herstel:** de waarde wordt **niet** omgezet en niet weggegooid. Het record krijgt de melding "onbekende soort" en geldt niet als doel voor een categorie die een soort eist (`checkNewLink` weigert dan). Er gaat niets verloren.
    - `kind` hier is iets anders dan andere velden die toevallig `kind` heten, zoals de questsoort in SIDEQUEST (`SIDEQUEST_DESIGN.md`) of gepland/werkelijk bij transacties (ADR 0027). Die velden vallen niet onder deze set.
@@ -96,6 +97,7 @@ De opslagregel volgt uit de fysieke database:
    - een koppelrecord tussen Groei en Kennis wordt geweigerd;
    - een `Lookup` geeft geen andere velden terug dan `{ id, title, kind }`, en `kind` is een van de vijf waarden;
    - een onbekende `kind` wordt niet omgezet naar een bestaande waarde;
+   - een record zonder `kind` kan alleen doel zijn van `related`;
    - een verwijderd doel breekt de bron niet;
    - een onbekende categorie overleeft back-up en herstel.
 
@@ -112,10 +114,7 @@ De opslagregel volgt uit de fysieke database:
 
 - Terugzoeken vanaf het doel ("wat hoort bij dit doel?") gebeurt via een leescontract `linksTo(module, id)` per bronmodule. Dat geeft alleen ID's, categorieën en titels terug. Binnen `personal-ecosystem-groei` gebeurt terugzoeken via een index op het ID-veld, niet via `linksTo`.
 - DATA_OWNERSHIP.md krijgt per module de `Lookup`- en `linksTo`-contracten.
-- **Code in `@ecosystem/core` (A4) loopt achter op de besluiten van 2026-11-22** en wordt in een aparte PR gelijkgetrokken (implementatieplan, stap A4a), vóór A5:
-  - het type heet nu nog `ModuleLink`; dat wordt `EcosystemModuleLink` (met tijdelijk een alias);
-  - de regels staan nu nog `kennis → groei` (`supports-goal`, `develops-skill`, `related`) en `groei → kennis` (`derived-from`, `related`) toe; die vervallen, en een koppelrecord tussen modules met dezelfde fysieke database wordt geweigerd;
-  - `kind` is nu nog een `string`; dat wordt de union `EcosystemRecordKind`, met expliciete afhandeling van onbekende waarden.
+- `@ecosystem/core` volgt deze besluiten sinds stap A4a (PR 34): het type `EcosystemModuleLink` (core exporteert geen `ModuleLink` meer, dus geen alias nodig), `PHYSICAL_DATABASE` en `sharesPhysicalDatabase`, de weigering `same-database`, de union `EcosystemRecordKind` met `parseRecordKind`, en de weigering `unknown-kind`. Een bestaand koppelrecord binnen één database wordt bij herstel gemeld (`sameDatabase`), niet weggegooid.
 - Conflicten met bestaande besluiten: geen. Dit past binnen ADR 0020 § 2 en ADR 0023 § 3.
 
 ## Wijzigingen na acceptatie
@@ -125,3 +124,4 @@ De opslagregel volgt uit de fysieke database:
   - Domeinnaam `EcosystemModuleLink` voor het koppelrecord; `ModuleLink` uit `@ecosystem/ui` blijft alleen voor navigatie (§ 1).
   - Gesloten set soorten (`kind`) met betekenis en afhandeling van onbekende waarden (§ 3a).
   - Lichaam en Dagboek blijven uitgesloten als doel (ongewijzigd).
+- **2026-11-22**, besluit van de eigenaar (PR 34, A4a): `kind` is optioneel in de `Lookup`; records buiten de vijf soorten hebben geen `kind` en kunnen alleen doel zijn van `related`. Een onbekende opgeslagen soort heet `unknownKind: true` (§ 3a). Gevolgen bijgewerkt: de code volgt de besluiten.
