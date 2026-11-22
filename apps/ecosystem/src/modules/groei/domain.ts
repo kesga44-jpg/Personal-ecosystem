@@ -75,6 +75,8 @@ export interface Action extends Base {
   skillId: string | null;
   dueDate: string | null;
   doneAt: string | null;
+  /** Inzicht in Kennis waaruit deze actie is ontstaan (ID-veld, ADR 0024 § 6). Ontbreekt bij oudere records. */
+  insightId?: string | null;
 }
 
 export interface Evaluation extends Base {
@@ -213,6 +215,7 @@ export function validateAction(value: unknown): asserts value is Action {
   optionalId(r.skillId, 'Actie');
   optionalDate(r.dueDate, 'Actie');
   optionalDate(r.doneAt, 'Actie');
+  if (r.insightId !== undefined) optionalId(r.insightId, 'Actie');
   if ((r.status === 'klaar') !== (r.doneAt !== null)) fail('Actie: een afgeronde actie heeft een datum van afronden, een open actie niet.');
 }
 
@@ -262,9 +265,14 @@ export function findGoalCycle(goals: readonly Pick<Goal, 'id' | 'parentId'>[]): 
 
 export const GROEI_STORES = ['goals', 'skills', 'habits', 'habitChecks', 'actions', 'evaluations', 'tenTen', 'settings', 'links'] as const;
 
-/** Volledige controle van een back-up van Groei vóór herstel (ADR 0020 § 3). */
-export function validateGroeiBackup(input: unknown): void {
+/**
+ * Volledige controle van een back-up van de database `personal-ecosystem-groei` vóór herstel (ADR 0020 § 3).
+ * Schema 1 bevat alleen Groei; vanaf schema 2 ook Kennis (`kennisValidator`). Een onbekend schema wordt geweigerd.
+ */
+export function validateGroeiBackup(input: unknown, kennisValidator?: (stores: Record<string, unknown>) => void): void {
   const backup = obj(input, 'back-up van Groei');
+  const version = backup.schemaVersion ?? 1;
+  if (version !== 1 && version !== 2) fail('Back-up van Groei heeft een onbekende schemaversie.');
   const stores = obj(backup.stores, 'gegevenssectie van Groei') as Record<string, unknown>;
   for (const store of GROEI_STORES) if (!Array.isArray(stores[store])) fail(`Back-up van Groei mist "${store}".`);
   const list = (store: string) => stores[store] as unknown[];
@@ -278,6 +286,10 @@ export function validateGroeiBackup(input: unknown): void {
   list('settings').forEach(validateSettings);
   // Koppelrecords (store `links`) worden in de module die ze schrijft gecontroleerd; een onbekende categorie blijft bewaard.
   if (findGoalCycle(list('goals') as Goal[])) fail('Back-up van Groei bevat subdoelen die naar elkaar verwijzen.');
+  if (version === 2) {
+    if (!kennisValidator) fail('Back-up van Groei bevat Kennis, maar die kan hier niet worden gecontroleerd.');
+    kennisValidator(stores);
+  }
 }
 
 // ——— Berekeningen ———
