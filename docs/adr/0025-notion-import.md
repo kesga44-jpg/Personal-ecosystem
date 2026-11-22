@@ -90,6 +90,7 @@ type ReplacementKey = {
 - **`notion_page_id`** is alleen toegestaan als de waarde letterlijk uit de export komt: de 32 hex in de bestandsnaam van de pagina. Claude of de app verzint of berekent nooit een `notion_page_id`.
 - **`replacement_key`** is een eigen sleutel van Personal Ecosystem. Hij wordt overal als "vervangende sleutel" getoond en nooit als Notion-ID, ook niet in totalen of in het overzicht.
 - **Wanneer welke:** een record krijgt een `notion_page_id` alleen als zijn rij aan precies één pagina is gekoppeld (§ 3b). Lukt dat niet (geen pagina, of meer dan één kandidaat die niet uit te sluiten is), dan een `replacement_key`.
+- **Bewuste keuze van de eigenaar:** de eigenaar kan per record een `replacement_key` kiezen, ook als de rij aannemelijk of onzeker aan een pagina te koppelen is. Dat besluit staat per record, met reden en datum, in de goedgekeurde inventaris en in `rowMatch.ownerDecision` (§ 3b). Een bestaande koppeling wordt alleen zo vervangen; dat een rij geen titel heeft, is op zichzelf geen reden.
 - **Berekening `replacement_key` (versie `rk1`):**
 
   ```text
@@ -119,13 +120,20 @@ type RowMatch = {
   candidates: number;        // aantal pagina's met dezelfde titel in de databasemap
   comparedColumns: number;   // aantal gevulde kolommen dat met de pagina is vergeleken
   verifiedAt?: string;       // alleen bij 'manual_verification'
+  matchRules: 'match-1';     // versie van de vergelijkingsregels (§ 3f)
+  ownerDecision?: {          // § 3a: bewuste keuze voor een replacement_key
+    choice: 'replacement_key';
+    reason: string;
+    decidedAt: string;
+    computedMethod: 'properties' | 'elimination'; // wat de vergelijking had opgeleverd
+  };
   note?: string;
 };
 ```
 
 | Methode | Wanneer | Zekerheid |
 |---|---|---|
-| `unique_title` | Precies één pagina in de databasemap heeft dezelfde titel, en geen enkele gevulde kolom spreekt de eigenschappen van die pagina tegen | `bevestigd` |
+| `unique_title` | De titel is niet leeg, precies één pagina in de databasemap heeft dezelfde titel, en geen enkele gevulde kolom spreekt de eigenschappen van die pagina tegen | `bevestigd` |
 | `properties` | Meer pagina's hebben dezelfde titel (of de titel is leeg), maar precies één heeft voor alle gevulde kolommen dezelfde waarde, met minstens één vergeleken kolom | `aannemelijk` |
 | `elimination` | Geen eigenschap beslist, maar na het koppelen van alle andere rijen blijft precies één kandidaat over, en die spreekt geen enkele gevulde kolom tegen | `onzeker` |
 | `manual_verification` | De eigenaar heeft de koppeling zelf bekeken en bevestigd, met datum | `handmatig_bevestigd` |
@@ -133,6 +141,17 @@ type RowMatch = {
 
 - Een koppeling via `elimination` is altijd **onzeker en nog te verifiëren**. Ze wordt in het overzicht apart en bovenaan getoond.
 - Records met `aannemelijk` of `onzeker` worden alleen geïmporteerd als ze per Notion-ID in de goedgekeurde inventaris staan. Hun zekerheid blijft zichtbaar tot de eigenaar ze handmatig bevestigt.
+- **Status in app en overzicht:**
+
+  | `confidence` | Getoonde status |
+  |---|---|
+  | `bevestigd` | Bevestigd (unieke titel) |
+  | `aannemelijk` | Aannemelijk — gebruikerscontrole vereist |
+  | `onzeker` | Onzeker — gebruikerscontrole vereist |
+  | `handmatig_bevestigd` | Bevestigd door de eigenaar, met datum |
+
+- **Bevestigen gebeurt nooit automatisch.** Geen import, mapper, steekproef of latere export verandert `aannemelijk` of `onzeker` in een bevestigde status. Alleen de eigenaar doet dat, per record, met `manual_verification`.
+- **Moment van bevestigen:** vóór de goedkeuring van de inventaris controleert Claude een steekproef. Die verandert de status niet. De eigenaar bevestigt de koppelingen na de echte import (A10, dus na P-6) in de app. Tot dan blijft de oorspronkelijke status staan.
 - Handmatig bevestigen verandert alleen `method`, `confidence` en `verifiedAt`. De eerdere methode komt in `note`.
 - Een kolom die de pagina tegenspreekt, maakt de koppeling ongeldig. Dan geldt de volgende methode in de tabel, nooit een gok.
 
@@ -162,6 +181,21 @@ Een databasemap kan pagina's bevatten die geen rij in de CSV hebben, bijvoorbeel
 - ze worden **niet** geïmporteerd;
 - de inventaris noemt ze per pagina-ID, met de reden van uitsluiting;
 - de uitsluitlijst bewaart ze, zodat vastligt wat er in de export stond.
+
+### 3f. Vergelijkingsregels (versie `match-1`)
+
+De rijkoppeling (§ 3b) vergelijkt CSV-cellen met de eigenschappen op de pagina. Deze regels gelden **alleen voor die vergelijking**; ze veranderen nooit een sleutel (§ 3a) of een opgeslagen waarde.
+
+1. **Eerste regel:** van een meerregelige waarde telt alleen de eerste regel, omdat de Notion-export op de pagina alleen die regel bij de eigenschappen zet.
+2. **Ontbrekende eigenschap = leeg:** Notion zet lege eigenschappen niet op de pagina. Een eigenschap die op de pagina ontbreekt, telt als lege waarde.
+3. **Waarde aan één kant = tegenspraak:** gevuld in de rij en leeg op de pagina, of omgekeerd, spreekt tegen.
+4. **Bijlagen:** verwijzingen naar bijlagen worden vergeleken zonder het relatieve mappad (`../`), want dat verschilt tussen CSV en pagina.
+5. **Witruimte:** reeksen witruimte tellen als één spatie, en witruimte aan begin en eind telt niet mee.
+6. **Lege titel:** een lege titel valt samen met pagina's zonder titel of met de titel `Untitled`, en telt nooit als unieke titel.
+
+- De versie (`match-1`) staat bij elk record in `rowMatch.matchRules` en in de inventaris.
+- Een gewijzigde regel krijgt een nieuwe versie. Records die met een oudere versie zijn gekoppeld, behouden die versie en hun status tot een nieuwe inventaris met akkoord.
+- Dezelfde export en dezelfde versie geven altijd dezelfde koppelingen.
 
 ### 4. Idempotentie en handmatige wijzigingen
 
@@ -279,7 +313,7 @@ Na het schrijven leest de import alles terug uit de database en controleert vijf
 | Controle | Wat wordt vergeleken | Geslaagd als |
 |---|---|---|
 | Records | Elke bronrij die niet is uitgesloten of overgeslagen, tegen de records met dezelfde sleutel (`origin.key.value`) | Elke rij heeft precies één record, of een genoemde reden |
-| Sleutels en herkomst | `origin` per record (§ 3 t/m § 3c) | Elk record heeft precies één sleutelsoort; een `notion_page_id` is 32 hex en komt letterlijk voor als bestandsnaam van een pagina in de export; een `replacement_key` geeft bij opnieuw berekenen uit de bewaarde invoer dezelfde waarde; geen sleutel komt twee keer voor in dezelfde module; elk record heeft `rowMatch`, `sourceRow`, `databaseId` en `mapper`; elk record met rijkoppeling `aannemelijk` of `onzeker` staat in de goedgekeurde inventaris |
+| Sleutels en herkomst | `origin` per record (§ 3 t/m § 3c) | Elk record heeft precies één sleutelsoort; een `notion_page_id` is 32 hex en komt letterlijk voor als bestandsnaam van een pagina in de export; een `replacement_key` geeft bij opnieuw berekenen uit de bewaarde invoer dezelfde waarde; geen sleutel komt twee keer voor in dezelfde module; elk record heeft `rowMatch` (met `matchRules`), `sourceRow`, `databaseId` en `mapper`; een record met `ownerDecision` heeft een `replacement_key`; geen record heeft zonder `manual_verification` een andere status gekregen dan bij de import; elk record met rijkoppeling `aannemelijk` of `onzeker` staat in de goedgekeurde inventaris |
 | Relaties | Per relatiekolom: het aantal relaties met status "oorspronkelijk uit de bron overgenomen" tegen het aantal opgeslagen verwijzingen met herkomst `export` (ID-velden en koppelrecords). Verwijzingen met herkomst `handmatig` tellen hier niet mee | Gelijk per kolom, en geen enkele relatie heeft de uitkomst "fout" (zie hieronder) |
 | Historie | Datums, bedragen, hoeveelheden en momentopnamen (zoals voedingswaarden bij gegeten maaltijden) tegen de genormaliseerde bronwaarden | Gelijk; een andere datum, een ander bedrag of een andere waarde geldt als fout |
 | Bijlagen | Verwachte bijlagen (§ 8) tegen opgeslagen bijlagen, op SHA-256 | Elke verwachte bijlage is aanwezig met dezelfde hash; niet geïmporteerde bijlagen hebben een reden |
@@ -334,13 +368,16 @@ Na het schrijven leest de import alles terug uit de database en controleert vijf
   - een gewijzigde rij met een `replacement_key` wordt een nieuwe kandidaat en schrijft niets zonder keuze van de eigenaar; er wordt nooit iets samengevoegd of overschreven;
   - een sleutel in `previousKeys` wordt herkend;
   - pagina's zonder rij worden niet geïmporteerd en staan in het overzicht;
+  - vergelijkingsregels `match-1`: elke regel uit § 3f slaagt en faalt op een voorbeeld; twee keer draaien geeft dezelfde koppelingen;
+  - een bewuste keuze van de eigenaar (`ownerDecision`) geeft een `replacement_key`, ook als de vergelijking een koppeling vond;
+  - `aannemelijk` en `onzeker` veranderen niet door een tweede import, een nieuwe mapper of een latere export; alleen `manual_verification` maakt er `handmatig_bevestigd` van;
   - `sourceRow` bevat voor elk record de oorspronkelijke kolommen, cellen, het bestand en het rijnummer.
 - Conflicten met bestaande besluiten: alleen de aanvulling op ADR 0020 § 3 (samenvoegen). Herstel blijft werken zoals nu.
 
 ## Wijzigingen na acceptatie
 
 - **2026-11-22**, goedgekeurd door de eigenaar: "handmatig hersteld" is toegevoegd als vierde, afzonderlijke relatiestatus (§ 5a). De vier statussen vervangen de uitkomsten "Overgenomen", "Verklaard" en "Relatie niet gevonden"; "fout" is nu een controle-uitkomst per status (§ 11), geen status. De rest van dit ADR is ongewijzigd.
-- **2026-11-22**, op verzoek van de eigenaar, ter beoordeling in deze PR:
+- **2026-11-22**, op verzoek van de eigenaar (PR 23, #41):
   - twee sleutelsoorten, `notion_page_id` en `replacement_key`, met de berekening, normalisatieregels en versie van de vervangende sleutel (§ 3, § 3a);
   - per record de koppeling van CSV-rij en pagina, met methode en zekerheid; een koppeling via uitsluiting is onzeker en nog te verifiëren (§ 3b);
   - de oorspronkelijke rij en bronpositie bij elk record (§ 3c); sleutelwissel alleen door de eigenaar (§ 3d); pagina's zonder rij worden niet geïmporteerd maar wel vastgelegd (§ 3e, § 7);
@@ -348,3 +385,4 @@ Na het schrijven leest de import alles terug uit de database en controleert vijf
   - relaties alleen tussen records met een `notion_page_id`; herkomst van handmatige verwijzingen vóór en na de eerste import (§ 5, § 5a);
   - overzicht en controles aangepast aan de sleutelsoorten (§ 6, § 11); extra tests (Gevolgen);
   - de regel "Conflicten met bestaande besluiten" staat weer onder Gevolgen; die was in de vorige wijziging per ongeluk onder deze sectie beland.
+- **2026-11-22**, besluiten van de eigenaar bij de inventaris (PR 29): bewuste keuze voor een vervangende sleutel per record (§ 3a); statussen en bevestigen nooit automatisch, na de import (§ 3b); vergelijkingsregels met versie `match-1` (§ 3f); bijbehorende controle en tests.
