@@ -123,6 +123,39 @@ test('widgets aanpassen: verbergen blijft bewaard', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Streaks' })).toBeVisible();
 });
 
+test('dashboard: blokken voor Groei, Kennis, Financiën en maaltijdplanning tonen alleen tellers en zijn uit te zetten', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto(`${base}/financien/transacties?nieuw=1`);
+  await page.getByRole('combobox', { name: /^Soort/ }).selectOption('in');
+  await page.getByLabel('Bedrag (€)').fill('1000');
+  await page.getByLabel('Omschrijving').fill('Geheime omschrijving');
+  await page.getByRole('button', { name: 'Transactie opslaan' }).click();
+  await expect(page.getByText(/Geheime omschrijving/)).toBeVisible();
+  await page.goto(`${base}/groei/doelen?nieuw=1`);
+  await page.getByLabel('Titel', { exact: true }).fill('Geheim doel');
+  await page.getByRole('button', { name: 'Doel opslaan' }).click();
+  await expect(page.getByRole('link', { name: 'Geheim doel' })).toBeVisible();
+
+  await page.goto(base);
+  const block = (name: string) => page.locator('.widget').filter({ has: page.getByRole('heading', { name, exact: true }) });
+  await expect(block('Financiën').locator('.widget-stat')).toContainText(/€\s?1\.000,00/);
+  await expect(block('Financiën')).toContainText('Binnen budget');
+  await expect(block('Groei').locator('.widget-stat')).toContainText('1');
+  await expect(block('Groei')).toContainText('actief doel');
+  await expect(block('Kennis').locator('.widget-stat')).toContainText('0');
+  await expect(block('Maaltijdplanning')).toContainText('Geen plan voor vandaag');
+  await expect(page.getByText('Geheime omschrijving')).toHaveCount(0);
+  await expect(page.getByText('Geheim doel')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Widgets aanpassen' }).click();
+  await block('Financiën').getByRole('button', { name: 'Verbergen' }).click();
+  await page.getByRole('button', { name: 'Klaar' }).click();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Financiën', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Groei', exact: true })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test('weerwidget gebruikt Open-Meteo met afgeronde locatie', async ({ page }) => {
   const requested: string[] = [];
   await page.route('https://geocoding-api.open-meteo.com/**', (route) => {
