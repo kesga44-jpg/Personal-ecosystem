@@ -33,8 +33,8 @@ describe('checkNewLink: toegestane combinaties (ADR 0024 § 2)', () => {
     );
   });
 
-  it('develops-skill: alleen Sport, Kracht, Duur en Voetbal naar een vaardigheid (Kennis is een ID-veld)', () => {
-    const allowed: LinkModuleId[] = ['sport', 'kracht', 'duur', 'voetbal'];
+  it('develops-skill: alleen Sport, Kracht en Duur naar een vaardigheid (Kennis is een ID-veld)', () => {
+    const allowed: LinkModuleId[] = ['sport', 'kracht', 'duur'];
     for (const module of LINK_MODULE_IDS) {
       const result = checkNewLink(input('develops-skill', { module, id: 's' }, { module: 'groei', id: 'v', kind: 'vaardigheid' }));
       const expected = module === 'groei' || module === 'kennis' ? 'same-database' : allowed.includes(module) ? null : 'source-not-allowed';
@@ -65,7 +65,7 @@ describe('checkNewLink: toegestane combinaties (ADR 0024 § 2)', () => {
   });
 
   it('related: alle modules, behalve naar Lichaam en Dagboek', () => {
-    expect(checkNewLink(input('related', { module: 'reizen', id: 'r' }, { module: 'voetbal', id: 'v' }))).toBeNull();
+    expect(checkNewLink(input('related', { module: 'voeding', id: 'r' }, { module: 'financien', id: 'v' }))).toBeNull();
     expect(checkNewLink(input('related', { module: 'sport', id: 's' }, { module: 'lichaam', id: 'l' }))).toBe('target-forbidden');
     expect(checkNewLink(input('related', { module: 'sport', id: 's' }, { module: 'dagboek', id: 'd' }))).toBe('target-forbidden');
   });
@@ -104,7 +104,7 @@ describe('checkNewLink: toegestane combinaties (ADR 0024 § 2)', () => {
 
   it('weigert een onbekende soort in plaats van die om te zetten (ADR 0024 § 3a)', () => {
     expect(checkNewLink(input('supports-goal', { module: 'sport', id: 's' }, { module: 'groei', id: 'g', kind: 'Doel' }))).toBe('unknown-kind');
-    expect(checkNewLink(input('related', { module: 'sport', id: 's', kind: 'bron' }, { module: 'reizen', id: 'r' }))).toBe('unknown-kind');
+    expect(checkNewLink(input('related', { module: 'sport', id: 's', kind: 'bron' }, { module: 'voeding', id: 'r' }))).toBe('unknown-kind');
   });
 
   it('een record zonder soort kan alleen doel zijn van een categorie zonder soorteis', () => {
