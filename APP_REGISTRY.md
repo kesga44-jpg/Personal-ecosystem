@@ -17,6 +17,7 @@ De huidige Hub gebruikt nog een vaste lokale appnavigatie; automatische register
 | `voeding` | Voeding (module) | Gepland (ADR 0020) | `apps/ecosystem` | Niet aangesloten | IndexedDB `personal-ecosystem-voeding` | Persoonlijke inname en voedingswaarden; geen weekmenu of boodschappen |
 | `kracht` | Kracht (module, onderdeel van Sport) | Gebouwd (PR 6) | `apps/ecosystem` | Niet aangesloten | IndexedDB `personal-ecosystem-kracht` | Krachttraining: oefeningen (basis, eigen, wger), schema's, sets, records |
 | `duur` | Duur (module, onderdeel van Sport) | Gebouwd (PR 7) | `apps/ecosystem` | Niet aangesloten | IndexedDB `personal-ecosystem-duur` | Duurtrainingen: FIT/TCX/GPX-import, route op OSM-kaart, tempo, hartslagzones, tussentijden |
+| `groei` | Groei (module) | Gebouwd (A5, ADR 0023) | `apps/ecosystem` | Niet aangesloten | IndexedDB `personal-ecosystem-groei` (gedeeld met Kennis vanaf A6) | Doelen en subdoelen, acties, gewoontes, vaardigheden, evaluaties, The Ultimate Growth System, 10/10-regel |
 | `dagboek` | Dagboek & stemming (module) | Gepland (ADR 0020) | `apps/ecosystem` | Niet aangesloten | IndexedDB `personal-ecosystem-dagboek` | Privé-dagnotities, stemming en energie |
 
 De schema's `hub`, `sport`, `quest` en eventuele buckets zijn alleen ontworpen; er is geen runtime Supabase-verbinding/migratie in de MVP. Toekomstige functies uit de volgende paragrafen blijven roadmap, niet geïmplementeerde functionaliteit.
