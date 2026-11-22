@@ -1,12 +1,14 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { newId } from '@ecosystem/core';
+import { newId, type EcosystemModuleLink } from '@ecosystem/core';
 import { Button, Card, ConfirmAction, EmptyState, ErrorBanner, Field, PageHeader, StatusPill } from '@ecosystem/ui';
 import { MEALS, isMeal, mealLabels, parseNumber, validateFoodEntry, type FoodEntry, type Meal } from './domain';
 import { copyMeal, dayTotals, entryFromPlanned, mealName, mealNutrition, mealsOfPlan, moveMeal, planDates, recipeFromMeal, repeatDay, shoppingList, shoppingText, targetCheck, type Library } from './mealplan';
 import { validatePlan, validatePlannedMeal, type NutritionPlan, type PlanTargets, type PlannedMeal } from './planner';
 import { UNITS, unitLabels, validateRecipe, validateRecipeIngredient, type Unit } from './recipes';
 import type { Run } from './RecipePages';
+import type { LocalDatabase } from '@ecosystem/storage';
+import { GoalLinks } from '../GoalLinks';
 
 export interface PlannerData extends Library {
   plans: NutritionPlan[];
@@ -343,7 +345,7 @@ function MealRow({ meal, plan, data, run }: { meal: PlannedMeal; plan: Nutrition
   );
 }
 
-export function PlanPage({ data, run }: { data: PlannerData; run: Run }) {
+export function PlanPage({ data, run, database }: { data: PlannerData; run: Run; database: LocalDatabase | null }) {
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
@@ -388,6 +390,7 @@ export function PlanPage({ data, run }: { data: PlannerData; run: Run }) {
         }
       />
       {editing && <PlanForm plan={plan} run={run} onDone={() => setEditing(false)} />}
+      {database && <Card title="Koppelingen"><GoalLinks database={database} module="voeding" sourceId={plan.id} /></Card>}
       <Card title="Dagen">
         <div style={{ overflowX: 'auto' }}>
           <table className="review-table">
@@ -438,10 +441,13 @@ export function PlanPage({ data, run }: { data: PlannerData; run: Run }) {
       <Card>
         <ConfirmAction
           label={`Plan ${plan.name} verwijderen`}
-          confirmMessage="Dit plan en de geplande maaltijden verwijderen? Wat je al als gegeten hebt geregistreerd, blijft bewaard."
+          confirmMessage="Dit plan, de geplande maaltijden en de koppelingen verwijderen? Wat je al als gegeten hebt geregistreerd, blijft bewaard."
           onConfirm={() =>
             void run(async (db) => {
               for (const meal of meals) await db.remove('plannedMeals', meal.id);
+              for (const link of await db.list<EcosystemModuleLink>('links')) {
+                if (link.from.module === 'voeding' && link.from.id === plan.id) await db.remove('links', link.id);
+              }
               await db.remove('nutritionPlans', plan.id);
             }).then((ok) => ok && navigate('/planning'))
           }

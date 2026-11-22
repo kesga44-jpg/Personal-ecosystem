@@ -343,6 +343,111 @@ test('Groei: doel met subdoel kan niet worden verwijderd; actie wel, na bevestig
   await expect(page.getByText('Geen acties', { exact: true })).toBeVisible();
 });
 
+test('spaarpot en voedingsplan koppelen, wijzigen en ontkoppelen Groei-doelen', async ({ page }) => {
+  for (const title of ['Doel een', 'Doel twee']) {
+    await page.goto(`${base}/groei/doelen?nieuw=1`);
+    await page.getByLabel('Titel', { exact: true }).fill(title);
+    await page.getByRole('button', { name: 'Doel opslaan' }).click();
+    await expect(page.getByRole('link', { name: title })).toBeVisible();
+  }
+  await page.goto(`${base}/financien/spaarpotten`);
+  await page.getByLabel('Naam').fill('Reis');
+  await page.getByLabel('Doelbedrag (€)').fill('500');
+  await page.getByRole('button', { name: 'Spaarpot opslaan' }).click();
+  const pot = page.locator('.list-item').filter({ hasText: 'Reis' });
+  await expect(pot.getByRole('option', { name: 'Doel een' })).toBeAttached();
+  await pot.getByLabel('Groei-doel koppelen').selectOption({ label: 'Doel een' });
+  await pot.getByRole('button', { name: 'Doel koppelen' }).click();
+  await expect(pot.locator('span').filter({ hasText: /^Doel een$/ })).toBeVisible();
+  await page.reload();
+  await expect(pot.locator('span').filter({ hasText: /^Doel een$/ })).toBeVisible();
+  await pot.getByRole('button', { name: 'Aanpassen', exact: true }).first().click();
+  await pot.getByLabel('Groei-doel aanpassen').selectOption({ label: 'Doel twee' });
+  await pot.getByRole('button', { name: 'Koppeling wijzigen' }).click();
+  await expect(pot.locator('span').filter({ hasText: /^Doel twee$/ })).toBeVisible();
+  for (const width of [375, 768, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    const overflow = await page.evaluate(() => ({
+      width: window.innerWidth, scroll: document.documentElement.scrollWidth,
+      elements: [...document.querySelectorAll('main *')].filter((element) => element.getBoundingClientRect().right > window.innerWidth + 1).map((element) => `${element.tagName}.${element.className}:${Math.round(element.getBoundingClientRect().width)}`)
+    }));
+    expect(overflow.scroll, JSON.stringify(overflow)).toBeLessThanOrEqual(overflow.width);
+  }
+  await pot.getByRole('button', { name: 'Koppeling verwijderen' }).click();
+  await expect(pot.locator('span').filter({ hasText: /^Doel twee$/ })).toHaveCount(0);
+
+  await page.goto(`${base}/voeding/planning`);
+  await page.getByRole('button', { name: '＋ Plan' }).click();
+  await page.getByLabel('Naam van het plan').fill('Week');
+  await page.getByRole('button', { name: 'Plan opslaan' }).click();
+  const card = page.locator('.card').filter({ has: page.getByText('Groei-doelen', { exact: true }) });
+  await expect(card.getByRole('option', { name: 'Doel een' })).toBeAttached();
+  await card.getByLabel('Groei-doel koppelen').selectOption({ label: 'Doel een' });
+  await card.getByRole('button', { name: 'Doel koppelen' }).click();
+  await expect(card.locator('span').filter({ hasText: /^Doel een$/ })).toBeVisible();
+  for (const width of [375, 768, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  }
+  await page.reload();
+  await expect(card.locator('span').filter({ hasText: /^Doel een$/ })).toBeVisible();
+  await card.getByRole('button', { name: 'Aanpassen' }).click();
+  await card.getByLabel('Groei-doel aanpassen').selectOption({ label: 'Doel twee' });
+  await card.getByRole('button', { name: 'Koppeling wijzigen' }).click();
+  await expect(card.locator('span').filter({ hasText: /^Doel twee$/ })).toBeVisible();
+  const planUrl = page.url();
+  await page.goto(`${base}/groei/doelen`);
+  await page.getByRole('link', { name: 'Doel twee' }).click();
+  page.once('dialog', (dialog) => void dialog.accept());
+  await page.getByRole('button', { name: 'Doel Doel twee verwijderen' }).click();
+  await expect(page).toHaveURL(`${base}/groei/doelen`);
+  await page.goto(planUrl);
+  await expect(card.locator('span').filter({ hasText: /^Niet meer beschikbaar$/ })).toBeVisible();
+  await card.getByRole('button', { name: 'Koppeling verwijderen' }).click();
+  await expect(card.locator('span').filter({ hasText: /^Niet meer beschikbaar$/ })).toHaveCount(0);
+  await card.getByLabel('Groei-doel koppelen').selectOption({ label: 'Doel een' });
+  await card.getByRole('button', { name: 'Doel koppelen' }).click();
+  await expect(card.locator('span').filter({ hasText: /^Doel een$/ })).toBeVisible();
+  page.once('dialog', (dialog) => void dialog.accept());
+  await page.getByRole('button', { name: 'Plan Week verwijderen' }).click();
+  await expect(page).toHaveURL(`${base}/voeding/planning`);
+  const remaining = await page.evaluate(async () => {
+    const request = indexedDB.open('personal-ecosystem-voeding');
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const read = db.transaction('links').objectStore('links').getAll();
+    const links = await new Promise<unknown[]>((resolve, reject) => {
+      read.onsuccess = () => resolve(read.result);
+      read.onerror = () => reject(read.error);
+    });
+    db.close();
+    return links.length;
+  });
+  expect(remaining).toBe(0);
+});
+
+test('rapportage exporteert alleen de geselecteerde werkelijke transacties', async ({ page }) => {
+  await page.goto(`${base}/financien/transacties?nieuw=1`);
+  await page.getByLabel('Bedrag (€)').fill('12,34');
+  await page.getByLabel('Omschrijving').fill('Café, "thee"');
+  await page.getByRole('button', { name: 'Transactie opslaan' }).click();
+  await page.getByRole('button', { name: '＋ Transactie' }).click();
+  await page.getByLabel('Bedrag (€)').fill('45');
+  await page.getByLabel('Omschrijving').fill('Niet geselecteerd');
+  await page.getByRole('button', { name: 'Transactie opslaan' }).click();
+  await page.goto(`${base}/financien/rapportage`);
+  await page.getByLabel('Zoeken').fill('café');
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'CSV downloaden' }).click()]);
+  const path = await download.path();
+  expect(path).not.toBeNull();
+  const csv = await readFile(path!, 'utf8');
+  expect(csv).toContain('"1234"');
+  expect(csv).toContain('"Café, ""thee"""');
+  expect(csv).not.toContain('Niet geselecteerd');
+});
+
 test('Financiën: categorie, budget, spaarpot, transacties, Money Manual en Investment Plan; blijft bewaard na herladen', async ({ page }) => {
   const errors = collectErrors(page);
   await page.goto(`${base}/financien/instellingen`);
