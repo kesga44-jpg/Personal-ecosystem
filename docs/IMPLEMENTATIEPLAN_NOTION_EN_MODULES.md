@@ -25,14 +25,14 @@
 |---|---|---|---|---|
 | A1 | Volledige Notion-export als ZIP (Markdown & CSV, "Everything", subpagina's in mappen, met bijlagen) in `C:\Kees` | Eigenaar | — | — |
 | A2 | Inventaris en volledigheidscontrole (ADR 0025 § 1), met markering eigen, van anderen, gezamenlijk, template, voorbeeld, leeg of twijfel. Alleen lezen: geen wijziging aan de export, geen import. Het rapport gaat **alleen privé naar de eigenaar** (de repository is openbaar); er komt **geen** Notion-inhoud, databasenaam of aantal in de repository | Claude, alleen lezen | A1 | S |
-| A3 | Akkoord op de inventaris: per database importeren ja of nee, de bron van waarheid bij dubbelen, de uitsluitlijst | Eigenaar | A2 | — |
+| A3 | Akkoord op de inventaris: per database importeren ja of nee, de bron van waarheid bij dubbelen, de uitsluitlijst; per record de sleutel en de rijkoppeling met status (ADR 0025 § 3a, § 3b, § 3f), inclusief de lijst met aannemelijke en onzekere koppelingen en de steekproef door Claude | Eigenaar | A2 | — |
 | A4 | PR: gedeelde basis in `packages/core` — `ModuleLink`, relatiecategorieën met toegestane combinaties, `ImportOrigin`, `Lookup`- en `linksTo`-contracten | Claude | ADR-akkoord | M |
 | A5 | PR: Groei (database `-groei`): doelen en subdoelen, vaardigheden, gewoontes, acties, evaluaties, The Ultimate Growth System, 10/10-regel; navigatie-item Groei | Claude | A4, K-A | L |
 | A6 | PR: Kennis & Ontwikkeling (zelfde database): bronnen, highlights, inzichten, vijfstappenprogramma, 30-dagenmeting, dagelijks lezen en luisteren; eigen navigatie-item | Claude | A5 | L |
 | A7 | PR: SIDEQUEST-doelen en -gewoontes naar Groei (lokaal, met back-up en bevestiging); herinneringen lezen gewoontes uit Groei | Claude | A5, K-A | M |
 | A8 | PR: importbasis — mapselectie, CSV- en Markdown-parser, idempotentie, conflicten, tombstones, overzicht, droogloop, back-up vooraf; getest met verzonnen voorbeeldexports | Claude | A4 | L |
 | A9 | PR: mappers voor Groei en Kennis; daarna een proefimport door Claude op de echte export (lokale build, tijdelijke browser) en het overzicht naar de eigenaar | Claude | A3, A6, A8 | M |
-| A10 | Eerste echte import (Groei en Kennis) in de eigen app, ingelogd en met lokale versleuteling | Eigenaar | A9 + akkoord + **P-6 afgerond** (ADR 0030, ADR 0031 § 7) | — |
+| A10 | Eerste echte import (Groei en Kennis) in de eigen app, ingelogd en met lokale versleuteling. Daarna bevestigt de eigenaar de aannemelijke en onzekere koppelingen in de app; nooit automatisch (ADR 0025 § 3b) | Eigenaar | A9 + akkoord + **P-6 afgerond** (ADR 0030, ADR 0031 § 7) | — |
 | A11 | PR's: Voeding schema 2 — stores en upgrade; recepten en ingrediënten; handmatige plannen en registratie; automatische planner met voorkeuren en uitsluitingen; mappers en proefimport | Claude | A4, A8, K-D | L (4–5 PR's) |
 | A12 | PR's: Financiën — module, rapportages, budgetten, spaarpotten, beleggingsplan; mappers met de controle op Income overview; proefimport | Claude | A4, A8, K-B | M–L |
 | A13 | PR's: Voetbal — module zonder spelers; mappers; proefimport | Claude | A4, A8, K-C | M |
