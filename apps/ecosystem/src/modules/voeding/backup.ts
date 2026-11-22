@@ -1,3 +1,4 @@
+import { parseEcosystemModuleLink } from '@ecosystem/core';
 import { validateFoodEntry, validateProduct, validateSettings } from './domain';
 import { validatePlan, validatePlannedMeal } from './planner';
 import { validateRecipe, validateRecipeIngredient } from './recipes';
@@ -25,4 +26,9 @@ export function validateVoedingBackup(input: unknown): void {
   for (const line of list('recipeIngredients')) validateRecipeIngredient(line);
   for (const plan of list('nutritionPlans')) validatePlan(plan);
   for (const meal of list('plannedMeals')) validatePlannedMeal(meal);
+  if (stores.links !== undefined && !Array.isArray(stores.links)) throw new Error('Back-up van Voeding heeft een ongeldige lijst links.');
+  for (const link of list('links')) {
+    const parsed = parseEcosystemModuleLink(link);
+    if (!parsed || parsed.sameDatabase || parsed.link.from.module !== 'voeding') throw new Error('Back-up van Voeding bevat een ongeldige koppeling.');
+  }
 }

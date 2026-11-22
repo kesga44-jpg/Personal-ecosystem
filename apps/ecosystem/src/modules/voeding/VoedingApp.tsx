@@ -181,7 +181,7 @@ function VoedingRoutes({ links }: { links: ModuleLink[] }) {
           />
           <Route path="/planning" element={<>{error && <ErrorBanner message={error} />}<PlansPage data={plannerData} run={run} /></>} />
           <Route path="/planning/automatisch" element={<>{error && <ErrorBanner message={error} />}<AutoPlanPage data={plannerData} settings={settings} run={run} /></>} />
-          <Route path="/planning/:id" element={<>{error && <ErrorBanner message={error} />}<PlanPage data={plannerData} run={run} /></>} />
+          <Route path="/planning/:id" element={<>{error && <ErrorBanner message={error} />}<PlanPage data={plannerData} run={run} database={database} /></>} />
           <Route path="/planning/:id/boodschappen" element={<ShoppingPage data={plannerData} />} />
           <Route path="/recepten" element={<>{error && <ErrorBanner message={error} />}<RecipesPage data={recipeData} /></>} />
           <Route path="/recepten/nieuw" element={<>{error && <ErrorBanner message={error} />}<NewRecipePage run={run} /></>} />

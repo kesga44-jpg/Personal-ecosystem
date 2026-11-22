@@ -84,6 +84,7 @@ export interface Pot extends Base {
 export interface ManualSection {
   id: ManualSectionId;
   text: string;
+  createdAt?: string;
   updatedAt: string;
 }
 
@@ -307,6 +308,7 @@ export function validateManualSection(value: unknown): asserts value is ManualSe
   const r = obj(value, 'Money Manual-sectie');
   oneOf(r.id, MANUAL_SECTIONS, 'Money Manual');
   text(r.text, 'Money Manual');
+  if (r.createdAt !== undefined && (typeof r.createdAt !== 'string' || !Number.isFinite(Date.parse(r.createdAt)))) fail('Money Manual: ongeldig aanmaaktijdstip.');
   if (typeof r.updatedAt !== 'string' || !Number.isFinite(Date.parse(r.updatedAt))) fail('Money Manual: ongeldig tijdstip.');
   assertNoForbiddenFields(r, 'Money Manual');
 }
@@ -522,6 +524,16 @@ export function filterTransactions(
     return [t.description, t.counterparty, t.category].some((part) => part.toLocaleLowerCase('nl-NL').includes(needle));
   });
   return result.sort((a, b) => (options.sort === 'bedrag' ? b.amountCents - a.amountCents : 0) || b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
+}
+
+/** UTF-8 CSV met een BOM en CRLF; de bedragen blijven exact in centen. */
+export function transactionsCsv(transactions: readonly Transaction[]): string {
+  const cell = (value: string) => `"${value.replace(/"/g, '""')}"`;
+  const rows = [
+    ['Datum', 'Richting', 'Status', 'Bedrag (cent)', 'Categorie', 'Tegenpartij', 'Omschrijving'],
+    ...transactions.map((t) => [t.date, t.direction, t.kind, String(t.amountCents), t.category, t.counterparty, t.description])
+  ];
+  return `\uFEFF${rows.map((row) => row.map(cell).join(',')).join('\r\n')}\r\n`;
 }
 
 /** Twee werkelijke transacties met dezelfde datum, richting en bedrag: melden, nooit samenvoegen (ADR 0027 § 3). */

@@ -27,6 +27,7 @@ import {
   projectScenario,
   scenarioOutcome,
   totals,
+  transactionsCsv,
   validateBudget,
   validateBudgetScenario,
   validateCategory,
@@ -62,6 +63,7 @@ import {
   type TransactionSort
 } from './domain';
 import { databaseConfig } from './storage';
+import { GoalLinks } from '../GoalLinks';
 
 const navigation = [
   { to: '/', label: 'Overzicht', icon: '⌂' },
@@ -202,7 +204,7 @@ function FinancienRoutes({ links }: { links: ModuleLink[] }) {
             <Route path="/" element={<OverviewPage data={data} />} />
             <Route path="/transacties" element={<TransactionsPage data={data} run={run} />} />
             <Route path="/budgetten" element={<BudgetsPage data={data} run={run} />} />
-            <Route path="/spaarpotten" element={<PotsPage data={data} run={run} />} />
+            <Route path="/spaarpotten" element={<PotsPage data={data} run={run} database={database} />} />
             <Route path="/rapportage" element={<ReportPage data={data} />} />
             <Route path="/money-manual" element={<ManualPage data={data} run={run} />} />
             <Route path="/beleggingsplan" element={<PlansPage data={data} run={run} />} />
@@ -598,7 +600,7 @@ function BudgetsPage({ data, run }: { data: Data; run: Run }) {
 
 // ——— Spaarpotten ———
 
-function PotsPage({ data, run }: { data: Data; run: Run }) {
+function PotsPage({ data, run, database }: { data: Data; run: Run; database: LocalDatabase | null }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const editing = data.pots.find((p) => p.id === editingId);
   const [name, setName] = useState('');
@@ -665,12 +667,13 @@ function PotsPage({ data, run }: { data: Data; run: Run }) {
             {data.pots.map((pot) => {
               const progress = potProgress(pot, data.transactions);
               return (
-                <div className="list-item" key={pot.id}>
-                  <div>
+                <div className="list-item" key={pot.id} style={{ flexWrap: 'wrap', minWidth: 0 }}>
+                  <div style={{ flex: '1 1 240px', minWidth: 0 }}>
                     <p className="item-title">{pot.name}{pot.archived && ' (gearchiveerd)'}</p>
                     <p className="item-subtitle">{formatEuros(progress.balanceCents)} van {formatEuros(pot.targetCents)} · {progress.pct}% · streefdatum {formatDate(pot.targetDate)}</p>
+                    {database && <GoalLinks database={database} module="financien" sourceId={pot.id} />}
                   </div>
-                  <div className="row">
+                  <div className="row" style={{ flex: '1 1 100%', minWidth: 0, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
                     <progress max={100} value={progress.pct} aria-label={`Voortgang ${pot.name}`} />
                     <button type="button" className="text-button" onClick={() => setEditingId(pot.id)}>Aanpassen</button>
                     <button type="button" className="text-button" onClick={() => void run((db) => db.put('pots', { ...pot, archived: !pot.archived, updatedAt: nowIso() }))}>{pot.archived ? 'Terugzetten' : 'Archiveren'}</button>
@@ -691,8 +694,11 @@ function PotsPage({ data, run }: { data: Data; run: Run }) {
 
 function ReportPage({ data }: { data: Data }) {
   const [year, setYear] = useState(todayKey().slice(0, 4));
-  const rows = yearReport(data.transactions, year);
-  const yearTx = data.transactions.filter((t) => t.date.startsWith(`${year}-`));
+  const [direction, setDirection] = useState<Direction | ''>('');
+  const [categoryId, setCategoryId] = useState('');
+  const [query, setQuery] = useState('');
+  const yearTx = filterTransactions(data.transactions.filter((t) => t.date.startsWith(`${year}-`)), { direction, categoryId, query, kind: 'actual' });
+  const rows = yearReport(yearTx, year);
   const yearTotals = totals(yearTx);
   const outByCategory = byCategory(yearTx, 'out');
   const years = useMemo(() => [...new Set([todayKey().slice(0, 4), ...data.transactions.map((t) => t.date.slice(0, 4))])].sort().reverse(), [data.transactions]);
@@ -701,11 +707,37 @@ function ReportPage({ data }: { data: Data }) {
     <div className="stack">
       <PageHeader eyebrow="Financiën" title="Rapportage" description="Per maand en per jaar, berekend uit je transacties. Gepland telt niet mee." />
       <Card>
-        <Field label="Jaar">
-          <select value={year} onChange={(event) => setYear(event.target.value)}>
-            {years.map((y) => <option key={y} value={y}>{y}</option>)}
-          </select>
-        </Field>
+        <div className="form-grid">
+          <Field label="Jaar">
+            <select value={year} onChange={(event) => setYear(event.target.value)}>
+              {years.map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </Field>
+          <Field label="Filter op soort">
+            <select value={direction} onChange={(event) => setDirection(event.target.value as Direction | '')}>
+              <option value="">In en uit</option>
+              <option value="in">Inkomsten</option>
+              <option value="out">Uitgaven</option>
+            </select>
+          </Field>
+          <Field label="Filter op categorie">
+            <select value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
+              <option value="">Alle</option>
+              {data.categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+            </select>
+          </Field>
+          <Field label="Zoeken">
+            <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Omschrijving, tegenpartij of categorie" />
+          </Field>
+        </div>
+        <Button type="button" variant="secondary" onClick={() => {
+          const url = URL.createObjectURL(new Blob([transactionsCsv(yearTx)], { type: 'text/csv;charset=utf-8' }));
+          const anchor = document.createElement('a');
+          anchor.href = url;
+          anchor.download = `financien-${year}.csv`;
+          anchor.click();
+          URL.revokeObjectURL(url);
+        }}>CSV downloaden</Button>
       </Card>
       <div className="grid grid-4">
         <Metric label="Inkomsten" value={formatEuros(yearTotals.inCents)} note={year} />
@@ -766,7 +798,8 @@ function ManualSectionCard({ id, section, run }: { id: ManualSectionId; section:
   const [saved, setSaved] = useState('');
   useEffect(() => setValue(section?.text ?? ''), [section]);
   async function save() {
-    const next: ManualSection = { id, text: value, updatedAt: nowIso() };
+    const now = nowIso();
+    const next: ManualSection = { ...section, id, text: value, ...(!section ? { createdAt: now } : {}), updatedAt: now };
     validateManualSection(next);
     if (await run((db) => db.put('manual', next))) setSaved('Opgeslagen.');
   }

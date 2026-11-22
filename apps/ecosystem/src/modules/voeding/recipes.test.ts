@@ -4,6 +4,7 @@ import { validateVoedingBackup } from './backup';
 import { validatePlan, validatePlannedMeal, type NutritionPlan, type PlannedMeal } from './planner';
 import { convertAmount, filterRecipes, makeRecipeEntry, parseTags, recipeAllergens, recipeNutrition, recipesUsing, validateRecipe, type Ingredient, type Recipe, type RecipeIngredient } from './recipes';
 import { databaseConfig } from './storage';
+import { openLocalDatabase } from '@ecosystem/storage';
 
 const t = '2026-11-22T10:00:00.000Z';
 const oats: Ingredient = { id: 'eigen:oats', name: 'Havermout', brand: '', barcode: null, per100: { kcal: 370, protein: 13, carbs: 60, fat: 7 }, servingGrams: null, source: 'eigen', updatedAt: t, allergens: ['gluten'], fiber: 10 };
@@ -83,17 +84,48 @@ describe('recepten', () => {
 
 describe('schema 2', () => {
   it('voegt alleen stores toe en houdt producten van schema 1 geldig', () => {
-    expect(databaseConfig.version).toBe(2);
-    expect(databaseConfig.stores).toEqual(['entries', 'products', 'settings', 'recipes', 'recipeIngredients', 'nutritionPlans', 'plannedMeals']);
+    expect(databaseConfig.version).toBe(3);
+    expect(databaseConfig.stores).toEqual(['entries', 'products', 'settings', 'recipes', 'recipeIngredients', 'nutritionPlans', 'plannedMeals', 'links']);
     const { allergens: _a, fiber: _f, ...v1 } = oats;
     expect(() => validateProduct(v1)).not.toThrow();
     expect(() => validateProduct({ ...v1, basis: 'portion' })).toThrow('portie');
     expect(() => validateProduct({ ...v1, pricePerUnitCents: 199 })).toThrow('prijs');
   });
 
+  describe('schema 3: koppelingen', () => {
+    it('bewaart onbekende categorieën maar weigert ongeldige bronnen en dezelfde database', () => {
+      const link = { id: 'l1', category: 'toekomstig', from: { module: 'voeding', id: 'p1' }, to: { module: 'groei', id: 'g1' }, createdAt: t, updatedAt: t };
+      const stores = { entries: [], products: [], settings: [], links: [link] };
+      expect(() => validateVoedingBackup({ stores })).not.toThrow();
+      expect(() => validateVoedingBackup({ stores: { ...stores, links: [{ ...link, from: { module: 'financien', id: 'p1' } }] } })).toThrow('koppeling');
+      expect(() => validateVoedingBackup({ stores: { ...stores, links: [{ ...link, to: { module: 'voeding', id: 'p2' } }] } })).toThrow('koppeling');
+    });
+
+    it('behoudt bestaande lokale instellingen en plannen bij upgrade en herstel van oudere back-ups', async () => {
+      const config = { ...databaseConfig, databaseName: 'voeding-schema3-test' };
+      const old = await openLocalDatabase({ ...config, version: 2, stores: config.stores.filter((store) => store !== 'links') });
+      const settings = { id: 'settings', kcalTarget: 2000, proteinTarget: 100, planner: { favoriteRecipeIds: ['r1'] } };
+      const plan = { id: 'p1', name: 'Plan' };
+      await old.put('settings', settings);
+      await old.put('nutritionPlans', plan);
+      const backup = await old.exportData();
+      old.close();
+      const current = await openLocalDatabase(config);
+      expect(await current.get('settings', 'settings')).toEqual(settings);
+      expect(await current.get('nutritionPlans', 'p1')).toEqual(plan);
+      expect(await current.list('links')).toEqual([]);
+      await current.restore(backup);
+      expect(await current.get('settings', 'settings')).toEqual(settings);
+      expect(await current.get('nutritionPlans', 'p1')).toEqual(plan);
+      expect(await current.list('links')).toEqual([]);
+      current.close();
+    });
+  });
+
   it('een back-up van schema 1 krijgt lege nieuwe stores', () => {
     const upgraded = databaseConfig.exportUpgrades[2]({ entries: [], products: [], settings: [] });
     expect(upgraded).toEqual({ entries: [], products: [], settings: [], recipes: [], recipeIngredients: [], nutritionPlans: [], plannedMeals: [] });
+    expect(databaseConfig.exportUpgrades[3](upgraded)).toEqual({ ...upgraded, links: [] });
     expect(() => validateVoedingBackup({ stores: { entries: [], products: [], settings: [] } })).not.toThrow();
     expect(() => validateVoedingBackup({ stores: { ...upgraded, recipes: [recipe], recipeIngredients: lines, products: [oats, milk] } })).not.toThrow();
     expect(() => validateVoedingBackup({ stores: { ...upgraded, recipes: [{ ...recipe, servings: 99 }] } })).toThrow();

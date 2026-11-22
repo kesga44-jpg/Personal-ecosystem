@@ -18,8 +18,10 @@ import {
   projectScenario,
   scenarioOutcome,
   totals,
+  transactionsCsv,
   validateFinancienBackup,
   validateInvestmentPlan,
+  validateManualSection,
   validatePlanNote,
   validateTransaction,
   yearReport,
@@ -95,6 +97,13 @@ describe('K-B: geen portefeuilleadministratie in Personal Ecosystem', () => {
 });
 
 describe('validatie', () => {
+  it('Money Manual behoudt oude secties en controleert nieuwe aanmaaktijden', () => {
+    const section = { id: 'strategie', text: 'plan', updatedAt: T };
+    expect(() => validateManualSection(section)).not.toThrow();
+    expect(() => validateManualSection({ ...section, createdAt: T })).not.toThrow();
+    expect(() => validateManualSection({ ...section, createdAt: 'ongeldig' })).toThrow('aanmaaktijdstip');
+  });
+
   it('transacties: positieve centen, geldige datum, inkomstenbron alleen bij inkomsten', () => {
     expect(() => validateTransaction(tx())).not.toThrow();
     expect(() => validateTransaction(tx({ amountCents: 0 }))).toThrow();
@@ -102,6 +111,13 @@ describe('validatie', () => {
     expect(() => validateTransaction(tx({ date: '2026-02-30' }))).toThrow();
     expect(() => validateTransaction(tx({ sourceId: 's1' }))).toThrow('inkomsten');
     expect(() => validateTransaction(tx({ direction: 'in', sourceId: 's1' }))).not.toThrow();
+  });
+
+  describe('CSV-export', () => {
+    it('encodeert UTF-8-tekst en escapet komma, aanhalingstekens en nieuwe regels zonder afronden', () => {
+      const csv = transactionsCsv([tx({ amountCents: 12345, category: 'Café, thee', description: 'Zij zei "ja"\nvolgende regel' })]);
+      expect(csv).toBe('\uFEFF"Datum","Richting","Status","Bedrag (cent)","Categorie","Tegenpartij","Omschrijving"\r\n"2026-11-05","out","actual","12345","Café, thee","","Zij zei ""ja""\nvolgende regel"\r\n');
+    });
   });
 
   it('allocatie telt op tot 100 en heeft unieke categorieën', () => {
