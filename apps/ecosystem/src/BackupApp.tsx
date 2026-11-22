@@ -14,7 +14,7 @@ import { validateLichaamBackup } from './modules/lichaam/domain';
 import { databaseConfig as dagboekConfig } from './modules/dagboek/storage';
 import { validateDagboekBackup } from './modules/dagboek/domain';
 import { databaseConfig as voedingConfig } from './modules/voeding/storage';
-import { validateVoedingBackup } from './modules/voeding/domain';
+import { validateVoedingBackup } from './modules/voeding/backup';
 import { databaseConfig as krachtConfig } from './modules/kracht/storage';
 import { validateKrachtBackup } from './modules/kracht/domain';
 import { databaseConfig as duurConfig } from './modules/duur/storage';

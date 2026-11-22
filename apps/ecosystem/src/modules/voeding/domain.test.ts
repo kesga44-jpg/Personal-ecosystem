@@ -15,9 +15,9 @@ import {
   validateFoodEntry,
   validateProduct,
   validateSettings,
-  validateVoedingBackup,
   type FoodProduct
 } from './domain';
+import { validateVoedingBackup } from './backup';
 
 const now = new Date('2026-11-17T08:00:00Z');
 const yoghurt = productFromOff({ code: '8710400000000', name: 'Volle yoghurt', brand: 'Merk', per100: { kcal: 63, protein: 3.6, carbs: 4.4, fat: 3.3 }, servingGrams: 150 }, now);
