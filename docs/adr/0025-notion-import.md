@@ -40,7 +40,7 @@
 
 - **Droogloop:** de import rekent alle wijzigingen uit in het geheugen en schrijft niets. Het overzicht (§ 6) toont precies wat er zou gebeuren.
 - **Proefimport door Claude:** vóór de eerste echte import draait Claude de importfunctie op de export in een lokale build (Playwright, tijdelijke browser), en levert het rapport. Daar blijft niets van over.
-- Pas daarna importeert de eigenaar in zijn eigen app.
+- Pas daarna importeert de eigenaar in zijn eigen app, en niet vóór P-6: inloggen en lokale versleuteling moeten actief zijn ([ADR 0031](0031-lokale-versleuteling-in-rust.md) § 7).
 
 ### 3. Herkomst (`origin`)
 

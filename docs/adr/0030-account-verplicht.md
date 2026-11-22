@@ -57,14 +57,14 @@ De app toont gegevens pas als alle drie de stappen gelukt zijn:
 
 ### 4. Bestaande lokale gegevens
 
-- Gegevens die vóór P-6 lokaal zijn ontstaan (ook een eventuele Notion-import uit A10), gaan **na bevestiging** mee naar het account. Dat gebeurt bij het aanmaken van de kluis (ADR 0021 § 4) of later per module (stap B5).
+- Gegevens die vóór P-6 lokaal zijn ontstaan, gaan **na bevestiging** mee naar het account. Dat gebeurt bij het aanmaken van de kluis (ADR 0021 § 4) of later per module (stap B5). Een Notion-import hoort daar niet bij: die gebeurt pas na P-6 (§ 5).
 - Zolang dat niet is gebeurd, worden ze niet gewist en niet automatisch verstuurd.
 - Het inlogscherm toont dan één extra knop: **"Lokale gegevens van vóór het account exporteren"**. Dat is geen lokale modus: je kunt de gegevens niet bekijken of wijzigen, alleen als back-upbestand opslaan. De knop verdwijnt zodra er geen lokale gegevens van vóór het account meer zijn.
 
 ### 5. Notion-import
 
 - Na P-6 draait de import (ADR 0025) alleen in een ingelogde, ontgrendelde app. Geïmporteerde records worden versleuteld gesynchroniseerd zoals alle andere.
-- Een import vóór P-6 kan lokaal, en gaat daarna mee volgens § 4. Dit besluit blokkeert A3, A4 of de receptenimport dus niet.
+- Een echte import (A10) gebeurt **pas na P-6**, als inloggen en lokale versleuteling actief zijn (besluit eigenaar 2026-11-22, [ADR 0031](0031-lokale-versleuteling-in-rust.md) § 7). A3 en A4 t/m A9, inclusief de receptenmappers en de proefimport door Claude in een tijdelijke browser, kunnen wel eerder.
 
 ### 6. Oude adressen
 

@@ -3,6 +3,7 @@
 - **Status:** geaccepteerd als ontwerp (2026-11-16); uitvoering in productie pas na de poorten in § 6. P-1: lokaal prototype in PR 16 ([docs/accounts/P-1_PROTOTYPE.md](../accounts/P-1_PROTOTYPE.md)) — ✅ ontwerp goedgekeurd door de eigenaar (2026-11-21)
 - **Besluit-ID:** B-21
 - **Aangevuld door:** [ADR 0029](0029-accountverwijdering-export-en-herstelcode.md) (2026-11-21): herstelcode verplicht en gecontroleerd; nieuwe herstelcode alleen na TOTP en een geslaagde opening van de kluis; eigen accountlevenscyclus; `pe.delete_my_data()` in P-5; export en verwijderen in P-6. TOTP en de poorten P-1 t/m P-6 blijven ongewijzigd.
+- **Aangevuld en deels herzien door (2026-11-22):** [ADR 0030](0030-account-verplicht.md) (account verplicht vanaf P-6, geen lokale modus meer; herziet § 4 en de laatste zin van § 6) en [ADR 0031](0031-lokale-versleuteling-in-rust.md) (lokale versleuteling in rust; de DEK alleen in het geheugen; herziet § 2, rij "Op het apparaat", en § 4).
 - **Bouwt voort op:** [ADR 0001](0001-supabase-project-a-schema-isolatie.md), [ADR 0013](0013-app-gebonden-sessies-en-verplichte-totp.md), [ADR 0014](0014-backuptoegang-zonder-service-key.md), [ADR 0020](0020-een-app-met-modules.md)
 
 ## Context
@@ -30,7 +31,7 @@ Alle inhoud wordt **in de browser** versleuteld vóórdat hij de server bereikt.
 | Sleutel om de DEK te beschermen (KEK) | Afgeleid van een **kluiswachtwoord** met PBKDF2-SHA-256 (Web Crypto, minimaal 600.000 iteraties, eigen salt) |
 | Herstelcode | Tweede KEK uit een willekeurige herstelcode (minimaal 128 bit, eenmalig getoond, door de gebruiker zelf te bewaren) |
 | Opslag van de sleutels | Alleen de **ingepakte** DEK (versleuteld met KEK) staat op de server, één keer per kluiswachtwoord en één keer per herstelcode |
-| Op het apparaat | De DEK als niet-exporteerbare `CryptoKey` in IndexedDB, zodat je niet steeds het kluiswachtwoord hoeft in te typen; uitloggen wist hem |
+| Op het apparaat | De DEK als niet-exporteerbare `CryptoKey` **alleen in het geheugen**, nooit in IndexedDB of andere browseropslag; na sluiten, herladen of vergrendelen is het kluiswachtwoord opnieuw nodig (herzien door [ADR 0031](0031-lokale-versleuteling-in-rust.md) § 2; oorspronkelijk: in IndexedDB) |
 
 - Het **kluiswachtwoord** is iets anders dan het **inlogwachtwoord**. Een inlogwachtwoord-reset via e-mail geeft dus geen toegang tot de inhoud.
 - **Kluiswachtwoord én herstelcode kwijt = gegevens onleesbaar.** Dat is inherent aan deze keuze en wordt bij het aanmaken duidelijk getoond.
@@ -47,7 +48,7 @@ Alle inhoud wordt **in de browser** versleuteld vóórdat hij de server bereikt.
 
 ### 4. Synchronisatie
 
-- Local-first blijft: elke module werkt op IndexedDB. Een sync-motor in `apps/ecosystem` versleutelt gewijzigde records en verstuurt ze; ontvangen records worden ontsleuteld en per module opgeslagen.
+- Local-first blijft: elke module werkt op IndexedDB, met versleutelde records ([ADR 0031](0031-lokale-versleuteling-in-rust.md) § 1) en vanaf P-6 alleen binnen een ingelogde sessie ([ADR 0030](0030-account-verplicht.md)). Een sync-motor in `apps/ecosystem` versleutelt gewijzigde records en verstuurt ze; ontvangen records worden ontsleuteld en per module opgeslagen.
 - Conflicten: hoogste versie wint niet stil. Bij een gelijktijdige wijziging aan hetzelfde record bewaart de app beide versies en vraagt de gebruiker te kiezen (zelfde principe als ADR 0020 en CLAUDE.md § 3).
 - Bestaande lokale gegevens gaan bij het aanmaken van de kluis eenmalig mee (na bevestiging).
 
@@ -90,6 +91,6 @@ Record-ID's worden willekeurig gegenereerd (geen afleidbare informatie).
 | P-3 | Uitgestelde Samen Thuis-migratie `20261014_household_state_sync` uitgevoerd (B-20) — ✅ 2026-11-21, vóór P-2 met akkoord eigenaar ([verslag](../backups/P-3_UITVOERING.md)) |
 | P-4 | Samen Thuis-PR voor ISO-17: sessies van Personal Ecosystem hebben geen toegang tot `public` en de Samen Thuis-buckets |
 | P-5 | Migratie schema `pe` op project A met RLS-tests (eigenaar mag, ander account mag niet, anon niets, `aal1` niets) en isolatierapport |
-| P-6 | TOTP aanzetten in de Supabase Auth-instellingen; inloggen, kluis aanmaken en sync in de app |
+| P-6 | TOTP aanzetten in de Supabase Auth-instellingen; inloggen, kluis aanmaken en sync in de app; verplicht account ([ADR 0030](0030-account-verplicht.md)); lokale versleuteling in rust met vergrendelen ([ADR 0031](0031-lokale-versleuteling-in-rust.md)) |
 
-Tot P-6 werkt Personal Ecosystem volledig lokaal, zoals nu.
+Tot P-6 werkt Personal Ecosystem volledig lokaal, zoals nu. Daarna is er geen lokale modus zonder account meer (ADR 0030), en een echte Notion-import gebeurt pas na P-6 (ADR 0031 § 7).

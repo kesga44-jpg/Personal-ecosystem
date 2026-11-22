@@ -1,6 +1,6 @@
 # ADR 0031 — Lokale versleuteling in rust voor Personal Ecosystem
 
-- **Status:** voorgesteld (2026-11-22), ter beoordeling door de eigenaar
+- **Status:** geaccepteerd (2026-11-22), na merge van PR 26 (#44); besluiten van de eigenaar in § 7
 - **Besluit-ID:** B-34
 - **Aanleiding:** [ADR 0030](0030-account-verplicht.md), beoordeling van de eigenaar (2026-11-22): onversleutelde lokale opslag is niet acceptabel als definitieve situatie
 - **Herziet deels:** [ADR 0021](0021-accounts-met-eind-tot-eind-versleuteling.md) § 2, rij "Op het apparaat" (de gegevenssleutel staat niet meer in IndexedDB) en § 4 (local-first: lokaal staan nu versleutelde records)
@@ -56,7 +56,8 @@ Openstaande invoer wordt vóór het vergrendelen versleuteld opgeslagen. Er gaat
 
 - Lokale gegevens van vóór P-6 staan onversleuteld (ADR 0030 § 4). Bij het overzetten naar het account worden ze versleuteld geschreven.
 - De onversleutelde versie wordt pas gewist als de versleutelde versie is teruggelezen en ontsleuteld, en per record gelijk is (inhoud-hash). Mislukt dat voor een record, dan blijft de onversleutelde versie staan en meldt de app welk record.
-- Tot de overzetting blijven deze gegevens op het apparaat staan zoals nu. Dat geldt ook voor een Notion-import die vóór P-6 lokaal wordt gedaan (ADR 0030 § 5).
+- Tot de overzetting blijven deze gegevens op het apparaat staan zoals nu.
+- Een echte Notion-import gebeurt niet vóór P-6 (§ 7, punt 3). Er komen dus geen onversleutelde Notion-gegevens in de app.
 
 ### 6. Wat dit wel en niet beschermt
 
@@ -66,6 +67,15 @@ Openstaande invoer wordt vóór het vergrendelen versleuteld opgeslagen. Er gaat
 | Een gestolen of gedeeld apparaat na vergrendelen | Iemand die meekijkt terwijl de kluis open is |
 | Een kopie van de browseropslag of een back-up van het besturingssysteem | Het kluiswachtwoord, als iemand dat kent |
 
+### 7. Besluiten van de eigenaar (2026-11-22)
+
+1. **Automatisch vergrendelen:** standaard na **15 minuten** zonder activiteit. De gebruiker kan dit instellen tussen **5 en 60 minuten** (§ 3).
+2. **Ontgrendelen:** na sluiten of herladen van de app is het **kluiswachtwoord** opnieuw nodig (§ 2). Ontgrendelen met een vingerafdruk of een andere platformsleutel valt buiten dit besluit en vraagt later een apart besluit.
+3. **Notion-import (ADR 0025):**
+   - A4 t/m A9 uit het [implementatieplan](../IMPLEMENTATIEPLAN_NOTION_EN_MODULES.md) mogen vóór P-6, inclusief voorbereidend werk en de proefimport door Claude;
+   - de proefimport draait **uitsluitend in een tijdelijke browseromgeving** (ADR 0025 § 2). Na afloop blijven geen geïmporteerde gegevens en geen lokale restanten achter;
+   - **A10**, de echte import in de app, mag **pas nadat P-6 is afgerond** en inloggen (ADR 0030) en lokale versleuteling (dit ADR) daadwerkelijk actief zijn. Dat geldt ook voor elke latere echte import door de eigenaar.
+
 ## Conflicten met bestaande besluiten
 
 | Bestaand | Wat dit ADR verandert |
@@ -73,6 +83,7 @@ Openstaande invoer wordt vóór het vergrendelen versleuteld opgeslagen. Er gaat
 | ADR 0021 § 2: de gegevenssleutel als niet-exporteerbare `CryptoKey` in IndexedDB, zodat je niet steeds het kluiswachtwoord intypt | Alleen in het geheugen. De kluis moet na sluiten, herladen of vergrendelen opnieuw worden geopend |
 | ADR 0021 § 4: local-first op IndexedDB | Blijft local-first, maar met versleutelde records |
 | ADR 0020 § 2: elke module heeft een eigen database | Blijft zo. Alleen de inhoud is versleuteld en indexen op inhoud vervallen |
+| ADR 0030 § 4 en § 5: een Notion-import vóór P-6 kan lokaal | Niet meer: een echte import pas na P-6 (§ 7, punt 3). ADR 0030 is daarop aangepast |
 
 ## Alternatieven
 
@@ -97,4 +108,7 @@ Openstaande invoer wordt vóór het vergrendelen versleuteld opgeslagen. Er gaat
   - een versleuteld record gaat ongewijzigd naar de server en terug;
   - een gewijzigde record-ID, module of versie (AAD) maakt ontsleutelen onmogelijk;
   - export alleen met geopende kluis; herstel schrijft versleuteld;
-  - de overzetting van onversleutelde gegevens wist pas na een geslaagde teruglees- en hashcontrole per record.
+  - de overzetting van onversleutelde gegevens wist pas na een geslaagde teruglees- en hashcontrole per record;
+  - de inactiviteitstermijn is standaard 15 minuten en alleen in te stellen tussen 5 en 60 minuten;
+  - de importfunctie in de app weigert een echte import zolang inloggen of lokale versleuteling niet actief is;
+  - na de proefimport bevat de tijdelijke browseromgeving geen gegevens meer (geen IndexedDB, `localStorage` of cache).
