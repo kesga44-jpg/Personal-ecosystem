@@ -25,6 +25,7 @@ for (const [path, text] of [
   ['/voeding', 'Wat heb je gegeten?'],
   ['/voeding/toevoegen', 'Toevoegen'],
   ['/voeding/planning', 'Planning'],
+  ['/voeding/planning/automatisch', 'Automatisch plannen'],
   ['/voeding/recepten', 'Recepten'],
   ['/voeding/recepten/nieuw', 'Nieuw recept'],
   ['/voeding/producten', 'Ingrediënten'],
@@ -639,6 +640,60 @@ test('Voeding: persoonlijke planning met recept en losse ingrediënten, dag herh
   expect(errors).toEqual([]);
 });
 
+async function addRecipe(page: Page, name: string, labels: string, ingredient: string, grams: string) {
+  await page.goto(`${base}/voeding/recepten/nieuw`);
+  await page.getByLabel('Naam van het recept').fill(name);
+  await page.getByLabel('Porties', { exact: true }).fill('1');
+  await page.getByLabel('Labels').fill(labels);
+  await page.getByRole('button', { name: 'Recept opslaan' }).click();
+  await page.getByRole('combobox', { name: /^Ingrediënt/ }).selectOption({ label: ingredient });
+  await page.getByLabel('Hoeveelheid').fill(grams);
+  await page.getByRole('button', { name: 'Ingrediënt toevoegen' }).click();
+  await expect(page.getByText(`${grams} g ${ingredient}`)).toBeVisible();
+}
+
+test('Voeding: automatische planner respecteert uitsluitingen en slaat pas op na bevestiging', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.route('**/api/voeding/product/**', (route) => route.fulfill({ json: { found: false } }));
+  await addOwnProduct(page, 'Havermout', ['370', '13', '60', '7'], '50');
+  await addOwnProduct(page, 'Kip', ['165', '31', '0', '4'], '100');
+  await addRecipe(page, 'Ontbijtpap', 'ontbijt', 'Havermout', '100');
+  await addRecipe(page, 'Kipsalade', 'lunch', 'Kip', '200');
+  await addRecipe(page, 'Kip uit de oven', 'diner', 'Kip', '300');
+  await addRecipe(page, 'Pindadiner', 'diner, pinda', 'Havermout', '100');
+
+  await page.goto(`${base}/voeding/planning`);
+  await page.getByRole('link', { name: 'Automatisch plannen' }).click();
+  await page.getByLabel('Labels die nooit mogen').fill('pinda');
+  await page.getByLabel('Zelfde recept per week maximaal').fill('7');
+  await page.getByRole('button', { name: 'Voorkeuren opslaan' }).click();
+  await expect(page.getByText('Voorkeuren opgeslagen.')).toBeVisible();
+
+  await page.getByLabel('Doel energie (kcal per dag)').fill('1200');
+  await page.getByLabel('Doel eiwit (g per dag)').fill('120');
+  await page.getByRole('button', { name: 'Concept maken' }).click();
+  await expect(page.getByText('Concept: 7 van 7 dagen gevuld')).toBeVisible();
+  await expect(page.getByText('Nog niet opgeslagen.')).toBeVisible();
+  await expect(page.locator('.list-item').filter({ hasText: 'Pindadiner' })).toContainText('label pinda is uitgesloten');
+  await expect(page.getByText(/Diner: Pindadiner/)).toHaveCount(0);
+
+  await page.goto(`${base}/voeding/planning`);
+  await expect(page.getByText('Nog geen plan')).toBeVisible();
+
+  await page.getByRole('link', { name: 'Automatisch plannen' }).click();
+  await expect(page.getByLabel('Labels die nooit mogen')).toHaveValue('pinda');
+  await page.getByLabel('Doel energie (kcal per dag)').fill('1200');
+  await page.getByLabel('Doel eiwit (g per dag)').fill('120');
+  await page.getByRole('button', { name: 'Concept maken' }).click();
+  await page.getByRole('button', { name: /^Ontbijtpap op .* weghalen uit het concept$/ }).first().click();
+  await page.getByRole('button', { name: 'Bevestigen en opslaan' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Automatisch plan' })).toBeVisible();
+  await expect(page.getByText(/· bevestigd$/)).toBeVisible();
+  await page.goto(`${base}/voeding/planning`);
+  await expect(page.locator('.list-item').filter({ hasText: 'Automatisch plan' })).toContainText('20 maaltijden');
+  expect(errors).toEqual([]);
+});
+
 test('Voeding: onbekende barcode leidt naar zelf invoeren, en een fout wordt duidelijk gemeld', async ({ page }) => {
   await page.route('**/api/voeding/product/**', (route) => route.fulfill({ json: { found: false } }));
   await page.goto(`${base}/voeding/toevoegen`);
@@ -1200,7 +1255,7 @@ for (const width of [375, 768, 1280]) {
     // Ruim 40 pagina's achter elkaar; de standaardlimiet van 30 s is bij parallelle runs te krap.
     test.setTimeout(90_000);
     await page.setViewportSize({ width, height: 900 });
-    for (const path of ['/', '/sport', '/sport/planning', '/sport/coach', '/quest', '/quest/quests', '/quest/voortgang', '/lichaam', '/lichaam/invoeren', '/voeding', '/voeding/toevoegen', '/voeding/planning', '/voeding/recepten', '/voeding/recepten/nieuw', '/kracht', '/kracht/training', '/kracht/oefeningen', '/kracht/schemas/nieuw', '/duur', '/duur/importeren', '/duur/toevoegen', '/dagboek', '/dagboek/schrijven', '/dagboek/archief', '/groei', '/groei/doelen', '/groei/acties', '/groei/gewoontes', '/groei/systeem', '/kennis', '/kennis/bibliotheek', '/kennis/inzichten', '/kennis/studie', '/kennis/logboek', '/financien', '/financien/transacties', '/financien/budgetten', '/financien/rapportage', '/financien/money-manual', '/financien/beleggingsplan', '/back-up']) {
+    for (const path of ['/', '/sport', '/sport/planning', '/sport/coach', '/quest', '/quest/quests', '/quest/voortgang', '/lichaam', '/lichaam/invoeren', '/voeding', '/voeding/toevoegen', '/voeding/planning', '/voeding/planning/automatisch', '/voeding/recepten', '/voeding/recepten/nieuw', '/kracht', '/kracht/training', '/kracht/oefeningen', '/kracht/schemas/nieuw', '/duur', '/duur/importeren', '/duur/toevoegen', '/dagboek', '/dagboek/schrijven', '/dagboek/archief', '/groei', '/groei/doelen', '/groei/acties', '/groei/gewoontes', '/groei/systeem', '/kennis', '/kennis/bibliotheek', '/kennis/inzichten', '/kennis/studie', '/kennis/logboek', '/financien', '/financien/transacties', '/financien/budgetten', '/financien/rapportage', '/financien/money-manual', '/financien/beleggingsplan', '/back-up']) {
       await page.goto(`${base}${path}`);
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);

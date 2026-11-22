@@ -5,7 +5,7 @@
  * Gegevens blijven op het apparaat; naar Open Food Facts gaat alleen een barcode of zoekterm.
  */
 import type { Nutrients, OffProduct } from './product';
-import { validateIngredientFields } from './schema2';
+import { validateIngredientFields, validatePrefs, type PlannerPrefs } from './schema2';
 
 export const MEALS = ['ontbijt', 'lunch', 'diner', 'tussendoor'] as const;
 export type Meal = (typeof MEALS)[number];
@@ -39,6 +39,8 @@ export interface FoodSettings {
   id: 'settings';
   kcalTarget: number | null;
   proteinTarget: number | null;
+  /** Voorkeuren en uitsluitingen voor de automatische planner (schema 2, optioneel). */
+  planner?: PlannerPrefs;
 }
 
 export const NUTRIENT_KEYS = ['kcal', 'protein', 'carbs', 'fat'] as const;
@@ -120,6 +122,7 @@ export function validateSettings(value: unknown): asserts value is FoodSettings 
   if (!(settings.proteinTarget === null || (Number.isInteger(settings.proteinTarget) && settings.proteinTarget >= 10 && settings.proteinTarget <= 400))) {
     throw new Error('Doel voor eiwit moet tussen 10 en 400 g liggen.');
   }
+  if (settings.planner !== undefined) validatePrefs(settings.planner);
 }
 
 export function productFromOff(product: OffProduct, now = new Date()): FoodProduct {

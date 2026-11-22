@@ -51,3 +51,36 @@ export function validateIngredientFields(value: unknown): void {
   if (product.allergens !== undefined && !isTagList(product.allergens)) fail('Allergenen zijn ongeldig.');
 }
 
+
+// ——— Voorkeuren voor de automatische planner (ADR 0026 § 4), opgeslagen in `settings` ———
+
+const PLAN_SLOTS: readonly string[] = ['ontbijt', 'lunch', 'diner', 'tussendoor'];
+
+export interface PlannerPrefs {
+  /** Labels die vaker gekozen worden. */
+  favoriteLabels: string[];
+  /** Hoe vaak hetzelfde recept per week mag terugkomen. */
+  maxRepeatsPerWeek: number;
+  excludedProductIds: string[];
+  excludedLabels: string[];
+  excludedAllergens: string[];
+  /** Maximale bereidingstijd per maaltijdmoment, in minuten. */
+  maxMinutes: Partial<Record<'ontbijt' | 'lunch' | 'diner' | 'tussendoor', number>>;
+  budgetPerDayCents: number | null;
+}
+
+export const defaultPrefs: PlannerPrefs = { favoriteLabels: [], maxRepeatsPerWeek: 2, excludedProductIds: [], excludedLabels: [], excludedAllergens: [], maxMinutes: {}, budgetPerDayCents: null };
+
+export function validatePrefs(value: unknown): asserts value is PlannerPrefs {
+  if (!value || typeof value !== 'object') throw new Error('Ongeldige plannervoorkeuren.');
+  const p = value as Partial<PlannerPrefs>;
+  if (!isTagList(p.favoriteLabels) || !isTagList(p.excludedLabels) || !isTagList(p.excludedAllergens)) throw new Error('Labels of allergenen in de voorkeuren zijn ongeldig.');
+  if (!Array.isArray(p.excludedProductIds) || p.excludedProductIds.length > 500 || !p.excludedProductIds.every((id) => typeof id === 'string' && id.length > 0 && id.length <= 120)) throw new Error('Uitgesloten ingrediënten zijn ongeldig.');
+  if (!(Number.isInteger(p.maxRepeatsPerWeek) && (p.maxRepeatsPerWeek as number) >= 1 && (p.maxRepeatsPerWeek as number) <= 7)) throw new Error('Herhalingen per week moet tussen 1 en 7 liggen.');
+  if (!p.maxMinutes || typeof p.maxMinutes !== 'object') throw new Error('Maximale bereidingstijd ontbreekt.');
+  for (const [meal, minutes] of Object.entries(p.maxMinutes)) {
+    if (!PLAN_SLOTS.includes(meal) || !(Number.isInteger(minutes) && (minutes as number) >= 1 && (minutes as number) <= 1440)) throw new Error('Maximale bereidingstijd moet tussen 1 en 1440 minuten liggen.');
+  }
+  if (!(p.budgetPerDayCents === null || (Number.isInteger(p.budgetPerDayCents) && (p.budgetPerDayCents as number) >= 0 && (p.budgetPerDayCents as number) <= 100_000))) throw new Error('Budget per dag moet tussen € 0 en € 1.000 liggen.');
+}
+
