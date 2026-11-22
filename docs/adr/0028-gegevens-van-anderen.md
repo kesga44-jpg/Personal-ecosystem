@@ -20,7 +20,7 @@
    - spelers: namen, rangen, beoordelingen, aanwezigheid, contactgegevens, foto's;
    - huisgenoten: Daphnes financiën, gedeelde huishoudadministratie;
    - derden in voorbeelddata: voorbeeld-cv's, voorbeeldpersonen in templates.
-2. **Voetbal bevat alleen persoonlijke trainerskennis:**
+2. **Voetbal (sinds 2026-11-22 de categorie Voetbal in Kennis & Ontwikkeling) bevat alleen persoonlijke trainerskennis:**
    - wel: speelprincipes en -stijlen, tactische inzichten, oefeningen, trainingsmethodiek, trainersontwikkeling, eigen wedstrijdreflecties;
    - niet: een speler bij naam;
    - de meetrainstructuur uit O23 mag worden overgenomen **als methode**, zonder namen of rangen.
@@ -41,5 +41,9 @@
 
 ## Gevolgen
 
-- Mappers voor Voetbal en Financiën hebben een test die aantoont dat uitgesloten databases en rijen niet worden geschreven.
+- Mappers voor de categorie Voetbal (in Kennis) en Financiën hebben een test die aantoont dat uitgesloten databases en rijen niet worden geschreven.
 - Conflicten met bestaande besluiten: geen.
+
+## Wijzigingen na acceptatie
+
+- **2026-11-22** (PR 36): Voetbal is geen eigen module meer maar een categorie in Kennis & Ontwikkeling (ADR 0023). De regels in § 2 gelden ongewijzigd voor die categorie.
