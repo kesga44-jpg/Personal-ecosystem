@@ -1,6 +1,6 @@
 # ADR 0030 — Account verplicht voor Personal Ecosystem
 
-- **Status:** voorgesteld (2026-11-22), ter beoordeling door de eigenaar
+- **Status:** geaccepteerd (2026-11-22), na beoordeling van PR 25 (#43), met de aanvullingen van de eigenaar in § 2, § 3 en § 7 (verwerkt in PR 26)
 - **Besluit-ID:** B-33
 - **Herziet deels (pas vanaf P-6):**
   - [ADR 0020](0020-een-app-met-modules.md): de app werkt niet langer zonder account;
@@ -39,13 +39,20 @@ De app toont gegevens pas als alle drie de stappen gelukt zijn:
 
 - Zonder deze drie toont de app alleen het inlogscherm. Geen module, geen dashboard en geen import zijn bereikbaar.
 - Bij het openen van de app wordt de sessie bij de server gecontroleerd. Zonder verbinding opent de app niet, maar toont hij: "Geen verbinding. Inloggen vraagt een verbinding."
-- Valt de verbinding weg tijdens het gebruik, dan blijft de app open en worden wijzigingen lokaal bewaard voor de sync. Kan de sessie daarna niet meer worden vernieuwd, dan slaat de app eerst openstaande wijzigingen lokaal op en vergrendelt dan. Er gaat niets verloren.
+- **Tijdelijk offline binnen een bestaande sessie** mag (besluit eigenaar, 2026-11-22). Valt de verbinding weg tijdens het gebruik, dan blijft de app bruikbaar en bewaart hij wijzigingen lokaal (versleuteld, ADR 0031) voor de sync. Dit is geen offline-first gebruik: alleen een voortzetting van een sessie die online is begonnen.
+- **Grens:** de app blijft offline bruikbaar zolang het toegangstoken van de sessie geldig is (de geldigheidsduur van Supabase Auth, standaard één uur). Kan het token daarna niet worden vernieuwd, dan slaat de app openstaande wijzigingen lokaal op en vergrendelt hij (ADR 0031 § 3). Vergrendelen na inactiviteit (ADR 0031) geldt daarnaast, ook online.
+- **Zichtbaar:** de app toont altijd of hij offline is en hoeveel wijzigingen per module nog niet gesynchroniseerd zijn. Wijzigingen gaan nooit stil verloren.
 - Een account aanmaken blijft zoals in ADR 0021 § 1. Wie al een Samen Thuis-login heeft, maakt alleen een kluis aan (ADR 0029 § 3).
 
 ### 3. Uitloggen
 
-- Uitloggen wist de gegevenssleutel van het apparaat (ADR 0021 § 2) en daarna de lokale databases van Personal Ecosystem. Zonder lokale modus horen die niet op het apparaat te blijven.
-- Eerst controleert de app of alle wijzigingen gesynchroniseerd zijn. Zo niet, dan wist hij niets. Hij toont welke modules nog wijzigingen hebben en biedt aan: eerst synchroniseren, of exporteren (ADR 0029 § 2).
+- Uitloggen wist de gegevenssleutel uit het geheugen (ADR 0031) en daarna de lokale databases van Personal Ecosystem. Zonder lokale modus horen die niet op het apparaat te blijven.
+- De app wist **alleen** als alle vier de voorwaarden gelden (besluit eigenaar, 2026-11-22):
+  1. alle lokale wijzigingen zijn naar de server gestuurd;
+  2. de server heeft elke wijziging bevestigd (opgeslagen versie gelijk aan de lokale versie);
+  3. er zijn geen conflicten en geen onafgeronde synchronisaties;
+  4. de gebruiker ziet vooraf dat de lokale gegevens van dit apparaat worden verwijderd, en bevestigt dat.
+- Geldt een van de eerste drie niet, dan **weigert** de app te wissen en logt hij niet uit. Hij toont per module wat er ontbreekt en biedt aan: opnieuw synchroniseren, eerst exporteren (ADR 0029 § 2), of annuleren. **Vergrendelen** (ADR 0031) kan altijd: dat haalt de sleutel uit het geheugen en laat de versleutelde gegevens staan.
 - De login, Samen Thuis en Coach blijven bij uitloggen ongewijzigd.
 
 ### 4. Bestaande lokale gegevens
@@ -62,6 +69,19 @@ De app toont gegevens pas als alle drie de stappen gelukt zijn:
 ### 6. Oude adressen
 
 `pe-sportapp` en `pe-sidequest` verhuizen al naar Personal Ecosystem (ADR 0020 § 5). Ze krijgen geen eigen login. Ze blijven tot de doorverwijzing alleen de verhuismelding en de exportknop tonen.
+
+### 7. Zelfde identiteit, verder alles gescheiden
+
+Personal Ecosystem deelt alleen de **inlogidentiteit** met Samen Thuis (besluit eigenaar, 2026-11-22). Al het andere is per app apart:
+
+| Onderdeel | Personal Ecosystem | Samen Thuis en Coach |
+|---|---|---|
+| Autorisatie | Schema `pe`, RLS met `aal2` (ADR 0021 § 3); geen toegang tot `public` of de Samen Thuis-buckets (P-4) | Eigen policies, ongewijzigd |
+| Opslag | `pe.items`, `pe.vaults` en de lokale databases `personal-ecosystem-*` | Eigen tabellen, buckets en lokale opslag |
+| Synchronisatiestatus | Alleen in Personal Ecosystem | Eigen |
+| Verwijderen en wissen | `pe.delete_my_data()` (ADR 0029) en uitloggen (§ 3) raken alleen Personal Ecosystem | Eigen processen |
+
+Een account verwijderen, gegevens wissen of uitloggen in de ene app heeft nooit automatisch gevolgen voor een andere app. Coach gebruikt een ander project (project B) en deelt niets.
 
 ## Conflicten met bestaande besluiten
 
@@ -87,12 +107,16 @@ De app toont gegevens pas als alle drie de stappen gelukt zijn:
 - **Volgorde:** geen nieuwe poort. P-6 bevat voortaan ook het verplichte inloggen (§ 2), uitloggen met wissen (§ 3) en de exportknop voor oude lokale gegevens (§ 4).
 - **Afhankelijkheden:** P-4 (Samen Thuis-PR voor ISO-17) blijft vereist vóór livegang. Met een gedeelde login moet een Personal Ecosystem-sessie geen toegang hebben tot Samen Thuis-gegevens (ADR 0021, R-3).
 - **Gevolg voor de gebruiker:** zonder internet is de app niet te openen.
-- **Bescherming op het apparaat:** zolang je ingelogd bent, staan de gegevens zoals nu onversleuteld in IndexedDB. Het inlogscherm beschermt de toegang via de app, niet de bestanden in het browserprofiel. Lokale versleuteling in rust is een apart besluit, buiten deze ADR.
+- **Bescherming op het apparaat:** de eigenaar accepteert onversleutelde lokale opslag niet als definitieve situatie (2026-11-22). Lokale versleuteling in rust is vastgelegd in [ADR 0031](0031-lokale-versleuteling-in-rust.md) en is een voorwaarde voor de livegang van P-6.
 - **Tests (in P-6):**
   - zonder sessie, zonder `aal2` of met een vergrendelde kluis is geen enkele module bereikbaar, ook niet via een directe URL;
   - zonder verbinding opent de app niet;
   - een verbindingsverlies tijdens gebruik verliest geen wijzigingen;
   - uitloggen met ongesynchroniseerde wijzigingen wist niets en toont de keuze;
+  - uitloggen zonder bevestiging door de server, met een conflict of met een onafgeronde sync wist niets en logt niet uit;
+  - uitloggen wist pas na de bevestiging van de gebruiker;
+  - offline binnen een sessie: de status en het aantal openstaande wijzigingen per module zijn zichtbaar; na het verlopen van het token zonder verbinding vergrendelt de app zonder verlies;
   - uitloggen na een volledige sync wist de sleutel en de lokale databases van Personal Ecosystem, maar niets van Samen Thuis;
   - de exportknop op het inlogscherm verschijnt alleen bij lokale gegevens van vóór het account, en toont of wijzigt die gegevens niet;
-  - een Personal Ecosystem-sessie kan niets lezen uit Samen Thuis (P-4).
+  - een Personal Ecosystem-sessie kan niets lezen uit Samen Thuis (P-4);
+  - verwijderen, wissen of uitloggen in Personal Ecosystem verandert niets in Samen Thuis (aantal en inhoud-hash vóór en na gelijk, zoals ADR 0029 § 4).
