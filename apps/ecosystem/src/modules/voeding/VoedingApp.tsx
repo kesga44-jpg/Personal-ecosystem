@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { BrowserRouter, Route, Routes, useNavigate, useSearchParams } from 'react-router-dom';
+import { BrowserRouter, Link, Route, Routes, useNavigate, useSearchParams } from 'react-router-dom';
 import { newId } from '@ecosystem/core';
 import { openLocalDatabase, runStorageAction as performStorageAction, type LocalDatabase } from '@ecosystem/storage';
 import {
@@ -47,11 +47,14 @@ import {
 import type { Nutrients, OffProduct } from './product';
 import { Scanner, scannerAvailable } from './Scanner';
 import { databaseConfig } from './storage';
+import { IngredientPage, NewRecipePage, RecipeDetailPage, RecipesPage, type RecipeData } from './RecipePages';
+import type { Ingredient, Recipe, RecipeIngredient } from './recipes';
 
 const navigation = [
   { to: '/', label: 'Vandaag', icon: '⌂' },
   { to: '/toevoegen', label: 'Toevoegen', icon: '＋' },
-  { to: '/producten', label: 'Producten', icon: '☰' },
+  { to: '/recepten', label: 'Recepten', icon: '❦' },
+  { to: '/producten', label: 'Ingrediënten', icon: '☰' },
   { to: '/instellingen', label: 'Instellingen', icon: '⚙' }
 ];
 
@@ -94,16 +97,22 @@ function VoedingRoutes({ links }: { links: ModuleLink[] }) {
   const [database, setDatabase] = useState<LocalDatabase | null>(null);
   const [entries, setEntries] = useState<FoodEntry[]>([]);
   const [products, setProducts] = useState<FoodProduct[]>([]);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [lines, setLines] = useState<RecipeIngredient[]>([]);
   const [settings, setSettings] = useState<FoodSettings>(emptySettings);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   async function refresh(db: LocalDatabase) {
-    const [nextEntries, nextProducts, nextSettings] = await Promise.all([
+    const [nextEntries, nextProducts, nextSettings, nextRecipes, nextLines] = await Promise.all([
       db.list<FoodEntry>('entries'),
       db.list<FoodProduct>('products'),
-      db.list<FoodSettings>('settings')
+      db.list<FoodSettings>('settings'),
+      db.list<Recipe>('recipes'),
+      db.list<RecipeIngredient>('recipeIngredients')
     ]);
+    setRecipes(nextRecipes.sort((a, b) => a.name.localeCompare(b.name, 'nl')));
+    setLines(nextLines);
     setEntries(nextEntries);
     setProducts(nextProducts.sort((a, b) => a.name.localeCompare(b.name, 'nl')));
     setSettings(nextSettings[0] ?? emptySettings);
@@ -134,6 +143,8 @@ function VoedingRoutes({ links }: { links: ModuleLink[] }) {
     return performStorageAction(() => action(database), () => refresh(database), setError, 'De wijziging kon niet worden opgeslagen.');
   }
 
+  const recipeData: RecipeData = { products: products as Ingredient[], recipes, lines };
+
   return (
     <AppFrame appName="Voeding" appMark="◔" navigation={navigation} moduleLinks={links}>
       {loading ? (
@@ -157,6 +168,10 @@ function VoedingRoutes({ links }: { links: ModuleLink[] }) {
               />
             }
           />
+          <Route path="/recepten" element={<>{error && <ErrorBanner message={error} />}<RecipesPage data={recipeData} /></>} />
+          <Route path="/recepten/nieuw" element={<>{error && <ErrorBanner message={error} />}<NewRecipePage run={run} /></>} />
+          <Route path="/recepten/:id" element={<>{error && <ErrorBanner message={error} />}<RecipeDetailPage data={recipeData} run={run} /></>} />
+          <Route path="/producten/:id" element={<>{error && <ErrorBanner message={error} />}<IngredientPage data={recipeData} run={run} /></>} />
           <Route path="/producten" element={<ProductsPage products={products} error={error} onDelete={(id) => void run((db) => db.remove('products', id))} />} />
           <Route path="/instellingen" element={<SettingsPage settings={settings} error={error} onSave={(next) => run((db) => db.put('settings', next))} />} />
           <Route path="*" element={<DayPage entries={entries} settings={settings} error={error} onDelete={(id) => void run((db) => db.remove('entries', id))} />} />
@@ -508,14 +523,14 @@ function ProductsPage({ products, error, onDelete }: { products: FoodProduct[]; 
   return (
     <div className="stack">
       {error && <ErrorBanner message={error} />}
-      <PageHeader eyebrow="Voeding" title="Producten" description="Producten die je eerder hebt gebruikt of zelf hebt ingevoerd. Verwijderen verandert je eerdere registraties niet." />
+      <PageHeader eyebrow="Voeding" title="Ingrediënten" description="Je ingrediëntenbibliotheek: producten die je hebt gebruikt of zelf hebt ingevoerd. Verwijderen verandert je eerdere registraties niet." />
       <Card>
         {products.length ? (
           <div className="list">
             {products.map((product) => (
               <div className="list-item" key={product.id}>
                 <div>
-                  <p className="item-title">{product.name}{product.brand ? ` (${product.brand})` : ''}</p>
+                  <p className="item-title"><Link to={`/producten/${encodeURIComponent(product.id)}`}>{product.name}{product.brand ? ` (${product.brand})` : ''}</Link></p>
                   <p className="item-subtitle">{format(product.per100.kcal, 'kcal')} per 100 g · {product.source === 'off' ? 'Open Food Facts' : 'Zelf ingevoerd'}</p>
                 </div>
                 <div className="row">
