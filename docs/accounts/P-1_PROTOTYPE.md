@@ -54,7 +54,7 @@ versleutelde blok. Getest: in wat de server opslaat komen geen titels, notities,
 | Samen Thuis-migratie `20261014_household_state_sync` | P-3 |
 | Samen Thuis-PR ISO-17 (geen toegang tot `public` voor Personal Ecosystem-sessies) | P-4 |
 | SQL-migratie schema `pe`, RLS en RPC, met RLS-tests en isolatierapport | P-5 |
-| Supabase Auth, TOTP, kluis-UI, opslag van de DEK in IndexedDB, koppeling met de moduledatabases | P-6 |
+| Supabase Auth, TOTP, kluis-UI, de DEK alleen in het geheugen en lokale versleuteling in rust ([ADR 0031](../adr/0031-lokale-versleuteling-in-rust.md); eerder: opslag van de DEK in IndexedDB), koppeling met de moduledatabases | P-6 |
 
 De `LocalAdapter` in `sync.ts` is de plek waar de moduledatabases later worden aangesloten; de `SyncServer`-interface
 is het contract dat de RPC in P-5 moet waarmaken.
