@@ -68,6 +68,10 @@ export default function WidgetDashboard() {
     duur: <DuurWidget totals={duurWeekTotals(data.duurTotals, today)} />,
     kracht: <KrachtWidget count={krachtSessionsThisWeek(data.krachtDates, today)} />,
     voeding: <VoedingWidget logged={voedingLoggedToday(data.voedingDates, today)} />,
+    maaltijden: <MaaltijdenWidget summary={data.maaltijden} />,
+    groei: <GroeiWidget summary={data.groei} />,
+    kennis: <KennisWidget summary={data.kennis} />,
+    financien: <FinancienWidget summary={data.financien} />,
     dagboek: <DagboekWidget written={dagboekWrittenToday(data.dagboekDates, today)} />,
     weather: <WeatherWidget />,
     'habits-heatmap': <HeatmapWidget checks={data.checks} today={today} />,
@@ -258,6 +262,71 @@ function VoedingWidget({ logged }: { logged: boolean }) {
         <a className="chip" href="/voeding/toevoegen">＋ Toevoegen</a>
         <a className="chip" href="/voeding">Vandaag bekijken</a>
       </div>
+    </>
+  );
+}
+
+function plural(count: number, one: string, many: string): string {
+  return `${count} ${count === 1 ? one : many}`;
+}
+
+function MaaltijdenWidget({ summary }: { summary: DashboardData['maaltijden'] }) {
+  if (!summary || !summary.activePlans) {
+    return (
+      <>
+        <StatusPill>Geen plan voor vandaag</StatusPill>
+        <p className="item-subtitle">Je persoonlijke maaltijdplanning staat in Voeding. Het gedeelde weekmenu blijft in Samen Thuis.</p>
+        <div className="chip-row"><a className="chip" href="/voeding/planning">Naar de planning</a></div>
+      </>
+    );
+  }
+  return (
+    <>
+      <StatusPill tone={summary.plannedToday && summary.eatenToday === summary.plannedToday ? 'good' : 'neutral'}>{summary.eatenToday} van {plural(summary.plannedToday, 'geplande maaltijd', 'geplande maaltijden')} gegeten</StatusPill>
+      <p className="item-subtitle">Het dashboard ziet alleen aantallen, geen recepten of hoeveelheden.</p>
+      <div className="chip-row"><a className="chip" href="/voeding/planning">Planning bekijken</a></div>
+    </>
+  );
+}
+
+function GroeiWidget({ summary }: { summary: DashboardData['groei'] }) {
+  if (!summary) return <p className="item-subtitle">Nog geen gegevens.</p>;
+  return (
+    <>
+      <p className="widget-stat">{summary.activeGoals}<small>{summary.activeGoals === 1 ? 'actief doel' : 'actieve doelen'}</small></p>
+      <div className="chip-row">
+        <StatusPill tone={summary.overdueActions ? 'warning' : 'neutral'}>{plural(summary.openActions, 'open actie', 'open acties')}{summary.overdueActions ? `, ${summary.overdueActions} te laat` : ''}</StatusPill>
+        <StatusPill tone={summary.habitsOpenToday ? 'neutral' : 'good'}>{summary.habitsOpenToday ? `${plural(summary.habitsOpenToday, 'gewoonte', 'gewoontes')} nog af te vinken` : 'Gewoontes van vandaag gedaan'}</StatusPill>
+      </div>
+      <div className="chip-row"><a className="chip" href="/groei/acties">Prioriteiten</a><a className="chip" href="/groei/gewoontes">Gewoontes</a></div>
+    </>
+  );
+}
+
+function KennisWidget({ summary }: { summary: DashboardData['kennis'] }) {
+  if (!summary) return <p className="item-subtitle">Nog geen gegevens.</p>;
+  return (
+    <>
+      <p className="widget-stat">{summary.minutesThisWeek}<small>min gelezen of geluisterd deze week</small></p>
+      <p className="item-subtitle">{plural(summary.inProgress, 'bron', 'bronnen')} bezig · {summary.finishedThisYear} afgerond dit jaar · {plural(summary.insightsThisWeek, 'nieuw inzicht', 'nieuwe inzichten')} deze week</p>
+      <div className="chip-row"><a className="chip" href="/kennis/logboek">＋ Logboek</a><a className="chip" href="/kennis/inzichten">Inzichten</a></div>
+    </>
+  );
+}
+
+function FinancienWidget({ summary }: { summary: DashboardData['financien'] }) {
+  if (!summary) return <p className="item-subtitle">Nog geen gegevens.</p>;
+  const euros = (cents: number) => new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(cents / 100);
+  return (
+    <>
+      <p className="widget-stat">{euros(summary.balanceCents)}<small>saldo deze maand</small></p>
+      <p className="item-subtitle">In {euros(summary.inCents)} · uit {euros(summary.outCents)}</p>
+      <div className="chip-row">
+        <StatusPill tone={summary.budgetsOver ? 'warning' : 'good'}>{summary.budgetsOver ? `${plural(summary.budgetsOver, 'budget', 'budgetten')} overschreden` : 'Binnen budget'}</StatusPill>
+        <StatusPill>{plural(summary.activePlans, 'actief beleggingsplan', 'actieve beleggingsplannen')}</StatusPill>
+      </div>
+      <p className="item-subtitle">Alleen totalen; geen omschrijvingen of tegenpartijen. Verberg dit blok als anderen je scherm zien.</p>
+      <div className="chip-row"><a className="chip" href="/financien/transacties?nieuw=1">＋ Transactie</a><a className="chip" href="/financien">Overzicht</a></div>
     </>
   );
 }
