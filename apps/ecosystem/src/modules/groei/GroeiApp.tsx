@@ -64,9 +64,25 @@ interface Data {
   evaluations: Evaluation[];
   tenTen: TenTenMonth[];
   settings: GrowthSettings | null;
+  /** Inzichten uit Kennis (zelfde database): alleen ID, titel en doelen, voor herkomst en relaties. */
+  insights: KennisRef[];
+  /** Bronnen uit Kennis (zelfde database): alleen ID, titel en doelen. */
+  sources: KennisRef[];
 }
 
-const empty: Data = { goals: [], skills: [], habits: [], checks: [], actions: [], evaluations: [], tenTen: [], settings: null };
+interface KennisRef {
+  id: string;
+  title: string;
+  goalIds: string[];
+}
+
+function kennisRefs(records: readonly { id: string; title: string; goalIds?: unknown }[]): KennisRef[] {
+  return records
+    .map(({ id, title, goalIds }) => ({ id, title, goalIds: Array.isArray(goalIds) ? goalIds.filter((item): item is string => typeof item === 'string') : [] }))
+    .sort((a, b) => a.title.localeCompare(b.title, 'nl-NL'));
+}
+
+const empty: Data = { goals: [], skills: [], habits: [], checks: [], actions: [], evaluations: [], tenTen: [], settings: null, insights: [], sources: [] };
 
 type Run = (action: (db: LocalDatabase) => Promise<void>) => Promise<boolean>;
 
@@ -99,7 +115,7 @@ function GroeiRoutes({ links }: { links: ModuleLink[] }) {
   const [error, setError] = useState('');
 
   async function refresh(db: LocalDatabase) {
-    const [goals, skills, habits, checks, actions, evaluations, tenTen, settings] = await Promise.all([
+    const [goals, skills, habits, checks, actions, evaluations, tenTen, settings, insights, sources] = await Promise.all([
       db.list<Goal>('goals'),
       db.list<Skill>('skills'),
       db.list<Habit>('habits'),
@@ -107,7 +123,9 @@ function GroeiRoutes({ links }: { links: ModuleLink[] }) {
       db.list<Action>('actions'),
       db.list<Evaluation>('evaluations'),
       db.list<TenTenMonth>('tenTen'),
-      db.get<GrowthSettings>('settings', 'ugs')
+      db.get<GrowthSettings>('settings', 'ugs'),
+      db.list<{ id: string; title: string; goalIds?: unknown }>('insights'),
+      db.list<{ id: string; title: string; goalIds?: unknown }>('sources')
     ]);
     setData({
       goals,
@@ -117,7 +135,9 @@ function GroeiRoutes({ links }: { links: ModuleLink[] }) {
       actions,
       evaluations: evaluations.sort((a, b) => b.periodStart.localeCompare(a.periodStart)),
       tenTen: tenTen.sort((a, b) => b.id.localeCompare(a.id)),
-      settings: settings ?? null
+      settings: settings ?? null,
+      insights: kennisRefs(insights),
+      sources: kennisRefs(sources)
     });
   }
 
@@ -497,6 +517,12 @@ function GoalDetailPage({ data, run }: { data: Data; run: Run }) {
         <RelatedList title="Vaardigheden" empty="Geen vaardigheden bij dit doel.">
           {skills.map((item) => <RelatedRow key={item.id} title={item.title} note={`Niveau ${item.level}/10, doel ${item.targetLevel}`} />)}
         </RelatedList>
+        <RelatedList title="Uit Kennis" empty="Geen bronnen of inzichten bij dit doel.">
+          {[
+            ...data.sources.filter((item) => item.goalIds.includes(goal.id)).map((item) => <RelatedRow key={item.id} title={<a href={`/kennis/bibliotheek/${item.id}`}>{item.title}</a>} note="Bron" />),
+            ...data.insights.filter((item) => item.goalIds.includes(goal.id)).map((item) => <RelatedRow key={item.id} title={<a href="/kennis/inzichten">{item.title}</a>} note="Inzicht" />)
+          ]}
+        </RelatedList>
         <RelatedList title="Evaluaties" empty="Geen evaluaties bij dit doel.">
           {evaluations.map((item) => <RelatedRow key={item.id} title={`${item.period} vanaf ${formatDate(item.periodStart)}`} note={item.score ? `Score ${item.score}/10` : 'Geen score'} />)}
         </RelatedList>
@@ -537,12 +563,13 @@ function RelatedRow({ title, note }: { title: ReactNode; note: string }) {
 
 // ——— Acties ———
 
-function ActionEditor({ data, run, action, goalId, onDone }: { data: Data; run: Run; action?: Action; goalId?: string; onDone: () => void }) {
+function ActionEditor({ data, run, action, goalId, insightId, onDone }: { data: Data; run: Run; action?: Action; goalId?: string; insightId?: string; onDone: () => void }) {
   const [title, setTitle] = useState(action?.title ?? '');
   const [notes, setNotes] = useState(action?.notes ?? '');
   const [goal, setGoal] = useState(action?.goalId ?? goalId ?? '');
   const [skill, setSkill] = useState(action?.skillId ?? '');
   const [dueDate, setDueDate] = useState(action?.dueDate ?? '');
+  const [insight, setInsight] = useState(action?.insightId ?? insightId ?? '');
   const [formError, setFormError] = useState('');
 
   async function submit(event: FormEvent) {
@@ -560,6 +587,7 @@ function ActionEditor({ data, run, action, goalId, onDone }: { data: Data; run: 
         skillId: skill || null,
         dueDate: dueDate || null,
         doneAt: action?.doneAt ?? null,
+        insightId: insight || null,
         createdAt: action?.createdAt ?? now,
         updatedAt: now
       };
@@ -591,6 +619,13 @@ function ActionEditor({ data, run, action, goalId, onDone }: { data: Data; run: 
           </Field>
           <Field label="Streefdatum">
             <input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} />
+          </Field>
+          <Field label="Ontstaan uit inzicht">
+            <select value={insight} onChange={(event) => setInsight(event.target.value)}>
+              <option value="">Geen</option>
+              {insight && !data.insights.some((item) => item.id === insight) && <option value={insight}>{UNAVAILABLE}</option>}
+              {data.insights.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+            </select>
           </Field>
         </div>
         <Field label="Notities">
@@ -626,7 +661,7 @@ function ActionsPage({ data, run }: { data: Data; run: Run }) {
   return (
     <div className="stack">
       <PageHeader eyebrow="Groei" title="Acties" description="Concrete stappen richting je doelen." action={!params.get('nieuw') && !editing && <Button onClick={() => setParams({ nieuw: '1' })}>＋ Actie</Button>} />
-      {(params.get('nieuw') === '1' || editing) && <ActionEditor key={editing?.id ?? 'nieuw'} data={data} run={run} {...(editing ? { action: editing } : {})} goalId={params.get('doel') ?? ''} onDone={() => setParams({})} />}
+      {(params.get('nieuw') === '1' || editing) && <ActionEditor key={editing?.id ?? 'nieuw'} data={data} run={run} {...(editing ? { action: editing } : {})} goalId={params.get('doel') ?? ''} insightId={params.get('inzicht') ?? ''} onDone={() => setParams({})} />}
       <Card>
         <div className="form-grid">
           <Field label="Zoeken">

@@ -64,6 +64,17 @@ describe('gescheiden opslag per module', () => {
     });
   }
 
+  it('Kennis gebruikt de database van Groei (ADR 0023 § 3), noemt geen andere database en doet geen netwerkverzoeken', () => {
+    const dir = join(process.cwd(), 'apps', 'ecosystem', 'src', 'modules', 'kennis');
+    const others = allNames.filter((name) => name !== groeiConfig.databaseName);
+    for (const file of readdirSync(dir).filter((name) => /\.(ts|tsx)$/.test(name) && !/\.test\./.test(name))) {
+      const source = readFileSync(join(dir, file), 'utf8');
+      for (const name of others) expect(source.includes(name), `kennis/${file} noemt ${name}`).toBe(false);
+      expect(/fetch\(|XMLHttpRequest|sendBeacon|WebSocket/.test(source), `kennis/${file} doet een netwerkverzoek`).toBe(false);
+    }
+    expect(readFileSync(join(dir, 'KennisApp.tsx'), 'utf8')).toContain("from '../groei/storage'");
+  });
+
   it('de coach van Sport (met gezondheidsgegevens) doet geen netwerkverzoeken (PR 15)', () => {
     for (const file of ['coach.ts', 'CoachPage.tsx']) {
       const source = readFileSync(join(process.cwd(), 'apps', 'sportapp', 'src', file), 'utf8');

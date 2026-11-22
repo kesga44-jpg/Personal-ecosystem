@@ -19,8 +19,6 @@ export const LINK_MODULE_IDS = [
   'duur',
   'voeding',
   'financien',
-  'voetbal',
-  'reizen',
   'quest',
   'lichaam',
   'dagboek'
@@ -40,8 +38,6 @@ export const PHYSICAL_DATABASE: Readonly<Record<LinkModuleId, string>> = {
   duur: 'personal-ecosystem-duur',
   voeding: 'personal-ecosystem-voeding',
   financien: 'personal-ecosystem-financien',
-  voetbal: 'personal-ecosystem-voetbal',
-  reizen: 'personal-ecosystem-reizen',
   quest: 'personal-ecosystem-sidequest',
   lichaam: 'personal-ecosystem-lichaam',
   dagboek: 'personal-ecosystem-dagboek'
@@ -141,7 +137,7 @@ export const LINK_CATEGORY_RULES: Readonly<Record<KnownLinkCategory, CategoryRul
   },
   'develops-skill': {
     label: 'Ontwikkelt een vaardigheid',
-    from: [{ module: 'sport' }, { module: 'kracht' }, { module: 'duur' }, { module: 'voetbal' }],
+    from: [{ module: 'sport' }, { module: 'kracht' }, { module: 'duur' }],
     to: [{ module: 'groei', kinds: ['vaardigheid'] }]
   },
   'derived-from': {

@@ -17,6 +17,7 @@ De huidige Hub gebruikt nog een vaste lokale appnavigatie; automatische register
 | `voeding` | Voeding (module) | Gepland (ADR 0020) | `apps/ecosystem` | Niet aangesloten | IndexedDB `personal-ecosystem-voeding` | Persoonlijke inname en voedingswaarden; geen weekmenu of boodschappen |
 | `kracht` | Kracht (module, onderdeel van Sport) | Gebouwd (PR 6) | `apps/ecosystem` | Niet aangesloten | IndexedDB `personal-ecosystem-kracht` | Krachttraining: oefeningen (basis, eigen, wger), schema's, sets, records |
 | `duur` | Duur (module, onderdeel van Sport) | Gebouwd (PR 7) | `apps/ecosystem` | Niet aangesloten | IndexedDB `personal-ecosystem-duur` | Duurtrainingen: FIT/TCX/GPX-import, route op OSM-kaart, tempo, hartslagzones, tussentijden |
+| `kennis` | Kennis & Ontwikkeling (module) | Gebouwd (A6, ADR 0023) | `apps/ecosystem` | Niet aangesloten | IndexedDB `personal-ecosystem-groei` (gedeeld met Groei, schema 2) | Bibliotheek (boeken, podcasts, cursussen, artikelen), makers, highlights, inzichten, vijfstappen-studieprogramma met 30-dagenmeting, logboek lezen en luisteren, categorie Voetbal |
 | `groei` | Groei (module) | Gebouwd (A5, ADR 0023) | `apps/ecosystem` | Niet aangesloten | IndexedDB `personal-ecosystem-groei` (gedeeld met Kennis vanaf A6) | Doelen en subdoelen, acties, gewoontes, vaardigheden, evaluaties, The Ultimate Growth System, 10/10-regel |
 | `dagboek` | Dagboek & stemming (module) | Gepland (ADR 0020) | `apps/ecosystem` | Niet aangesloten | IndexedDB `personal-ecosystem-dagboek` | Privé-dagnotities, stemming en energie |
 

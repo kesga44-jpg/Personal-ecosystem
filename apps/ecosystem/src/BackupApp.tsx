@@ -21,6 +21,7 @@ import { databaseConfig as duurConfig } from './modules/duur/storage';
 import { validateDuurBackup } from './modules/duur/domain';
 import { databaseConfig as groeiConfig } from './modules/groei/storage';
 import { validateGroeiBackup } from './modules/groei/domain';
+import { validateKennisStores } from './modules/kennis/domain';
 import {
   MODULE_IDS,
   backupFileName,
@@ -41,7 +42,7 @@ const domainValidators: Record<BackupModuleId, (data: unknown) => void> = {
   voeding: validateVoedingBackup,
   kracht: validateKrachtBackup,
   duur: validateDuurBackup,
-  groei: validateGroeiBackup
+  groei: (data: unknown) => validateGroeiBackup(data, validateKennisStores)
 };
 const lastExportKey = 'personal-ecosystem.backup.last-export';
 const navigation = [{ to: '/', label: 'Back-up', icon: '⇩' }];
@@ -168,7 +169,7 @@ function BackupPage() {
       <PageHeader
         eyebrow="Jouw gegevens"
         title="Back-up"
-        description="Eén bestand met de gegevens van Dashboard, Sport, SIDEQUEST, Lichaam, Dagboek, Voeding, Kracht, Duur en Groei. Je gegevens staan alleen op dit apparaat; maak regelmatig een back-up. Het bestand bevat ook gezondheidsgegevens, je dagboek en je GPS-routes: bewaar het veilig."
+        description="Eén bestand met de gegevens van Dashboard, Sport, SIDEQUEST, Lichaam, Dagboek, Voeding, Kracht, Duur, Groei en Kennis. Je gegevens staan alleen op dit apparaat; maak regelmatig een back-up. Het bestand bevat ook gezondheidsgegevens, je dagboek en je GPS-routes: bewaar het veilig."
       />
       {error && <ErrorBanner message={error} />}
       {message && <p role="status"><StatusPill tone="good">{message}</StatusPill></p>}

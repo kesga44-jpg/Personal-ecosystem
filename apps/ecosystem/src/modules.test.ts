@@ -29,7 +29,7 @@ describe('moduleForPath', () => {
 describe('moduleLinksFor', () => {
   it('markeert alleen de actieve module', () => {
     const links = moduleLinksFor('sport');
-    expect(links.map((link) => link.href)).toEqual(['/', '/groei', '/sport', '/kracht', '/duur', '/quest', '/lichaam', '/voeding', '/dagboek', '/back-up']);
+    expect(links.map((link) => link.href)).toEqual(['/', '/groei', '/kennis', '/sport', '/kracht', '/duur', '/quest', '/lichaam', '/voeding', '/dagboek', '/back-up']);
     expect(links.filter((link) => link.active).map((link) => link.href)).toEqual(['/sport']);
   });
 
