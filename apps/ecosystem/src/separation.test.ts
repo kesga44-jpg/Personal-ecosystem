@@ -9,10 +9,11 @@ import { databaseConfig as dagboekConfig } from './modules/dagboek/storage';
 import { databaseConfig as voedingConfig } from './modules/voeding/storage';
 import { databaseConfig as krachtConfig } from './modules/kracht/storage';
 import { databaseConfig as duurConfig } from './modules/duur/storage';
+import { databaseConfig as groeiConfig } from './modules/groei/storage';
 
 // ADR 0020 § 2: elke module heeft een eigen database en schrijft alleen daarin.
 const configs = { hub: hubConfig, sportapp: sportConfig, sidequest: questConfig };
-const newModules = { lichaam: lichaamConfig, dagboek: dagboekConfig, voeding: voedingConfig, kracht: krachtConfig, duur: duurConfig };
+const newModules = { lichaam: lichaamConfig, dagboek: dagboekConfig, voeding: voedingConfig, kracht: krachtConfig, duur: duurConfig, groei: groeiConfig };
 /** Bestanden die netwerkverkeer mogen doen, en alleen naar deze same-origin route. */
 const networkFiles: Record<string, { file: string; route: string }> = {
   voeding: { file: 'api.ts', route: '/api/voeding/' },
@@ -30,6 +31,7 @@ describe('gescheiden opslag per module', () => {
     expect(voedingConfig.databaseName).toBe('personal-ecosystem-voeding');
     expect(krachtConfig.databaseName).toBe('personal-ecosystem-kracht');
     expect(duurConfig.databaseName).toBe('personal-ecosystem-duur');
+    expect(groeiConfig.databaseName).toBe('personal-ecosystem-groei');
     expect(new Set(allNames).size).toBe(allNames.length);
   });
 
