@@ -23,8 +23,8 @@
    | Groei | `personal-ecosystem-groei` | Doelen en subdoelen, vaardigheden, gewoontes, acties, evaluaties, The Ultimate Growth System, 10/10-regel |
    | Kennis & Ontwikkeling | `personal-ecosystem-groei` (gedeeld) | Bronnen, highlights, leerinzichten, vijfstappen-studieprogramma, dagelijks lezen en luisteren |
    | Financiën | `personal-ecosystem-financien` | Eigen transacties, inkomstenbronnen, budgetten, spaarpotten, persoonlijke beleggingsplannen, financiële doelen (ADR 0027) |
-   | Voetbal | `personal-ecosystem-voetbal` | Persoonlijke trainerskennis, oefeningen, speelprincipes en -stijlen, tactische inzichten, trainersontwikkeling, trainingsvoorbereiding, eigen wedstrijdreflecties; **geen spelersgegevens** (ADR 0028) |
-   | Reizen | `personal-ecosystem-reizen` | Reizen, verblijven, activiteiten, dagplanning, reisnotities |
+   | ~~Voetbal~~ (vervallen, 2026-11-22) | — | Geen eigen module. Persoonlijke voetbalkennis staat in Kennis & Ontwikkeling, categorie Voetbal (zie Wijzigingen na acceptatie) |
+   | ~~Reizen~~ (vervallen, 2026-11-22) | — | Geschrapt; niet gebouwd en niet geïmporteerd |
 
    Voeding wordt uitgebreid in de bestaande database (ADR 0026).
 3. **Groei en Kennis delen één database** omdat The Ultimate Growth System beide omvat (doel, vaardigheid, boeken, audiobronnen, seminar, studieprogramma). Relaties tussen die twee zijn daardoor interne databaserelaties (ID-velden), geen koppelrecords (ADR 0024 § 6). In de navigatie zijn het twee aparte onderdelen met eigen schermen.
@@ -59,10 +59,15 @@
 
 ## Gevolgen
 
-- Vijf nieuwe navigatie-items (Groei, Kennis & Ontwikkeling, Financiën, Voetbal, Reizen), vier nieuwe databases.
+- Drie nieuwe navigatie-items (Groei, Kennis & Ontwikkeling, Financiën) en twee nieuwe databases (`personal-ecosystem-groei`, `personal-ecosystem-financien`). Voetbal en Reizen vervallen (2026-11-22).
 - DATA_OWNERSHIP.md, APP_REGISTRY.md en ARCHITECTURE.md worden bijgewerkt in de PR die de eerste module bouwt.
 - `separation.test.ts` krijgt per nieuwe module dezelfde controles: geen netwerk, alleen eigen database.
 
 ## Wijzigingen na acceptatie
 
 - **2026-11-22** (PR 33): § 3 verwijst naar ADR 0024 § 6. Relaties tussen Groei en Kennis heten interne databaserelaties (ID-velden). Geen besluit gewijzigd.
+- **2026-11-22**, besluiten van de eigenaar (PR 36):
+  - **Reizen** is geschrapt uit Personal Ecosystem, het implementatieplan en de Notion-import. De databases blijven in Notion staan en worden niet geïmporteerd.
+  - **Geen Voetbal-module.** Persoonlijke voetbalkennis komt in Kennis & Ontwikkeling als aparte **categorie Voetbal** met een eigen filter: tactiek en speelstijlen, trainingsmethodieken en oefenvormen, trainersopleidingen en cursusmateriaal, persoonlijke trainersnotities, boeken, artikelen en highlights over voetbal, en ontwikkeling als trainer. Er komt geen database `personal-ecosystem-voetbal`.
+  - K-C blijft gelden: Coach is eigenaar van teamadministratie, spelers, trainingen, wedstrijden en andere operationele voetbalgegevens. ADR 0028 § 2 geldt voor de categorie Voetbal in Kennis.
+  - K-B en K-D zijn op dezelfde dag opnieuw bevestigd en ongewijzigd (ADR 0026, ADR 0027).

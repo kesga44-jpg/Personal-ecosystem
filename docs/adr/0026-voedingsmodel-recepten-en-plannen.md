@@ -103,3 +103,10 @@ Open Food Facts blijft alleen voor barcode en zoekterm (B-22). Recepten, plannen
   - een concept wordt niet opgeslagen zonder bevestiging;
   - schema 1-back-up herstellen in schema 2.
 - De opmerking in `voeding/domain.ts` ("geen weekmenu of boodschappen") wordt bijgewerkt na besluit K-D.
+
+## Wijzigingen na acceptatie
+
+- **2026-11-22**, K-D opnieuw bevestigd door de eigenaar (PR 36), ook tegenover de scopebeschrijving in de masteropdracht. Dit besluit gaat voor die beschrijving:
+  - **Personal Ecosystem:** persoonlijke maaltijdplanner, persoonlijke receptenbibliotheek, persoonlijke voedingsplanning, en een **tijdelijke, afgeleide boodschappenlijst** uit de eigen maaltijdplanning. Die lijst wordt **niet** als zelfstandige boodschappenlijst opgeslagen en heeft **geen historie**.
+  - **Samen Thuis:** gedeeld huishoudweekmenu, opgeslagen boodschappenlijsten, historie van boodschappenlijsten en de gedeelde boodschappenadministratie.
+  - Geen dubbele administratie, geen koppeling en geen wijziging in Samen Thuis. De Notion-Shopping List wordt niet geïmporteerd (zie § 4 en "Conflicten").

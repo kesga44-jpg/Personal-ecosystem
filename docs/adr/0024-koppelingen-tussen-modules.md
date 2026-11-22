@@ -51,7 +51,7 @@ De opslagregel volgt uit de fysieke database:
    | Categorie | Betekenis | Toegestaan als koppelrecord (van → naar) |
    |---|---|---|
    | `supports-goal` | Draagt bij aan een doel | elke module met een andere fysieke database dan Groei (dus niet Kennis) → Groei (`doel`) |
-   | `develops-skill` | Ontwikkelt een vaardigheid | Sport, Kracht, Duur, Voetbal → Groei (`vaardigheid`) |
+   | `develops-skill` | Ontwikkelt een vaardigheid | Sport, Kracht, Duur → Groei (`vaardigheid`) |
    | `derived-from` | Is ontstaan uit | SIDEQUEST (`quest`) → Kennis (`inzicht`) |
    | `tracks` | Meet de voortgang van | Sport, Voeding, Financiën → Groei (`doel`) |
    | `related` | Hoort bij (algemeen) | tussen modules met verschillende fysieke databases, behalve naar Lichaam en Dagboek |
@@ -125,3 +125,4 @@ De opslagregel volgt uit de fysieke database:
   - Gesloten set soorten (`kind`) met betekenis en afhandeling van onbekende waarden (§ 3a).
   - Lichaam en Dagboek blijven uitgesloten als doel (ongewijzigd).
 - **2026-11-22**, besluit van de eigenaar (PR 34, A4a): `kind` is optioneel in de `Lookup`; records buiten de vijf soorten hebben geen `kind` en kunnen alleen doel zijn van `related`. Een onbekende opgeslagen soort heet `unknownKind: true` (§ 3a). Gevolgen bijgewerkt: de code volgt de besluiten.
+- **2026-11-22**, scopewijziging (PR 36): Voetbal en Reizen zijn geen modules meer (ADR 0023). `develops-skill` vanuit Voetbal vervalt; persoonlijke voetbalkennis staat in Kennis, dus een relatie daarvan naar een vaardigheid in Groei is een ID-veld (§ 6). De code in `@ecosystem/core` noemt `voetbal` en `reizen` nog als module; die worden in de PR van A6 verwijderd.
