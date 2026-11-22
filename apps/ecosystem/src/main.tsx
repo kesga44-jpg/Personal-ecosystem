@@ -18,6 +18,7 @@ updateSW = registerSW({
 // Elke module wordt pas geladen als je hem opent (ADR 0020, G-4).
 const loaders: Record<ModuleId, () => Promise<{ default: ComponentType<{ links: ModuleLink[] }> }>> = {
   dashboard: () => import('./modules/dashboard'),
+  groei: () => import('./modules/groei'),
   sport: () => import('./modules/sport'),
   kracht: () => import('./modules/kracht'),
   duur: () => import('./modules/duur'),
