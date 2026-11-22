@@ -117,7 +117,7 @@ export function PlansPage({ data, run }: { data: PlannerData; run: Run }) {
         eyebrow="Voeding"
         title="Planning"
         description="Je persoonlijke maaltijdplanning met eigen doelen en porties. Het gedeelde weekmenu en opgeslagen boodschappenlijsten staan in Samen Thuis."
-        action={params.get('nieuw') !== '1' && <Button onClick={() => setParams({ nieuw: '1' })}>＋ Plan</Button>}
+        action={params.get('nieuw') !== '1' && <div className="row"><Link className="button button-secondary" to="/planning/automatisch">Automatisch plannen</Link><Button onClick={() => setParams({ nieuw: '1' })}>＋ Plan</Button></div>}
       />
       {params.get('nieuw') === '1' && <PlanForm run={run} onDone={(id) => (id ? navigate(`/planning/${id}`) : setParams({}))} />}
       <Card>

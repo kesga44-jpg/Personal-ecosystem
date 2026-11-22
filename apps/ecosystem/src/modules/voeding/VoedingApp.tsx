@@ -50,6 +50,7 @@ import { databaseConfig } from './storage';
 import { IngredientPage, NewRecipePage, RecipeDetailPage, RecipesPage, type RecipeData } from './RecipePages';
 import type { Ingredient, Recipe, RecipeIngredient } from './recipes';
 import { PlanPage, PlansPage, ShoppingPage, type PlannerData } from './PlannerPages';
+import { AutoPlanPage } from './AutoPlanPage';
 import type { NutritionPlan, PlannedMeal } from './planner';
 
 const navigation = [
@@ -179,6 +180,7 @@ function VoedingRoutes({ links }: { links: ModuleLink[] }) {
             }
           />
           <Route path="/planning" element={<>{error && <ErrorBanner message={error} />}<PlansPage data={plannerData} run={run} /></>} />
+          <Route path="/planning/automatisch" element={<>{error && <ErrorBanner message={error} />}<AutoPlanPage data={plannerData} settings={settings} run={run} /></>} />
           <Route path="/planning/:id" element={<>{error && <ErrorBanner message={error} />}<PlanPage data={plannerData} run={run} /></>} />
           <Route path="/planning/:id/boodschappen" element={<ShoppingPage data={plannerData} />} />
           <Route path="/recepten" element={<>{error && <ErrorBanner message={error} />}<RecipesPage data={recipeData} /></>} />
@@ -582,7 +584,7 @@ function SettingsPage({ settings, error, onSave }: { settings: FoodSettings; err
         if (Number.isNaN(value)) throw new Error('Vul een getal in.');
         return value === null ? null : Math.round(value);
       };
-      const next: FoodSettings = { id: 'settings', kcalTarget: toInt(kcal), proteinTarget: toInt(protein) };
+      const next: FoodSettings = { ...settings, id: 'settings', kcalTarget: toInt(kcal), proteinTarget: toInt(protein) };
       validateSettings(next);
       setSaved(await onSave(next));
     } catch (cause) {
