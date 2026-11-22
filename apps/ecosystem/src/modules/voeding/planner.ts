@@ -114,3 +114,4 @@ export function validatePlannedMeal(value: unknown): asserts value is PlannedMea
   if (typeof m.note !== 'string' || m.note.length > 500) fail('Notitie is te lang.');
   if (!isTime(m.createdAt) || !isTime(m.updatedAt)) fail('Geplande maaltijd heeft een ongeldig tijdstip.');
 }
+

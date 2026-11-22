@@ -49,10 +49,13 @@ import { Scanner, scannerAvailable } from './Scanner';
 import { databaseConfig } from './storage';
 import { IngredientPage, NewRecipePage, RecipeDetailPage, RecipesPage, type RecipeData } from './RecipePages';
 import type { Ingredient, Recipe, RecipeIngredient } from './recipes';
+import { PlanPage, PlansPage, ShoppingPage, type PlannerData } from './PlannerPages';
+import type { NutritionPlan, PlannedMeal } from './planner';
 
 const navigation = [
   { to: '/', label: 'Vandaag', icon: '⌂' },
   { to: '/toevoegen', label: 'Toevoegen', icon: '＋' },
+  { to: '/planning', label: 'Planning', icon: '▦' },
   { to: '/recepten', label: 'Recepten', icon: '❦' },
   { to: '/producten', label: 'Ingrediënten', icon: '☰' },
   { to: '/instellingen', label: 'Instellingen', icon: '⚙' }
@@ -99,18 +102,24 @@ function VoedingRoutes({ links }: { links: ModuleLink[] }) {
   const [products, setProducts] = useState<FoodProduct[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [lines, setLines] = useState<RecipeIngredient[]>([]);
+  const [plans, setPlans] = useState<NutritionPlan[]>([]);
+  const [plannedMeals, setPlannedMeals] = useState<PlannedMeal[]>([]);
   const [settings, setSettings] = useState<FoodSettings>(emptySettings);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   async function refresh(db: LocalDatabase) {
-    const [nextEntries, nextProducts, nextSettings, nextRecipes, nextLines] = await Promise.all([
+    const [nextEntries, nextProducts, nextSettings, nextRecipes, nextLines, nextPlans, nextMeals] = await Promise.all([
       db.list<FoodEntry>('entries'),
       db.list<FoodProduct>('products'),
       db.list<FoodSettings>('settings'),
       db.list<Recipe>('recipes'),
-      db.list<RecipeIngredient>('recipeIngredients')
+      db.list<RecipeIngredient>('recipeIngredients'),
+      db.list<NutritionPlan>('nutritionPlans'),
+      db.list<PlannedMeal>('plannedMeals')
     ]);
+    setPlans(nextPlans);
+    setPlannedMeals(nextMeals);
     setRecipes(nextRecipes.sort((a, b) => a.name.localeCompare(b.name, 'nl')));
     setLines(nextLines);
     setEntries(nextEntries);
@@ -144,6 +153,7 @@ function VoedingRoutes({ links }: { links: ModuleLink[] }) {
   }
 
   const recipeData: RecipeData = { products: products as Ingredient[], recipes, lines };
+  const plannerData: PlannerData = { ...recipeData, plans, meals: plannedMeals, entries };
 
   return (
     <AppFrame appName="Voeding" appMark="◔" navigation={navigation} moduleLinks={links}>
@@ -168,6 +178,9 @@ function VoedingRoutes({ links }: { links: ModuleLink[] }) {
               />
             }
           />
+          <Route path="/planning" element={<>{error && <ErrorBanner message={error} />}<PlansPage data={plannerData} run={run} /></>} />
+          <Route path="/planning/:id" element={<>{error && <ErrorBanner message={error} />}<PlanPage data={plannerData} run={run} /></>} />
+          <Route path="/planning/:id/boodschappen" element={<ShoppingPage data={plannerData} />} />
           <Route path="/recepten" element={<>{error && <ErrorBanner message={error} />}<RecipesPage data={recipeData} /></>} />
           <Route path="/recepten/nieuw" element={<>{error && <ErrorBanner message={error} />}<NewRecipePage run={run} /></>} />
           <Route path="/recepten/:id" element={<>{error && <ErrorBanner message={error} />}<RecipeDetailPage data={recipeData} run={run} /></>} />
