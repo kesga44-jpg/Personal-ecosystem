@@ -387,3 +387,9 @@ export function kennisSummary(data: { sources: readonly Source[]; insights: read
     minutesThisWeek: data.log.filter((entry) => entry.date >= week && entry.date <= today).reduce((sum, entry) => sum + entry.minutes, 0)
   };
 }
+
+/** Dashboard: alleen het aantal inzichten dat sinds het begin van deze week is vastgelegd, geen inhoud. */
+export function insightsThisWeek(insights: readonly Pick<Insight, 'createdAt'>[], today: string): number {
+  const week = weekStart(today);
+  return insights.filter((insight) => insight.createdAt.slice(0, 10) >= week && insight.createdAt.slice(0, 10) <= today).length;
+}
