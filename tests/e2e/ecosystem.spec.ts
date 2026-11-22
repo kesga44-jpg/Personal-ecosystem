@@ -41,6 +41,13 @@ for (const [path, text] of [
   ['/groei/vaardigheden', 'Vaardigheden'],
   ['/groei/evaluaties', 'Evaluaties'],
   ['/groei/systeem', 'Groeisysteem'],
+  ['/kennis', 'Wat leer je nu?'],
+  ['/kennis/bibliotheek', 'Bibliotheek'],
+  ['/kennis/highlights', 'Highlights'],
+  ['/kennis/inzichten', 'Inzichten'],
+  ['/kennis/studie', 'Studieprogramma'],
+  ['/kennis/logboek', 'Logboek'],
+  ['/kennis/makers', 'Makers'],
   ['/back-up', 'Back-up']
 ] as const) {
   test(`Personal Ecosystem laadt ${path} zonder fouten`, async ({ page }) => {
@@ -288,6 +295,61 @@ test('Groei: doel met subdoel kan niet worden verwijderd; actie wel, na bevestig
   page.once('dialog', (dialog) => void dialog.accept());
   await page.getByRole('button', { name: 'Actie Weg ermee verwijderen' }).click();
   await expect(page.getByText('Geen acties', { exact: true })).toBeVisible();
+});
+
+test('Kennis: bron met doel, highlight, inzicht, actie in Groei, studieprogramma en logboek', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto(`${base}/groei/doelen?nieuw=1`);
+  await page.getByLabel('Titel', { exact: true }).fill('Beter leidinggeven');
+  await page.getByRole('button', { name: 'Doel opslaan' }).click();
+  await expect(page.getByRole('link', { name: 'Beter leidinggeven' })).toBeVisible();
+
+  await page.goto(`${base}/kennis/bibliotheek?nieuw=1`);
+  await page.getByLabel('Titel', { exact: true }).fill('Extreme Ownership');
+  await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('bezig');
+  await page.getByRole('button', { name: 'Beter leidinggeven' }).click();
+  await page.getByRole('button', { name: 'Bron opslaan' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Extreme Ownership' })).toBeVisible();
+  await expect(page.getByText('Doelen: Beter leidinggeven')).toBeVisible();
+
+  await page.getByLabel('Nieuwe highlight').fill('Er zijn geen slechte teams, alleen slechte leiders.');
+  await page.getByLabel('Pagina of tijdstip').fill('p. 54');
+  await page.getByRole('button', { name: 'Highlight toevoegen' }).click();
+  await expect(page.getByText('Er zijn geen slechte teams, alleen slechte leiders.')).toBeVisible();
+
+  await page.getByRole('link', { name: '＋ Inzicht' }).click();
+  await page.getByLabel('Inzicht', { exact: true }).fill('Neem eigenaarschap over resultaten');
+  await page.getByRole('button', { name: /Er zijn geen slechte teams/ }).click();
+  await page.getByRole('button', { name: 'Beter leidinggeven' }).click();
+  await page.getByRole('button', { name: 'Inzicht opslaan' }).click();
+  await expect(page.getByText('Neem eigenaarschap over resultaten')).toBeVisible();
+
+  await page.getByRole('link', { name: '＋ Actie in Groei' }).first().click();
+  await expect(page).toHaveURL(/\/groei\/acties\?nieuw=1&inzicht=/);
+  await expect(page.getByLabel('Ontstaan uit inzicht')).not.toHaveValue('');
+  await page.getByLabel('Actie', { exact: true }).fill('Wekelijks 1-op-1 plannen');
+  await page.getByRole('button', { name: 'Actie opslaan' }).click();
+  await expect(page.getByText('Wekelijks 1-op-1 plannen')).toBeVisible();
+
+  await page.goto(`${base}/kennis/studie`);
+  await page.getByRole('combobox', { name: 'Bron', exact: true }).selectOption({ label: 'Extreme Ownership' });
+  await page.getByRole('button', { name: 'Programma starten' }).click();
+  await page.getByLabel('Study the material afgerond').click();
+  await expect(page.getByLabel('Study the material afgerond')).toBeChecked();
+  await expect(page.getByText('20%')).toBeVisible();
+
+  await page.goto(`${base}/kennis/logboek`);
+  await page.getByLabel('Minuten').fill('25');
+  await page.getByRole('button', { name: 'Minuten vastleggen' }).click();
+  await expect(page.getByText('25 min').first()).toBeVisible();
+
+  await page.reload();
+  await page.goto(`${base}/groei/doelen`);
+  await page.getByRole('link', { name: 'Beter leidinggeven' }).click();
+  const kennis = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Uit Kennis' }) });
+  await expect(kennis).toContainText('Extreme Ownership');
+  await expect(kennis).toContainText('Neem eigenaarschap over resultaten');
+  expect(errors).toEqual([]);
 });
 
 test('Dagboek: notitie verwijderen na bevestiging', async ({ page }) => {
@@ -897,7 +959,7 @@ test('een Sport-back-up van schema 1 (oud adres) is nog te herstellen', async ({
 for (const width of [375, 768, 1280]) {
   test(`Personal Ecosystem past op ${width}px zonder horizontaal scrollen`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    for (const path of ['/', '/sport', '/sport/planning', '/sport/coach', '/quest', '/quest/quests', '/quest/voortgang', '/lichaam', '/lichaam/invoeren', '/voeding', '/voeding/toevoegen', '/kracht', '/kracht/training', '/kracht/oefeningen', '/kracht/schemas/nieuw', '/duur', '/duur/importeren', '/duur/toevoegen', '/dagboek', '/dagboek/schrijven', '/dagboek/archief', '/groei', '/groei/doelen', '/groei/acties', '/groei/gewoontes', '/groei/systeem', '/back-up']) {
+    for (const path of ['/', '/sport', '/sport/planning', '/sport/coach', '/quest', '/quest/quests', '/quest/voortgang', '/lichaam', '/lichaam/invoeren', '/voeding', '/voeding/toevoegen', '/kracht', '/kracht/training', '/kracht/oefeningen', '/kracht/schemas/nieuw', '/duur', '/duur/importeren', '/duur/toevoegen', '/dagboek', '/dagboek/schrijven', '/dagboek/archief', '/groei', '/groei/doelen', '/groei/acties', '/groei/gewoontes', '/groei/systeem', '/kennis', '/kennis/bibliotheek', '/kennis/inzichten', '/kennis/studie', '/kennis/logboek', '/back-up']) {
       await page.goto(`${base}${path}`);
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
