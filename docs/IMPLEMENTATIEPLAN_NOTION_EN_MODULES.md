@@ -1,6 +1,6 @@
 # Implementatieplan: Notion-migratie, nieuwe modules en accounts
 
-**Status:** ADR 0023 t/m 0031 geaccepteerd (2026-11-21 en 2026-11-22); K-A t/m K-D beslist. De echte import (A10) wacht op P-6 (ADR 0031 § 7). Bouwen begint pas na goedkeuring van de inventaris (A3), per stap met een eigen PR en akkoord. Elke stap is een eigen PR met tests, documentatie en een risico-inschatting; de eigenaar merget; Claude controleert daarna live, alleen lezend.
+**Status:** ADR 0023 t/m 0031 geaccepteerd (2026-11-21 en 2026-11-22); K-A t/m K-D beslist. De echte import (A10) wacht op P-6 (ADR 0031 § 7). De inventaris (A3) is op 2026-11-22 **voorwaardelijk goedgekeurd** (zie A3); bouwen gaat per stap met een eigen PR en akkoord. Elke stap is een eigen PR met tests, documentatie en een risico-inschatting; de eigenaar merget; Claude controleert daarna live, alleen lezend.
 
 ## Regels voor twee sporen
 
@@ -25,7 +25,7 @@
 |---|---|---|---|---|
 | A1 | Volledige Notion-export als ZIP (Markdown & CSV, "Everything", subpagina's in mappen, met bijlagen) in `C:\Kees` | Eigenaar | — | — |
 | A2 | Inventaris en volledigheidscontrole (ADR 0025 § 1), met markering eigen, van anderen, gezamenlijk, template, voorbeeld, leeg of twijfel. Alleen lezen: geen wijziging aan de export, geen import. Het rapport gaat **alleen privé naar de eigenaar** (de repository is openbaar); er komt **geen** Notion-inhoud, databasenaam of aantal in de repository | Claude, alleen lezen | A1 | S |
-| A3 | Akkoord op de inventaris: per database importeren ja of nee, de bron van waarheid bij dubbelen, de uitsluitlijst; per record de sleutel en de rijkoppeling met status (ADR 0025 § 3a, § 3b, § 3f), inclusief de lijst met aannemelijke en onzekere koppelingen en de steekproef door Claude | Eigenaar | A2 | — |
+| A3 | Akkoord op de inventaris: per database importeren ja of nee, de bron van waarheid bij dubbelen, de uitsluitlijst; per record de sleutel en de rijkoppeling met status (ADR 0025 § 3a, § 3b, § 3f), inclusief de lijst met aannemelijke en onzekere koppelingen en de steekproef door Claude | Eigenaar — ✅ voorwaardelijk goedgekeurd (2026-11-22). Beperkingen: vier bronacties staan open (proefexport van één database, andere teamspaces, een aparte export van één database, één pagina opschonen). Zolang die openstaan, geldt een bron niet als compleet, blijft een ontbrekende relatie "ontbrekend in de bronexport", blijven bestaande records met hun sleutel behouden en blijft de betrokken pagina uitgesloten. Details alleen in de privé-inventaris | A2 | — |
 | A4 | PR: gedeelde basis in `packages/core` — `ModuleLink`, relatiecategorieën met toegestane combinaties, `ImportOrigin`, `Lookup`- en `linksTo`-contracten | Claude | ADR-akkoord | M |
 | A5 | PR: Groei (database `-groei`): doelen en subdoelen, vaardigheden, gewoontes, acties, evaluaties, The Ultimate Growth System, 10/10-regel; navigatie-item Groei | Claude | A4, K-A | L |
 | A6 | PR: Kennis & Ontwikkeling (zelfde database): bronnen, highlights, inzichten, vijfstappenprogramma, 30-dagenmeting, dagelijks lezen en luisteren; eigen navigatie-item | Claude | A5 | L |
