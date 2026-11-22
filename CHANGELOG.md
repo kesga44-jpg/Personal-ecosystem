@@ -7,6 +7,7 @@ Elke app in de monorepo krijgt een eigen sectie zodra die bestaat. Bestaande app
 
 ### Toegevoegd
 
+- A7: Groei is de enige runtimebron voor doelen, gewoontes en checks: SIDEQUEST verwijst voor beheer naar Groei; dashboard en herinneringen lezen dezelfde records. De expliciete lokale overgang downloadt eerst een SIDEQUEST-back-up, vraagt bevestiging en is per record herhaalbaar; conflicten en niet-overzetbare oude records worden zichtbaar gemaakt zonder overschrijven of verwijderen. De status wordt na herstart uit bron en bestemming afgeleid. Oude stores blijven voorlopig alleen als herstelbare migratiebron bestaan.
 - Spaarpotten en voedingsplannen kunnen optioneel aan Groei-doelen worden gekoppeld, gewijzigd en ontkoppeld. De bronmodule bewaart de koppeling; verdwenen doelen blijven zichtbaar als niet beschikbaar. Voeding krijgt hiervoor lokaal schema 3 met een `links`-store; bestaande gegevens en oudere back-ups blijven behouden.
 - Financiën: CSV-download van de werkelijke transacties in het gekozen rapportagejaar, met de actieve richting-, categorie- en zoekfilters. Bedragen staan in centen en het bestand is UTF-8.
 - Money Manual: nieuwe vaste secties krijgen een aanmaaktijd; oude secties zonder aanmaaktijd blijven geldig en krijgen geen verzonnen historische datum.

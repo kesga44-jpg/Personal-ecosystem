@@ -86,6 +86,81 @@ test('modulewisselaar opent Sport en SIDEQUEST op dezelfde origin', async ({ pag
   await expect(page).toHaveURL(`${base}/quest/gewoontes`);
 });
 
+test('A7: annuleren laat data intact; bevestigde overdracht gebruikt Groei na herstart', async ({ page }) => {
+  await page.goto(`${base}/quest/instellingen`);
+  await expect(page.getByRole('heading', { level: 1, name: 'Instellingen' })).toBeVisible();
+  await page.evaluate(async () => {
+    const request = indexedDB.open('personal-ecosystem-sidequest', 2);
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const transaction = database.transaction(['goals', 'habits', 'habitChecks'], 'readwrite');
+    transaction.objectStore('goals').put({
+      id: 'a7-goal', title: 'Meer lezen', category: 'Leren', targetDate: '2026-12-01',
+      target: 10, progress: 4, status: 'active', createdAt: '2026-11-01T10:00:00.000Z'
+    });
+    transaction.objectStore('habits').put({
+      id: 'a7-habit', title: 'Dagelijks lezen', frequency: 'daily', weeklyTarget: 1,
+      archived: false, createdAt: '2026-11-01T10:00:00.000Z'
+    });
+    transaction.objectStore('habitChecks').put({
+      id: 'a7-habit:2026-11-21', habitId: 'a7-habit', date: '2026-11-21'
+    });
+    await new Promise<void>((resolve, reject) => {
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+      transaction.onabort = () => reject(transaction.error);
+    });
+    database.close();
+  });
+
+  await page.goto(`${base}/quest`);
+  await expect(page.getByText(/3 record\(s\) wachten op overdracht/)).toBeVisible();
+  await page.goto(`${base}/quest/instellingen`);
+  const transfer = page.getByRole('button', { name: 'Back-up maken en overzetten naar Groei' });
+  page.once('dialog', (dialog) => void dialog.dismiss());
+  await transfer.click();
+  await expect(page.getByText('Migratie geannuleerd.')).toBeVisible();
+  await expect(page.getByText(/3 record\(s\) wachten op overdracht/)).toBeVisible();
+
+  const backup = page.waitForEvent('download');
+  page.once('dialog', (dialog) => void dialog.accept());
+  await transfer.click();
+  await backup;
+  await expect(page.getByText(/3 record\(s\) overgezet/)).toBeVisible();
+  await page.reload();
+  await expect(page.getByText(/Overdracht voltooid/)).toBeVisible();
+
+  await page.goto(`${base}/quest/gewoontes`);
+  await expect(page.getByText('Dagelijks lezen').first()).toBeVisible();
+  await expect(page.getByText(/21 nov/)).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Beheer in Groei →' })).toHaveAttribute('href', '/groei/gewoontes');
+  await expect(page.getByRole('button', { name: '＋ Gewoonte maken' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Vink vandaag af' })).toHaveCount(0);
+
+  await page.goto(`${base}/quest/doelen`);
+  await expect(page.getByRole('link', { name: 'Open doelen in Groei →' })).toHaveAttribute('href', '/groei/doelen');
+  const records = await page.evaluate(async () => {
+    const request = indexedDB.open('personal-ecosystem-sidequest');
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const transaction = database.transaction(['goals', 'habits', 'habitChecks'], 'readonly');
+    const result = await Promise.all(['goals', 'habits', 'habitChecks'].map((store) =>
+      new Promise<unknown[]>((resolve, reject) => {
+        const get = transaction.objectStore(store).getAll();
+        get.onsuccess = () => resolve(get.result);
+        get.onerror = () => reject(get.error);
+      })
+    ));
+    database.close();
+    return result;
+  });
+  expect(records.map((store) => store.length)).toEqual([1, 1, 1]);
+});
+
 test('dashboardwidget opent Sport in hetzelfde tabblad', async ({ page }) => {
   await page.goto(base);
   const link = page.getByRole('link', { name: '↗ Sport' });
@@ -1119,12 +1194,14 @@ test('SIDEQUEST: voortgang toont level, badges, statistieken en kalender uit eig
   await expect(page.getByText('Badges · 0 van 9')).toBeVisible();
   await expect(page.getByText('Nog geen quests')).toBeVisible();
 
-  await page.goto(`${base}/quest/gewoontes`);
-  await page.getByRole('button', { name: '＋ Gewoonte maken' }).click();
+  await page.goto(`${base}/groei/gewoontes`);
   await page.getByLabel('Gewoonte').fill('Lezen');
-  await page.getByRole('button', { name: 'Gewoonte opslaan' }).click();
-  await page.getByRole('button', { name: 'Vink vandaag af' }).click();
-  await expect(page.getByRole('button', { name: 'Vandaag gedaan' })).toBeVisible();
+  await page.getByRole('button', { name: 'Gewoonte toevoegen' }).click();
+  await page.getByRole('button', { name: 'Vandaag afvinken' }).click();
+  await expect(page.getByRole('button', { name: '✓ Vandaag gedaan' })).toBeVisible();
+  await page.goto(`${base}/quest/gewoontes`);
+  await expect(page.getByText('Lezen').first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Vink vandaag af' })).toHaveCount(0);
 
   await page.goto(`${base}/quest/quests`);
   await page.getByRole('button', { name: '＋ Quest maken' }).click();
@@ -1159,11 +1236,14 @@ test('herinneringen: blok op het dashboard, teller in de modulebalk, vandaag ver
   await page.goto(`${base}/`);
   await expect(page.getByText('Geen herinneringen voor nu.')).toBeVisible();
 
-  await page.goto(`${base}/quest/gewoontes`);
-  await page.getByRole('button', { name: '＋ Gewoonte maken' }).click();
+  await page.goto(`${base}/groei/gewoontes`);
   await page.getByLabel('Gewoonte').fill('Wandelen');
-  await page.getByRole('button', { name: 'Gewoonte opslaan' }).click();
-  await expect(page.getByRole('button', { name: 'Vink vandaag af' })).toBeVisible();
+  await page.getByRole('button', { name: 'Gewoonte toevoegen' }).click();
+  await expect(page.getByText('Wandelen').first()).toBeVisible();
+  await page.goto(`${base}/quest/gewoontes`);
+  await expect(page.getByText('Wandelen').first()).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Beheer in Groei →' })).toHaveAttribute('href', '/groei/gewoontes');
+  await expect(page.getByRole('button', { name: 'Vink vandaag af' })).toHaveCount(0);
 
   const dashboardLink = page.locator('.sidebar .module-link').filter({ hasText: 'Dashboard' });
   await page.goto(`${base}/quest`);
@@ -1189,9 +1269,11 @@ test('herinneringen: blok op het dashboard, teller in de modulebalk, vandaag ver
 
   await page.reload();
   await expect(page.getByText('Geen herinneringen voor nu.')).toBeVisible();
-  await page.goto(`${base}/quest/gewoontes`);
-  await page.getByRole('button', { name: 'Vink vandaag af' }).click();
-  await expect(page.getByRole('button', { name: 'Vandaag gedaan' })).toBeVisible();
+  await page.goto(`${base}/groei/gewoontes`);
+  await page.getByRole('button', { name: 'Vandaag afvinken' }).click();
+  await expect(page.getByRole('button', { name: '✓ Vandaag gedaan' })).toBeVisible();
+  await page.goto(`${base}/`);
+  await expect(page.getByText('Geen herinneringen voor nu.')).toBeVisible();
   expect(errors).toEqual([]);
 });
 

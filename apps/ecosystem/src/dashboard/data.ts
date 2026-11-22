@@ -82,11 +82,9 @@ export async function loadData(): Promise<DashboardData> {
     openLocalDatabase(financienConfig)
   ]);
   try {
-    const [shortcuts, activities, habits, checks, quests, sportLink, bodyDays, journal, food, strength, endurance] = await Promise.all([
+    const [shortcuts, activities, quests, sportLink, bodyDays, journal, food, strength, endurance] = await Promise.all([
       hub.list<Shortcut>('shortcuts'),
       sport.list<Activity>('activities'),
-      quest.list<Habit>('habits'),
-      quest.list<HabitCheck>('habitChecks'),
       quest.list<Quest>('quests'),
       quest.get<SportLink>('settings', 'sport-link'),
       lichaam.list<BodyDay>('days'),
@@ -105,6 +103,14 @@ export async function loadData(): Promise<DashboardData> {
       groei.list<Insight>('insights'),
       groei.list<LearningLog>('learningLog')
     ]);
+    const habits: Habit[] = growthHabits.map((habit) => ({
+      id: habit.id,
+      title: habit.title,
+      frequency: habit.frequency === 'dagelijks' ? 'daily' : 'weekly',
+      weeklyTarget: habit.frequency === 'dagelijks' ? 1 : habit.weeklyTarget,
+      archived: habit.archived,
+      createdAt: habit.createdAt
+    }));
     const [transactions, budgets, categories, investmentPlans, nutritionPlans, plannedMeals] = await Promise.all([
       financien.list<Transaction>('transactions'),
       financien.list<Budget>('budgets'),
@@ -119,7 +125,7 @@ export async function loadData(): Promise<DashboardData> {
       financien: financienSummary({ transactions, budgets, categories, plans: investmentPlans }, today),
       maaltijden: plannedTodaySummary(nutritionPlans, plannedMeals, food as { plannedMealId?: string }[], today)
     };
-    return { activities, habits, checks, quests, sportLink, shortcuts, lichaamDates: bodyDays.map((day) => ({ date: day.date })), dagboekDates: journal.map((entry) => ({ date: entry.date })), voedingDates: food.map((entry) => ({ date: entry.date })), krachtDates: strength.map((session) => ({ date: session.date })), duurTotals: endurance.map((workout) => ({ date: workout.date, distanceM: workout.distanceM, durationSec: workout.durationSec })), ...summaries };
+    return { activities, habits, checks: growthChecks, quests, sportLink, shortcuts, lichaamDates: bodyDays.map((day) => ({ date: day.date })), dagboekDates: journal.map((entry) => ({ date: entry.date })), voedingDates: food.map((entry) => ({ date: entry.date })), krachtDates: strength.map((session) => ({ date: session.date })), duurTotals: endurance.map((workout) => ({ date: workout.date, distanceM: workout.distanceM, durationSec: workout.durationSec })), ...summaries };
   } finally {
     hub.close();
     sport.close();

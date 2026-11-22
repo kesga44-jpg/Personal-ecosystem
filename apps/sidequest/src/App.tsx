@@ -99,15 +99,30 @@ export interface AppProps {
    * Alleen datums (DATA_OWNERSHIP.md). Ontbreekt in de losse app; dan is de koppeling niet beschikbaar.
    */
   trainingDays?: string[];
+  /** Lokale, bevestigde overdracht van SIDEQUEST naar Groei; alleen beschikbaar in Personal Ecosystem. */
+  onMigrateToGrowth?: (database: LocalDatabase) => Promise<string>;
+  /** Groei is de bron van waarheid voor persoonlijke doelen, gewoontes en checks binnen Personal Ecosystem. */
+  growthIntegration?: {
+    load: (sidequestDatabase: LocalDatabase) => Promise<{
+      activeGoalCount: number;
+      goalAreas: string[];
+      habits: Habit[];
+      checks: HabitCheck[];
+      migrationStatus: string;
+    }>;
+  };
 }
 
-function App({ basename = '/', moduleLinks = [], trainingDays }: AppProps = {}) {
+function App({ basename = '/', moduleLinks = [], trainingDays, onMigrateToGrowth, growthIntegration }: AppProps = {}) {
   const [database, setDatabase] = useState<LocalDatabase | null>(null);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [habits, setHabits] = useState<Habit[]>([]);
   const [checks, setChecks] = useState<HabitCheck[]>([]);
   const [quests, setQuests] = useState<Quest[]>([]);
   const [sportLink, setSportLink] = useState<SportLink>(defaultSportLink);
+  const [activeGoalCount, setActiveGoalCount] = useState(0);
+  const [goalAreas, setGoalAreas] = useState<string[]>([]);
+  const [migrationStatus, setMigrationStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   /** Quest-wijzigingen lopen na elkaar, zodat snel afvinken nooit een eerdere klik overschrijft. */
@@ -120,14 +135,18 @@ function App({ basename = '/', moduleLinks = [], trainingDays }: AppProps = {}) 
   }
 
   async function refresh(db: LocalDatabase) {
-    const [nextGoals, nextHabits, nextChecks, nextQuests, nextLink] = await Promise.all([
-      db.list<Goal>('goals'),
-      db.list<Habit>('habits'),
-      db.list<HabitCheck>('habitChecks'),
+    const [nextQuests, nextLink, growth] = await Promise.all([
       db.list<Quest>('quests'),
-      db.get<SportLink>('settings', 'sport-link')
+      db.get<SportLink>('settings', 'sport-link'),
+      growthIntegration?.load(db)
     ]);
+    const [nextGoals, nextHabits, nextChecks] = growth
+      ? [[], growth.habits, growth.checks] as [Goal[], Habit[], HabitCheck[]]
+      : await Promise.all([db.list<Goal>('goals'), db.list<Habit>('habits'), db.list<HabitCheck>('habitChecks')]);
     setSportLink(nextLink ?? defaultSportLink);
+    setActiveGoalCount(growth?.activeGoalCount ?? nextGoals.filter((goal) => goal.status === 'active').length);
+    setGoalAreas(growth?.goalAreas ?? nextGoals.map((goal) => goal.category));
+    setMigrationStatus(growth?.migrationStatus ?? '');
     setGoals(nextGoals.sort((a, b) => a.targetDate.localeCompare(b.targetDate)));
     setHabits(nextHabits.sort((a, b) => a.title.localeCompare(b.title)));
     setChecks(nextChecks.sort((a, b) => b.date.localeCompare(a.date)));
@@ -177,7 +196,7 @@ function App({ basename = '/', moduleLinks = [], trainingDays }: AppProps = {}) 
     <BrowserRouter basename={basename}>
       <AppFrame appName="SIDEQUEST" appMark="✦" navigation={navigation} moduleLinks={moduleLinks}>
         <Routes>
-          <Route path="/" element={<Dashboard goals={goals} habits={habits} checks={checks} quests={quests} sportDays={sportDays} sportLinked={sportLink.enabled && trainingDays !== undefined} error={error} />} />
+          <Route path="/" element={<Dashboard goals={goals} activeGoalCount={activeGoalCount} habits={habits} checks={checks} quests={quests} sportDays={sportDays} sportLinked={sportLink.enabled && trainingDays !== undefined} growthOwned={Boolean(growthIntegration)} migrationStatus={migrationStatus} error={error} />} />
           <Route
             path="/doelen"
             element={
@@ -186,6 +205,7 @@ function App({ basename = '/', moduleLinks = [], trainingDays }: AppProps = {}) 
                 onSave={(goal) => runStorageAction((db) => db.put('goals', goal))}
                 onArchive={(goal) => runStorageAction((db) => db.put('goals', { ...goal, status: 'archived' }))}
                 error={error}
+                growthOwned={Boolean(growthIntegration)}
               />
             }
           />
@@ -195,13 +215,18 @@ function App({ basename = '/', moduleLinks = [], trainingDays }: AppProps = {}) 
               <HabitsPage
                 habits={habits}
                 checks={checks}
-                onSave={(habit) => runStorageAction((db) => db.put('habits', habit))}
-                onArchive={(habit) => runStorageAction((db) => db.put('habits', { ...habit, archived: true }))}
+                onSave={(habit) => growthIntegration
+                  ? Promise.resolve(false)
+                  : runStorageAction((db) => db.put('habits', habit))}
+                onArchive={(habit) => growthIntegration
+                  ? Promise.resolve(false)
+                  : runStorageAction((db) => db.put('habits', { ...habit, archived: true }))}
                 onCheck={(habit) =>
-                  runStorageAction((db) =>
-                    db.put('habitChecks', { id: `${habit.id}:${todayKey()}`, habitId: habit.id, date: todayKey() })
-                  )
+                  growthIntegration
+                    ? Promise.resolve(false)
+                    : runStorageAction((db) => db.put('habitChecks', { id: `${habit.id}:${todayKey()}`, habitId: habit.id, date: todayKey() }))
                 }
+                growthOwned={Boolean(growthIntegration)}
                 error={error}
               />
             }
@@ -211,7 +236,7 @@ function App({ basename = '/', moduleLinks = [], trainingDays }: AppProps = {}) 
             element={
               <QuestsPage
                 quests={quests}
-                goalCategories={goals.map((goal) => goal.category)}
+                goalCategories={growthIntegration ? goalAreas : goals.map((goal) => goal.category)}
                 onSave={(quest) => runStorageAction((db) => db.put('quests', quest))}
                 onProgress={(quest) => queueQuestChange((current) => advanceQuest(current), quest)}
                 onToggleStep={(quest, stepId) => queueQuestChange((current) => toggleQuestStep(current, stepId), quest)}
@@ -230,6 +255,19 @@ function App({ basename = '/', moduleLinks = [], trainingDays }: AppProps = {}) 
                 sportDays={sportDays}
                 available={trainingDays !== undefined}
                 onSportLink={(enabled) => runStorageAction((db) => db.put('settings', toggleSportLink(sportLink, enabled, todayKey())))}
+                growthOwned={Boolean(growthIntegration)}
+                {...(onMigrateToGrowth ? {
+                  onMigrateToGrowth: async (db: LocalDatabase) => {
+                    const message = await onMigrateToGrowth(db);
+                    try {
+                      await refresh(db);
+                    } catch {
+                      setError('De overdracht is uitgevoerd, maar het overzicht kon niet worden bijgewerkt. Vernieuw de pagina om de gegevens opnieuw te laden.');
+                    }
+                    return message;
+                  }
+                } : {})}
+                {...(growthIntegration ? { migrationStatus } : {})}
                 error={error}
               />
             }
@@ -242,19 +280,25 @@ function App({ basename = '/', moduleLinks = [], trainingDays }: AppProps = {}) 
 
 function Dashboard({
   goals,
+  activeGoalCount,
   habits,
   checks,
   quests,
   sportDays,
   sportLinked,
+  growthOwned,
+  migrationStatus,
   error
 }: {
   goals: Goal[];
+  activeGoalCount: number;
   habits: Habit[];
   checks: HabitCheck[];
   quests: Quest[];
   sportDays: string[];
   sportLinked: boolean;
+  growthOwned: boolean;
+  migrationStatus: string;
   error: string;
 }) {
   const today = todayKey();
@@ -263,6 +307,9 @@ function Dashboard({
   const activeQuests = sortActiveQuests(quests.filter((quest) => quest.status === 'active'));
   const points = calculatePoints(checks, quests, sportDays);
   const level = levelInfo(points);
+  const migrationPending = growthOwned && migrationStatus &&
+    !migrationStatus.startsWith('Overdracht voltooid') &&
+    !migrationStatus.startsWith('Geen oude SIDEQUEST-doelen');
   const recent = useMemo(
     () => [
       ...checks.map((check) => ({ id: check.id, label: 'Gewoonte afgevinkt', date: check.date })),
@@ -278,6 +325,11 @@ function Dashboard({
   return (
     <div className="stack">
       {error && <ErrorBanner message={error} />}
+      {migrationPending && (
+        <div className="notice" role="status">
+          {migrationStatus} <Link to="/instellingen">Controleer de overgang naar Groei →</Link>
+        </div>
+      )}
       <PageHeader
         eyebrow="Kleine stappen tellen op"
         title="Jouw volgende quest."
@@ -298,7 +350,7 @@ function Dashboard({
         </div>
       </Card>
       <div className="grid grid-4">
-        <Metric label="Actieve doelen" value={activeGoals.length.toString()} />
+        <Metric label="Actieve doelen" value={(growthOwned ? activeGoalCount : activeGoals.length).toString()} />
         <Metric label="Gewoontes vandaag" value={`${todayHabits.filter((habit) => checks.some((check) => check.habitId === habit.id && check.date === today)).length}/${todayHabits.length}`} />
         <Metric label="Actieve quests" value={activeQuests.length.toString()} />
         <Metric label="Huidige punten" value={points.toString()} />
@@ -324,8 +376,12 @@ function Dashboard({
             <EmptyState title="Begin met een kleine gewoonte">Voeg een dagelijkse of wekelijkse gewoonte toe wanneer je er klaar voor bent.</EmptyState>
           )}
         </Card>
-        <Card title="Actieve doelen" action={<Link className="text-button" to="/doelen">Bekijk doelen →</Link>}>
-          {activeGoals.length ? (
+        <Card title={growthOwned ? 'Actieve doelen in Groei' : 'Actieve doelen'} action={growthOwned
+          ? <a className="text-button" href="/groei/doelen">Bekijk in Groei →</a>
+          : <Link className="text-button" to="/doelen">Bekijk doelen →</Link>}>
+          {growthOwned ? (
+            <p className="item-subtitle">{activeGoalCount ? `${activeGoalCount} actieve ${activeGoalCount === 1 ? 'doel' : 'doelen'} beheerd in Groei.` : 'Nog geen actieve doelen in Groei.'}</p>
+          ) : activeGoals.length ? (
             <div className="list">
               {activeGoals.slice(0, 4).map((goal) => (
                 <div className="list-item" key={goal.id}>
@@ -390,13 +446,26 @@ function GoalsPage({
   goals,
   onSave,
   onArchive,
-  error
+  error,
+  growthOwned
 }: {
   goals: Goal[];
   onSave: (goal: Goal) => Promise<boolean>;
   onArchive: (goal: Goal) => Promise<boolean>;
   error: string;
+  growthOwned: boolean;
 }) {
+  if (growthOwned) {
+    return (
+      <div className="stack">
+        <PageHeader eyebrow="Richting en voortgang" title="Doelen" description="Groei is de enige bron voor persoonlijke doelen." />
+        <Card title="Beheer je doelen in Groei">
+          <p className="item-subtitle">SIDEQUEST gebruikt geen eigen kopieën van doelen. Aanpassen, voortgang registreren en archiveren doe je op de Groei-pagina.</p>
+          <a className="button button-primary" href="/groei/doelen">Open doelen in Groei →</a>
+        </Card>
+      </div>
+    );
+  }
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Goal | null>(null);
   const active = goals.filter((goal) => goal.status !== 'archived');
@@ -515,6 +584,7 @@ function HabitsPage({
   onSave,
   onArchive,
   onCheck,
+  growthOwned,
   error
 }: {
   habits: Habit[];
@@ -522,6 +592,7 @@ function HabitsPage({
   onSave: (habit: Habit) => Promise<boolean>;
   onArchive: (habit: Habit) => Promise<boolean>;
   onCheck: (habit: Habit) => Promise<boolean>;
+  growthOwned: boolean;
   error: string;
 }) {
   const [showForm, setShowForm] = useState(false);
@@ -531,8 +602,12 @@ function HabitsPage({
   return (
     <div className="stack">
       {error && <ErrorBanner message={error} />}
-      <PageHeader eyebrow="Elke stap telt" title="Gewoontes" description="Kies dagelijks of wekelijks. Een dag missen verlaagt je punten niet." action={<Button onClick={() => { setEditing(null); setShowForm(true); }}>＋ Gewoonte maken</Button>} />
-      {showForm && <HabitForm initial={editing} onCancel={() => { setShowForm(false); setEditing(null); }} onSave={async (habit) => {
+      <PageHeader eyebrow="Elke stap telt" title="Gewoontes" description={growthOwned
+        ? 'Gewoontes en afvinkingen worden beheerd in Groei. SIDEQUEST toont dezelfde Groei-records.'
+        : 'Kies dagelijks of wekelijks. Een dag missen verlaagt je punten niet.'} action={growthOwned
+          ? <a className="button button-primary" href="/groei/gewoontes">Beheer in Groei →</a>
+          : <Button onClick={() => { setEditing(null); setShowForm(true); }}>＋ Gewoonte maken</Button>} />
+      {showForm && !growthOwned && <HabitForm initial={editing} onCancel={() => { setShowForm(false); setEditing(null); }} onSave={async (habit) => {
         const saved = await onSave(habit);
         if (saved) {
           setShowForm(false);
@@ -554,11 +629,11 @@ function HabitsPage({
                     <p className="item-subtitle">{count}/{target} deze {habit.frequency === 'daily' ? 'dag' : 'week'} · streak {calculateHabitStreak(habit, checks, today)} {habit.frequency === 'daily' ? 'dagen' : 'weken'}</p>
                     <div className="progress-track" style={{ marginTop: 9 }}><span style={{ width: `${Math.min(100, (count / target) * 100)}%` }} /></div>
                   </div>
-                  <div className="row">
+                  {!growthOwned && <div className="row">
                     <Button disabled={doneToday} onClick={() => void onCheck(habit)}>{doneToday ? 'Vandaag gedaan' : 'Vink vandaag af'}</Button>
                     <Button variant="secondary" onClick={() => { setEditing(habit); setShowForm(true); }}>Bewerk</Button>
                     <ConfirmAction label={`Pauzeer ${habit.title}`} confirmMessage={`Gewoonte "${habit.title}" archiveren? De historie blijft bewaard.`} onConfirm={() => void onArchive(habit)}>Pauzeer</ConfirmAction>
-                  </div>
+                  </div>}
                 </div>
               );
             })}
@@ -966,6 +1041,9 @@ function SettingsPage({
   sportDays,
   available,
   onSportLink,
+  onMigrateToGrowth,
+  growthOwned,
+  migrationStatus,
   error
 }: {
   database: LocalDatabase;
@@ -974,10 +1052,14 @@ function SettingsPage({
   sportDays: string[];
   available: boolean;
   onSportLink: (enabled: boolean) => Promise<boolean>;
+  onMigrateToGrowth?: (database: LocalDatabase) => Promise<string>;
+  growthOwned: boolean;
+  migrationStatus?: string;
   error: string;
 }) {
   const [storageSize, setStorageSize] = useState<number | null>(null);
   const [restoreError, setRestoreError] = useState('');
+  const [migrationMessage, setMigrationMessage] = useState('');
 
   useEffect(() => {
     void database.exportData().then((data) => setStorageSize(Object.values(data.stores).reduce((sum, records) => sum + records.length, 0)));
@@ -1001,7 +1083,9 @@ function SettingsPage({
   return (
     <div className="stack">
       {(error || restoreError) && <ErrorBanner message={error || restoreError} />}
-      <PageHeader eyebrow="Jij bepaalt" title="Instellingen" description="Je doelen, gewoontes en quests zijn alleen op dit apparaat opgeslagen." />
+      <PageHeader eyebrow="Jij bepaalt" title="Instellingen" description={growthOwned
+        ? 'Quests en instellingen zijn lokaal opgeslagen. Groei beheert je doelen en gewoontes.'
+        : 'Je doelen, gewoontes en quests zijn alleen op dit apparaat opgeslagen.'} />
       <Card title="Lokale opslag">
         <div className="list">
           <div className="list-item"><span>Opslagmodus</span><StatusPill tone="good">Alleen lokaal</StatusPill></div>
@@ -1011,7 +1095,9 @@ function SettingsPage({
         </div>
       </Card>
       <Card title="Back-up en herstel">
-        <p className="item-subtitle">De export bevat alleen SIDEQUEST-gegevens. Herstel overschrijft bestaande SIDEQUEST-data pas nadat je dit bevestigt.</p>
+        <p className="item-subtitle">{growthOwned
+          ? 'De export bevat SIDEQUEST-quests, instellingen en de bewaarde oude migratiebron. Herstel vervangt de SIDEQUEST-back-up pas na bevestiging; Groei-gegevens worden hierdoor niet gewijzigd.'
+          : 'De export bevat alleen SIDEQUEST-gegevens. Herstel overschrijft bestaande SIDEQUEST-data pas nadat je dit bevestigt.'}</p>
         <div className="row" style={{ justifyContent: 'flex-start', marginTop: 16 }}>
           <Button onClick={async () => {
             try { downloadJson('sidequest-backup.json', await database.exportData()); }
@@ -1043,6 +1129,24 @@ function SettingsPage({
           <p className="item-subtitle">Alleen beschikbaar in Personal Ecosystem, waar Sport, Kracht en Duur ook staan.</p>
         )}
       </Card>
+      {onMigrateToGrowth && (
+        <Card title="Overgang naar Groei">
+          <p className="item-subtitle">
+            Groei is eigenaar van persoonlijke doelen en gewoontes. Gewoontes en afvinkingen in deze module komen rechtstreeks uit Groei.
+            Maak eerst de back-up; daarna kun je de overdracht bevestigen. SIDEQUEST-brondata blijft bewaard als herstelbare kopie.
+          </p>
+          {migrationStatus && <p className="notice" role="status">{migrationStatus}</p>}
+          {migrationMessage && <p className="notice" role="status">{migrationMessage}</p>}
+          <Button onClick={async () => {
+            setMigrationMessage('');
+            try {
+              setMigrationMessage(await onMigrateToGrowth(database));
+            } catch (cause) {
+              setRestoreError(cause instanceof Error ? cause.message : 'De overdracht naar Groei is mislukt.');
+            }
+          }}>Back-up maken en overzetten naar Groei</Button>
+        </Card>
+      )}
       <Card title="PWA en voortgang">
         <PwaInstallButton />
         <p className="item-subtitle">Offline worden alleen appbestanden gecachet; je persoonlijke gegevens blijven in de lokale database.</p>
