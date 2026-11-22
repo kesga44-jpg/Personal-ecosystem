@@ -224,7 +224,8 @@ Per bronrij, op basis van de sleutel (`origin.key.value`, plus `previousKeys`; �
 - Relaties worden in twee rondes opgebouwd: eerst alle records, daarna de verwijzingen. De vertaling van pagina-ID naar record-ID loopt via de `origin`-index, alleen voor records met een `notion_page_id`.
 - Een relatie in de export wijst naar een pagina. Heeft bron of doel geen `notion_page_id` (alleen een `replacement_key`), dan is de relatie niet aan een record te koppelen. De import schrijft haar niet en gokt niet (§ 5a, "ontbrekend in de bronexport").
 - Een geschreven relatie waarvan bron of doel een rijkoppeling `aannemelijk` of `onzeker` heeft (§ 3b), wordt in het overzicht apart gemarkeerd: "via een nog niet bevestigde rijkoppeling".
-- Binnen een module worden relaties ID-velden; tussen modules worden het koppelrecords (ADR 0024).
+- Binnen één fysieke database worden relaties ID-velden, ook tussen Groei en Kennis (gedeelde database `personal-ecosystem-groei`). Tussen fysieke databases worden het koppelrecords (`EcosystemModuleLink`, ADR 0024 § 1 en § 6). De mapper beslist dit op de fysieke database, niet op het menu-item.
+- De mapper zet een bronwaarde alleen om naar een soort (`kind`, ADR 0024 § 3a) als die omzetting in de mapper staat en met een unit-test is aangetoond. Een waarde die niet past, wordt niet naar een bestaande soort omgezet; het overzicht meldt het record als "onbekende soort" en de eigenaar beslist.
 - Een relatie naar een pagina die niet in de export of op de uitsluitlijst staat, wordt niet aangemaakt. Ze verschijnt in het overzicht met de status "ontbrekend in de bronexport" of "bewust niet geïmporteerd" (§ 5a).
 - Een relatie die in de export in een andere vorm staat dan een relatiekolom (bijvoorbeeld afgeleid uit kolomnamen), telt alleen als "in de export aanwezig" als de mapper die vorm vastlegt en met een unit-test aantoont.
 
@@ -247,7 +248,7 @@ Elke relatie (bronrecord → doelrecord) krijgt **precies één** van vier statu
 
 **Regels voor "handmatig hersteld":**
 
-- Elke opgeslagen verwijzing krijgt een vaste herkomst: `export` of `handmatig`. Alleen de import zet `export`, en alleen als de relatie in de export staat. Alles wat de eigenaar zelf toevoegt, krijgt `handmatig`. Bij koppelrecords (ADR 0024) staat de herkomst in het koppelrecord; bij ID-velden binnen een module in `origin` van het bronrecord.
+- Elke opgeslagen verwijzing krijgt een vaste herkomst: `export` of `handmatig`. Alleen de import zet `export`, en alleen als de relatie in de export staat. Alles wat de eigenaar zelf toevoegt, krijgt `handmatig`. Bij koppelrecords (ADR 0024) staat de herkomst in het koppelrecord; bij ID-velden binnen een fysieke database in `origin` van het bronrecord.
 - Een handmatig herstelde verwijzing legt ook de datum van herstel vast.
 - Een verwijzing met herkomst `handmatig` wordt **nooit** gerapporteerd als "oorspronkelijk uit de bron overgenomen", ook niet in totalen. De herkomst verandert niet door een latere import.
 - Staat dezelfde relatie in een latere export wel, dan laat de import de handmatige verwijzing ongemoeid (§ 4: handmatige wijzigingen blijven staan). Het overzicht meldt dan "handmatig hersteld, nu ook in de bronexport". De status blijft "handmatig hersteld".
@@ -388,3 +389,4 @@ Na het schrijven leest de import alles terug uit de database en controleert vijf
   - de regel "Conflicten met bestaande besluiten" staat weer onder Gevolgen; die was in de vorige wijziging per ongeluk onder deze sectie beland.
 - **2026-11-22**, besluiten van de eigenaar bij de inventaris (PR 29): bewuste keuze voor een vervangende sleutel per record (§ 3a); statussen en bevestigen nooit automatisch, na de import (§ 3b); vergelijkingsregels met versie `match-1` (§ 3f); bijbehorende controle en tests.
 - **2026-11-22**, formulering (PR 30): § 3b verwijst bij `unique_title`, `properties` en `elimination` naar de vergelijkingsregels van § 3f; `comparedColumns` is nauwkeurig omschreven; de controle "Sleutels en herkomst" in § 11 controleert `matchRules` expliciet. Geen besluit of status gewijzigd.
+- **2026-11-22**, besluiten van de eigenaar bij ADR 0024 (PR 33): § 5 en § 5a spreken van "fysieke database" in plaats van "module"; relaties tussen Groei en Kennis zijn ID-velden; de mapper zet een onbekende soort (`kind`) nooit om naar een bestaande soort. Geen ander besluit gewijzigd.

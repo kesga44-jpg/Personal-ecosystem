@@ -8,7 +8,7 @@ Gedeelde, zuivere code voor de apps in deze monorepo. Geen opslag, geen netwerk.
 
 ## Koppelingen tussen modules (ADR 0024) — `src/links.ts`
 
-- `ModuleLink`: een koppelrecord. Het staat in de `links`-store van de module van de **bron**.
+- `ModuleLink`: een koppelrecord tussen records in **verschillende fysieke databases**. Het staat in de `links`-store van de module van de **bron**. De definitieve domeinnaam is `EcosystemModuleLink` (ADR 0024 § 1); de code gebruikt nog `ModuleLink` tot stap A4a.
 - `LINK_MODULE_IDS`, `KNOWN_LINK_CATEGORIES` en `LINK_CATEGORY_RULES`: de categorieën met hun toegestane combinaties (van → naar, eventueel per soort record).
 - `checkNewLink(input)`: controleert of een **nieuwe** koppeling mag. Het geeft `null` terug, of een reden: `unknown-category`, `target-forbidden`, `not-own-module`, `source-not-allowed`, `target-not-allowed` of `self-link`.
   - Lichaam en Dagboek zijn nooit het doel.
@@ -41,4 +41,8 @@ Gedeelde, zuivere code voor de apps in deze monorepo. Geen opslag, geen netwerk.
 - Geen opslag van koppelingen. Die komt per module, vanaf A5.
 - De echte import (A10) gebeurt pas na P-6 (ADR 0031 § 7).
 
-`ModuleLink` hier is het koppelrecord uit ADR 0024. `@ecosystem/ui` heeft een eigen type `ModuleLink` voor navigatielinks. Gebruik een alias als een bestand beide nodig heeft.
+## Besluiten van 2026-11-22 die de code nog niet volgt (stap A4a)
+
+- **Naam.** `ModuleLink` in `@ecosystem/ui` is uitsluitend voor navigatie. Het koppelrecord heet definitief `EcosystemModuleLink`; een importalias mag tijdelijk.
+- **Groei en Kennis** delen één fysieke database. Relaties tussen hen zijn ID-velden, geen koppelrecord (ADR 0024 § 6). De huidige regels in `LINK_CATEGORY_RULES` staan `kennis → groei` en `groei → kennis` nog toe; dat vervalt.
+- **`kind`** wordt de gesloten union `EcosystemRecordKind`: `doel`, `vaardigheid`, `actie`, `quest`, `inzicht` (ADR 0024 § 3a). Nu is het nog een `string`. Een onbekende waarde wordt nooit naar een bestaande waarde omgezet.

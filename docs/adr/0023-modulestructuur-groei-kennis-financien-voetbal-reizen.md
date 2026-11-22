@@ -27,7 +27,7 @@
    | Reizen | `personal-ecosystem-reizen` | Reizen, verblijven, activiteiten, dagplanning, reisnotities |
 
    Voeding wordt uitgebreid in de bestaande database (ADR 0026).
-3. **Groei en Kennis delen één database** omdat The Ultimate Growth System beide omvat (doel, vaardigheid, boeken, audiobronnen, seminar, studieprogramma). Koppelingen tussen die twee zijn daardoor gewone velden, geen koppelrecords. In de navigatie zijn het twee aparte onderdelen met eigen schermen.
+3. **Groei en Kennis delen één database** omdat The Ultimate Growth System beide omvat (doel, vaardigheid, boeken, audiobronnen, seminar, studieprogramma). Relaties tussen die twee zijn daardoor interne databaserelaties (ID-velden), geen koppelrecords (ADR 0024 § 6). In de navigatie zijn het twee aparte onderdelen met eigen schermen.
 4. **The Ultimate Growth System** wordt niet vereenvoudigd:
    - De aanduiding `1-1-5-3-1-35-30-5-10-10` blijft letterlijk staan.
    - Het onderdeel "35" krijgt een vrij tekstveld "Betekenis" zonder vooraf ingevulde uitleg.
@@ -62,3 +62,7 @@
 - Vijf nieuwe navigatie-items (Groei, Kennis & Ontwikkeling, Financiën, Voetbal, Reizen), vier nieuwe databases.
 - DATA_OWNERSHIP.md, APP_REGISTRY.md en ARCHITECTURE.md worden bijgewerkt in de PR die de eerste module bouwt.
 - `separation.test.ts` krijgt per nieuwe module dezelfde controles: geen netwerk, alleen eigen database.
+
+## Wijzigingen na acceptatie
+
+- **2026-11-22** (PR 33): § 3 verwijst naar ADR 0024 § 6. Relaties tussen Groei en Kennis heten interne databaserelaties (ID-velden). Geen besluit gewijzigd.
