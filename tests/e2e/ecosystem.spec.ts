@@ -302,6 +302,7 @@ test('Kennis: bron met doel, highlight, inzicht, actie in Groei, studieprogramma
   await page.goto(`${base}/groei/doelen?nieuw=1`);
   await page.getByLabel('Titel', { exact: true }).fill('Beter leidinggeven');
   await page.getByRole('button', { name: 'Doel opslaan' }).click();
+  await expect(page.getByRole('link', { name: 'Beter leidinggeven' })).toBeVisible();
 
   await page.goto(`${base}/kennis/bibliotheek?nieuw=1`);
   await page.getByLabel('Titel', { exact: true }).fill('Extreme Ownership');
