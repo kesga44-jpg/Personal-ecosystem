@@ -194,3 +194,12 @@ export function shoppingText(items: readonly ShoppingItem[]): string {
   }
   return lines.join('\n');
 }
+
+/** Dashboard: alleen tellers van de eigen planning voor vandaag, geen recepten of hoeveelheden (DATA_OWNERSHIP.md). */
+export function plannedTodaySummary(plans: readonly Pick<NutritionPlan, 'id' | 'from' | 'to'>[], meals: readonly Pick<PlannedMeal, 'id' | 'planId' | 'date'>[], entries: readonly { plannedMealId?: string }[], today: string) {
+  const active = plans.filter((plan) => plan.from <= today && plan.to >= today);
+  const ids = new Set(active.map((plan) => plan.id));
+  const todays = meals.filter((meal) => ids.has(meal.planId) && meal.date === today);
+  const eaten = new Set(entries.map((entry) => entry.plannedMealId).filter(Boolean));
+  return { activePlans: active.length, plannedToday: todays.length, eatenToday: todays.filter((meal) => eaten.has(meal.id)).length };
+}
