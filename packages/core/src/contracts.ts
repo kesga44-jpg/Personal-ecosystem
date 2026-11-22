@@ -4,14 +4,21 @@
  * Een module leest een andere module nooit direct. Ze vraagt alleen titels op via `Lookup`
  * en terugverwijzingen via `linksTo`. Beide geven bewust zo weinig mogelijk terug.
  */
-import type { LinkCategory, LinkModuleId, ModuleLink } from './links';
-import { linkCategoryLabel } from './links';
+import type { EcosystemModuleLink, EcosystemRecordKind, LinkCategory, LinkModuleId } from './links';
+import { linkCategoryLabel, parseRecordKind } from './links';
 
-/** Het enige wat een `Lookup` teruggeeft: geen waarden, notities of gezondheidsgegevens. */
+/**
+ * Het enige wat een `Lookup` teruggeeft: geen waarden, notities of gezondheidsgegevens.
+ *
+ * - `kind` is een van de vijf soorten, of ontbreekt als het record daar buiten valt (ADR 0024 § 3a).
+ * - `unknownKind: true` als het record een soort heeft die deze versie niet kent. De waarde zelf gaat
+ *   niet mee en wordt nooit naar een bekende soort omgezet.
+ */
 export interface LookupItem {
   id: string;
   title: string;
-  kind: string;
+  kind?: EcosystemRecordKind;
+  unknownKind?: true;
 }
 
 export type Lookup = (ids: readonly string[]) => Promise<LookupItem[]>;
@@ -20,8 +27,14 @@ export type Lookup = (ids: readonly string[]) => Promise<LookupItem[]>;
  * Maakt van willekeurige records precies `{ id, title, kind }`. Elke `Lookup` moet zijn uitvoer hierdoor
  * laten gaan, zodat er nooit per ongeluk extra velden naar een andere module lekken.
  */
-export function toLookupItems(records: readonly { id: string; title: string; kind: string }[]): LookupItem[] {
-  return records.map(({ id, title, kind }) => ({ id, title, kind }));
+export function toLookupItems(records: readonly { id: string; title: string; kind?: unknown }[]): LookupItem[] {
+  return records.map(({ id, title, kind }) => {
+    const parsed = parseRecordKind(kind);
+    const item: LookupItem = { id, title };
+    if (parsed.kind) item.kind = parsed.kind;
+    if (parsed.unknownKind !== undefined) item.unknownKind = true;
+    return item;
+  });
 }
 
 /** Wat `linksTo` per koppeling teruggeeft: alleen ID's, categorie en titel van de bron. */
@@ -37,7 +50,7 @@ export type LinksTo = (module: LinkModuleId, id: string) => Promise<LinkToSummar
 
 /** Hulpfunctie voor een `linksTo`-implementatie: alleen koppelingen naar dit doel, alleen de toegestane velden. */
 export function summarizeLinksTo(
-  links: readonly ModuleLink[],
+  links: readonly EcosystemModuleLink[],
   target: { module: LinkModuleId; id: string },
   titleOf: (sourceId: string) => string
 ): LinkToSummary[] {
