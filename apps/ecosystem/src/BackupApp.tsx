@@ -21,6 +21,8 @@ import { databaseConfig as duurConfig } from './modules/duur/storage';
 import { validateDuurBackup } from './modules/duur/domain';
 import { databaseConfig as groeiConfig } from './modules/groei/storage';
 import { validateGroeiBackup } from './modules/groei/domain';
+import { databaseConfig as financienConfig } from './modules/financien/storage';
+import { validateFinancienBackup } from './modules/financien/domain';
 import { validateKennisStores } from './modules/kennis/domain';
 import {
   MODULE_IDS,
@@ -32,7 +34,7 @@ import {
   type RestorePlan
 } from './backup';
 
-const configs = { hub: hubConfig, sport: sportConfig, sidequest: questConfig, lichaam: lichaamConfig, dagboek: dagboekConfig, voeding: voedingConfig, kracht: krachtConfig, duur: duurConfig, groei: groeiConfig } as const;
+const configs = { hub: hubConfig, sport: sportConfig, sidequest: questConfig, lichaam: lichaamConfig, dagboek: dagboekConfig, voeding: voedingConfig, kracht: krachtConfig, duur: duurConfig, groei: groeiConfig, financien: financienConfig } as const;
 const domainValidators: Record<BackupModuleId, (data: unknown) => void> = {
   hub: validateHubBackup,
   sport: validateSportBackup,
@@ -42,7 +44,8 @@ const domainValidators: Record<BackupModuleId, (data: unknown) => void> = {
   voeding: validateVoedingBackup,
   kracht: validateKrachtBackup,
   duur: validateDuurBackup,
-  groei: (data: unknown) => validateGroeiBackup(data, validateKennisStores)
+  groei: (data: unknown) => validateGroeiBackup(data, validateKennisStores),
+  financien: validateFinancienBackup
 };
 const lastExportKey = 'personal-ecosystem.backup.last-export';
 const navigation = [{ to: '/', label: 'Back-up', icon: '⇩' }];
@@ -169,7 +172,7 @@ function BackupPage() {
       <PageHeader
         eyebrow="Jouw gegevens"
         title="Back-up"
-        description="Eén bestand met de gegevens van Dashboard, Sport, SIDEQUEST, Lichaam, Dagboek, Voeding, Kracht, Duur, Groei en Kennis. Je gegevens staan alleen op dit apparaat; maak regelmatig een back-up. Het bestand bevat ook gezondheidsgegevens, je dagboek en je GPS-routes: bewaar het veilig."
+        description="Eén bestand met de gegevens van Dashboard, Sport, SIDEQUEST, Lichaam, Dagboek, Voeding, Kracht, Duur, Groei, Kennis en Financiën. Je gegevens staan alleen op dit apparaat; maak regelmatig een back-up. Het bestand bevat ook gezondheidsgegevens, je dagboek, je GPS-routes en je persoonlijke financiën: bewaar het veilig."
       />
       {error && <ErrorBanner message={error} />}
       {message && <p role="status"><StatusPill tone="good">{message}</StatusPill></p>}

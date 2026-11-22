@@ -20,6 +20,7 @@ const loaders: Record<ModuleId, () => Promise<{ default: ComponentType<{ links: 
   dashboard: () => import('./modules/dashboard'),
   groei: () => import('./modules/groei'),
   kennis: () => import('./modules/kennis'),
+  financien: () => import('./modules/financien'),
   sport: () => import('./modules/sport'),
   kracht: () => import('./modules/kracht'),
   duur: () => import('./modules/duur'),
