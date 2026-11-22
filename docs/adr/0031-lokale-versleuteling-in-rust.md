@@ -35,7 +35,9 @@
 
 ### 3. Vergrendelen
 
-Vergrendelen haalt de sleutel en alle ontsleutelde gegevens uit het geheugen. De versleutelde gegevens blijven staan. Daarna toont de app alleen het scherm om de kluis te openen.
+Vergrendelen maakt de sleutel en alle ontsleutelde gegevens ontoegankelijk voor de app: de app verwijdert al haar verwijzingen ernaar (de `CryptoKey`, ontsleutelde records, tussenresultaten en de weergave), zodat de browser dat geheugen kan vrijgeven. De versleutelde gegevens blijven staan. Daarna toont de app alleen het scherm om de kluis te openen.
+
+JavaScript kan niet garanderen dat alle fysieke kopieën in het geheugen direct worden overschreven. Het opruimen gebeurt door de browser, op een moment dat de app niet bepaalt. Dit ADR belooft dus: na vergrendelen kan de app niet meer bij de sleutel of de ontsleutelde gegevens, en houdt ze er niets meer van vast. Het belooft niet dat het geheugen fysiek gewist is (zie ook § 6).
 
 De app vergrendelt:
 
@@ -44,7 +46,19 @@ De app vergrendelt:
 - als de sessie niet meer kan worden vernieuwd (ADR 0030 § 2);
 - met de knop **"Vergrendelen"**, die altijd beschikbaar is.
 
-Openstaande invoer wordt vóór het vergrendelen versleuteld opgeslagen. Er gaat niets verloren.
+**Openstaande invoer.** Bij elke aanleiding hierboven gebeurt het volgende:
+
+1. De app versleutelt de openstaande invoer en slaat die op.
+2. De app leest het opgeslagen record terug en controleert dat het te ontsleutelen is.
+3. Pas als beide stappen gelukt zijn, vergrendelt de app.
+
+Mislukt het opslaan of de controle (bijvoorbeeld door volle opslag, een geblokkeerde database of een versleutelfout), dan:
+
+- **blijft de kluis open** en blijft de invoer op het scherm staan;
+- krijgt de gebruiker een duidelijke foutmelding met de oorzaak en de keuzes: opnieuw proberen, de invoer exporteren of kopiëren, of de invoer bewust weggooien;
+- vergrendelt de app pas na een geslaagde opslag of nadat de gebruiker de invoer bewust heeft weggegooid.
+
+Bij uitloggen geldt daarnaast ADR 0030 § 3.
 
 ### 4. Synchronisatie, export en herstel
 
@@ -73,7 +87,7 @@ Openstaande invoer wordt vóór het vergrendelen versleuteld opgeslagen. Er gaat
 2. **Ontgrendelen:** na sluiten of herladen van de app is het **kluiswachtwoord** opnieuw nodig (§ 2). Ontgrendelen met een vingerafdruk of een andere platformsleutel valt buiten dit besluit en vraagt later een apart besluit.
 3. **Notion-import (ADR 0025):**
    - A4 t/m A9 uit het [implementatieplan](../IMPLEMENTATIEPLAN_NOTION_EN_MODULES.md) mogen vóór P-6, inclusief voorbereidend werk en de proefimport door Claude;
-   - de proefimport draait **uitsluitend in een tijdelijke browseromgeving** (ADR 0025 § 2). Na afloop blijven geen geïmporteerde gegevens en geen lokale restanten achter;
+   - de proefimport draait **uitsluitend in een tijdelijke browseromgeving** (ADR 0025 § 2). Na afloop wordt die omgeving **volledig verwijderd**: IndexedDB, `localStorage`, `sessionStorage`, cookies, Cache Storage, serviceworkerregistraties, tijdelijke bestanden, downloads en Playwright-traces. Er blijven geen importgegevens en geen testrestanten achter;
    - **A10**, de echte import in de app, mag **pas nadat P-6 is afgerond** en inloggen (ADR 0030) en lokale versleuteling (dit ADR) daadwerkelijk actief zijn. Dat geldt ook voor elke latere echte import door de eigenaar.
 
 ## Conflicten met bestaande besluiten
@@ -103,12 +117,13 @@ Openstaande invoer wordt vóór het vergrendelen versleuteld opgeslagen. Er gaat
 - **Tests:**
   - na schrijven staat in IndexedDB geen leesbare inhoud (controle op bekende tekst in de ruwe opslag);
   - de sleutel staat in geen enkele browseropslag;
-  - na vergrendelen zijn sleutel en ontsleutelde gegevens uit het geheugen, en zijn de modules niet bereikbaar;
+  - na vergrendelen houdt de app geen verwijzing meer naar de sleutel of ontsleutelde gegevens (getest via de interne toestand van de opslaglaag), en zijn de modules niet bereikbaar;
   - vergrendelen na inactiviteit, met openstaande invoer, verliest niets;
+  - bij een gesimuleerde opslagfout tijdens het vergrendelen blijft de kluis open, blijft de invoer staan en verschijnt de foutmelding met de keuzes;
   - een versleuteld record gaat ongewijzigd naar de server en terug;
   - een gewijzigde record-ID, module of versie (AAD) maakt ontsleutelen onmogelijk;
   - export alleen met geopende kluis; herstel schrijft versleuteld;
   - de overzetting van onversleutelde gegevens wist pas na een geslaagde teruglees- en hashcontrole per record;
   - de inactiviteitstermijn is standaard 15 minuten en alleen in te stellen tussen 5 en 60 minuten;
   - de importfunctie in de app weigert een echte import zolang inloggen of lokale versleuteling niet actief is;
-  - na de proefimport bevat de tijdelijke browseromgeving geen gegevens meer (geen IndexedDB, `localStorage` of cache).
+  - na de proefimport is de tijdelijke browseromgeving verwijderd: geen IndexedDB, `localStorage`, `sessionStorage`, cookies, Cache Storage, serviceworkerregistraties, tijdelijke bestanden, downloads of Playwright-traces meer aanwezig.

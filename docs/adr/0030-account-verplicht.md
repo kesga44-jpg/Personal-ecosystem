@@ -46,13 +46,13 @@ De app toont gegevens pas als alle drie de stappen gelukt zijn:
 
 ### 3. Uitloggen
 
-- Uitloggen wist de gegevenssleutel uit het geheugen (ADR 0031) en daarna de lokale databases van Personal Ecosystem. Zonder lokale modus horen die niet op het apparaat te blijven.
+- Uitloggen maakt de gegevenssleutel ontoegankelijk (vergrendelen, ADR 0031 § 3) en wist daarna de lokale databases van Personal Ecosystem. Zonder lokale modus horen die niet op het apparaat te blijven.
 - De app wist **alleen** als alle vier de voorwaarden gelden (besluit eigenaar, 2026-11-22):
   1. alle lokale wijzigingen zijn naar de server gestuurd;
   2. de server heeft elke wijziging bevestigd (opgeslagen versie gelijk aan de lokale versie);
   3. er zijn geen conflicten en geen onafgeronde synchronisaties;
   4. de gebruiker ziet vooraf dat de lokale gegevens van dit apparaat worden verwijderd, en bevestigt dat.
-- Geldt een van de eerste drie niet, dan **weigert** de app te wissen en logt hij niet uit. Hij toont per module wat er ontbreekt en biedt aan: opnieuw synchroniseren, eerst exporteren (ADR 0029 § 2), of annuleren. **Vergrendelen** (ADR 0031) kan altijd: dat haalt de sleutel uit het geheugen en laat de versleutelde gegevens staan.
+- Geldt een van de eerste drie niet, dan **weigert** de app te wissen en logt hij niet uit. Hij toont per module wat er ontbreekt en biedt aan: opnieuw synchroniseren, eerst exporteren (ADR 0029 § 2), of annuleren. **Vergrendelen** (ADR 0031 § 3) kan altijd: dat maakt de sleutel ontoegankelijk en laat de versleutelde gegevens staan.
 - De login, Samen Thuis en Coach blijven bij uitloggen ongewijzigd.
 
 ### 4. Bestaande lokale gegevens
