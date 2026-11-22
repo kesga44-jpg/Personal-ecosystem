@@ -24,6 +24,7 @@ for (const [path, text] of [
   ['/lichaam/invoeren', 'Meting invoeren'],
   ['/voeding', 'Wat heb je gegeten?'],
   ['/voeding/toevoegen', 'Toevoegen'],
+  ['/voeding/planning', 'Planning'],
   ['/voeding/recepten', 'Recepten'],
   ['/voeding/recepten/nieuw', 'Nieuw recept'],
   ['/voeding/producten', 'Ingrediënten'],
@@ -571,6 +572,70 @@ test('Voeding: ingrediënt aanvullen, recept met berekende waarden, registreren 
   await page.goto(`${base}/voeding/recepten`);
   await page.getByRole('combobox', { name: /^Label/ }).selectOption('snel');
   await expect(page.getByRole('link', { name: 'Overnight oats' })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('Voeding: persoonlijke planning met recept en losse ingrediënten, dag herhalen, gegeten registreren en afgeleide boodschappenlijst', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.route('**/api/voeding/product/**', (route) => route.fulfill({ json: { found: false } }));
+  await addOwnProduct(page, 'Havermout', ['370', '13', '60', '7'], '50');
+  await page.goto(`${base}/voeding/recepten/nieuw`);
+  await page.getByLabel('Naam van het recept').fill('Pap');
+  await page.getByLabel('Porties', { exact: true }).fill('1');
+  await page.getByRole('button', { name: 'Recept opslaan' }).click();
+  await page.getByRole('combobox', { name: /^Ingrediënt/ }).selectOption({ label: 'Havermout' });
+  await page.getByLabel('Hoeveelheid').fill('100');
+  await page.getByRole('button', { name: 'Ingrediënt toevoegen' }).click();
+  await expect(page.getByText('100 g Havermout')).toBeVisible();
+
+  await page.goto(`${base}/voeding/planning`);
+  await page.getByRole('button', { name: '＋ Plan' }).click();
+  await page.getByLabel('Naam van het plan').fill('Testweek');
+  await page.getByLabel('Doel energie (kcal per dag)').fill('2000');
+  await page.getByLabel('Doel eiwit (g per dag)').fill('100');
+  await page.getByRole('button', { name: 'Plan opslaan' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Testweek' })).toBeVisible();
+
+  await page.getByRole('combobox', { name: /^Recept/ }).selectOption({ label: 'Pap' });
+  await page.getByLabel('Porties', { exact: true }).fill('2');
+  await page.getByRole('button', { name: 'Maaltijd plannen' }).click();
+  await expect(page.locator('.list-item').filter({ hasText: 'Ontbijt: Pap' })).toContainText('740 kcal');
+  await page.getByRole('combobox', { name: /^Maaltijdmoment/ }).selectOption('lunch');
+  await page.getByRole('combobox', { name: /^Uit/ }).selectOption('los');
+  await page.getByRole('combobox', { name: /^Ingrediënt/ }).selectOption({ label: 'Havermout' });
+  await page.getByLabel('Hoeveelheid').fill('80');
+  await page.getByLabel('Porties', { exact: true }).fill('1');
+  await page.getByRole('button', { name: 'Maaltijd plannen' }).click();
+  await expect(page.locator('.list-item').filter({ hasText: 'Lunch: Havermout' })).toContainText('296 kcal');
+  await expect(page.getByText('Energie 52% van doel')).toBeVisible();
+
+  const repeat = page.getByRole('combobox', { name: /^Deze dag herhalen op/ });
+  const nextDay = await repeat.locator('option').nth(1).getAttribute('value');
+  await repeat.selectOption(nextDay!);
+  await page.getByRole('button', { name: 'Dag herhalen' }).click();
+  await expect(page).toHaveURL(new RegExp(`dag=${nextDay}`));
+  await expect(page.locator('.list-item').filter({ hasText: 'Ontbijt: Pap' })).toBeVisible();
+  await expect(page.locator('.list-item').filter({ hasText: 'Lunch: Havermout' })).toBeVisible();
+
+  await page.goto(`${base}/voeding/planning`);
+  await page.getByRole('link', { name: 'Testweek' }).click();
+  await page.getByRole('combobox', { name: 'Actie voor Pap' }).selectOption('gegeten');
+  await expect(page.getByLabel('Gegeten porties')).toHaveValue('2');
+  await page.getByRole('button', { name: 'Registreren' }).click();
+  await expect(page.locator('.list-item').filter({ hasText: 'Ontbijt: Pap' })).toContainText('gegeten');
+
+  await page.getByRole('link', { name: 'Boodschappenlijst' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Boodschappenlijst' })).toBeVisible();
+  await expect(page.getByText('wordt niet opgeslagen en heeft geen historie')).toBeVisible();
+  await expect(page.locator('.list-item').filter({ hasText: 'Havermout' })).toContainText('560 g');
+
+  await page.goBack();
+  await page.getByRole('button', { name: 'Plan bevestigen' }).click();
+  await expect(page.getByText('· bevestigd')).toBeVisible();
+
+  await page.reload();
+  await page.goto(`${base}/voeding`);
+  await expect(page.locator('.metric').filter({ has: page.locator('.metric-label', { hasText: /^Energie$/ }) }).locator('.metric-value')).toHaveText('925 kcal');
   expect(errors).toEqual([]);
 });
 
@@ -1132,8 +1197,10 @@ test('een Sport-back-up van schema 1 (oud adres) is nog te herstellen', async ({
 
 for (const width of [375, 768, 1280]) {
   test(`Personal Ecosystem past op ${width}px zonder horizontaal scrollen`, async ({ page }) => {
+    // Ruim 40 pagina's achter elkaar; de standaardlimiet van 30 s is bij parallelle runs te krap.
+    test.setTimeout(90_000);
     await page.setViewportSize({ width, height: 900 });
-    for (const path of ['/', '/sport', '/sport/planning', '/sport/coach', '/quest', '/quest/quests', '/quest/voortgang', '/lichaam', '/lichaam/invoeren', '/voeding', '/voeding/toevoegen', '/voeding/recepten', '/voeding/recepten/nieuw', '/kracht', '/kracht/training', '/kracht/oefeningen', '/kracht/schemas/nieuw', '/duur', '/duur/importeren', '/duur/toevoegen', '/dagboek', '/dagboek/schrijven', '/dagboek/archief', '/groei', '/groei/doelen', '/groei/acties', '/groei/gewoontes', '/groei/systeem', '/kennis', '/kennis/bibliotheek', '/kennis/inzichten', '/kennis/studie', '/kennis/logboek', '/financien', '/financien/transacties', '/financien/budgetten', '/financien/rapportage', '/financien/money-manual', '/financien/beleggingsplan', '/back-up']) {
+    for (const path of ['/', '/sport', '/sport/planning', '/sport/coach', '/quest', '/quest/quests', '/quest/voortgang', '/lichaam', '/lichaam/invoeren', '/voeding', '/voeding/toevoegen', '/voeding/planning', '/voeding/recepten', '/voeding/recepten/nieuw', '/kracht', '/kracht/training', '/kracht/oefeningen', '/kracht/schemas/nieuw', '/duur', '/duur/importeren', '/duur/toevoegen', '/dagboek', '/dagboek/schrijven', '/dagboek/archief', '/groei', '/groei/doelen', '/groei/acties', '/groei/gewoontes', '/groei/systeem', '/kennis', '/kennis/bibliotheek', '/kennis/inzichten', '/kennis/studie', '/kennis/logboek', '/financien', '/financien/transacties', '/financien/budgetten', '/financien/rapportage', '/financien/money-manual', '/financien/beleggingsplan', '/back-up']) {
       await page.goto(`${base}${path}`);
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
