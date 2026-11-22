@@ -48,6 +48,14 @@ for (const [path, text] of [
   ['/kennis/studie', 'Studieprogramma'],
   ['/kennis/logboek', 'Logboek'],
   ['/kennis/makers', 'Makers'],
+  ['/financien', 'Jouw geld, jouw strategie'],
+  ['/financien/transacties', 'Transacties'],
+  ['/financien/budgetten', 'Budgetten'],
+  ['/financien/spaarpotten', 'Spaarpotten'],
+  ['/financien/rapportage', 'Rapportage'],
+  ['/financien/money-manual', 'Money Manual'],
+  ['/financien/beleggingsplan', 'Investment Plan'],
+  ['/financien/instellingen', 'Categorieën'],
   ['/back-up', 'Back-up']
 ] as const) {
   test(`Personal Ecosystem laadt ${path} zonder fouten`, async ({ page }) => {
@@ -295,6 +303,87 @@ test('Groei: doel met subdoel kan niet worden verwijderd; actie wel, na bevestig
   page.once('dialog', (dialog) => void dialog.accept());
   await page.getByRole('button', { name: 'Actie Weg ermee verwijderen' }).click();
   await expect(page.getByText('Geen acties', { exact: true })).toBeVisible();
+});
+
+test('Financiën: categorie, budget, spaarpot, transacties, Money Manual en Investment Plan; blijft bewaard na herladen', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto(`${base}/financien/instellingen`);
+  await page.getByLabel('Nieuwe categorie').fill('Boodschappen');
+  await page.getByRole('button', { name: 'Categorie toevoegen' }).click();
+  await expect(page.getByText('Boodschappen')).toBeVisible();
+
+  await page.goto(`${base}/financien/budgetten`);
+  await page.getByRole('combobox', { name: /^Categorie/ }).selectOption({ label: 'Boodschappen' });
+  await page.getByLabel('Per maand (€)').fill('300');
+  await page.getByRole('button', { name: 'Budget opslaan' }).click();
+  await expect(page.locator('.list-item').filter({ hasText: 'Boodschappen' })).toContainText(/van €\s?300,00/);
+
+  await page.goto(`${base}/financien/spaarpotten`);
+  await page.getByLabel('Naam').fill('Buffer');
+  await page.getByLabel('Doelbedrag (€)').fill('1000');
+  await page.getByRole('button', { name: 'Spaarpot opslaan' }).click();
+  await expect(page.locator('.list-item').filter({ hasText: 'Buffer' })).toContainText('0%');
+
+  await page.goto(`${base}/financien/transacties?nieuw=1`);
+  await page.getByRole('button', { name: 'Transactie opslaan' }).click();
+  await expect(page.getByRole('alert')).toContainText('bedrag');
+  await page.getByLabel('Bedrag (€)').fill('350');
+  await page.getByRole('combobox', { name: /^Categorie/ }).selectOption({ label: 'Boodschappen' });
+  await page.getByLabel('Omschrijving').fill('Weekboodschappen');
+  await page.getByRole('button', { name: 'Transactie opslaan' }).click();
+  await expect(page.getByText(/Weekboodschappen/)).toBeVisible();
+  await page.getByRole('button', { name: '＋ Transactie' }).click();
+  await page.getByLabel('Bedrag (€)').fill('100');
+  await page.getByRole('combobox', { name: /^Spaarpot/ }).selectOption({ label: 'Buffer' });
+  await page.getByLabel('Omschrijving').fill('Naar buffer');
+  await page.getByRole('button', { name: 'Transactie opslaan' }).click();
+  await expect(page.getByText(/Naar buffer/)).toBeVisible();
+
+  await page.goto(`${base}/financien/money-manual`);
+  const principles = page.getByRole('textbox', { name: /^Uitgangspunten/ });
+  await principles.fill('Eerst een buffer, dan beleggen.');
+  await page.locator('.card').filter({ has: principles }).getByRole('button', { name: 'Opslaan' }).click();
+  await expect(page.getByText('Opgeslagen.')).toBeVisible();
+  await page.getByLabel('Scenario', { exact: true }).fill('Parttime');
+  await page.getByLabel('Inkomen per maand (€)').fill('2500');
+  await page.getByLabel('Uitgaven per maand (€)').fill('2000');
+  await page.getByRole('button', { name: 'Scenario toevoegen' }).click();
+  await expect(page.locator('.list-item').filter({ hasText: 'Parttime' })).toContainText(/Over per maand €\s?500,00/);
+
+  await page.goto(`${base}/financien/beleggingsplan?nieuw=1`);
+  await expect(page.getByText(/werkelijke portefeuille, transacties, waardes en rendementen staan niet hier/)).toBeVisible();
+  await page.getByLabel('Naam van het plan').fill('Lange termijn');
+  await page.getByRole('combobox', { name: /^Status/ }).selectOption('actief');
+  await page.getByLabel('Categorie 1').fill('Aandelen wereldwijd');
+  await page.getByLabel('Percentage 1').fill('80');
+  await page.getByRole('button', { name: '＋ Categorie' }).click();
+  await page.getByLabel('Categorie 2').fill('Obligaties');
+  await page.getByLabel('Percentage 2').fill('10');
+  await page.getByLabel('Gepland inlegbedrag (€)').fill('200');
+  await page.getByRole('button', { name: 'Plan opslaan' }).click();
+  await expect(page.getByRole('alert')).toContainText('100');
+  await page.getByLabel('Percentage 2').fill('20');
+  await page.getByRole('button', { name: 'Plan opslaan' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Lange termijn' })).toBeVisible();
+  await expect(page.locator('.metric').filter({ hasText: 'Geplande inleg per jaar' })).toContainText(/€\s?2\.400,00/);
+
+  await page.getByLabel('Naam scenario').fill('Voorzichtig');
+  await page.getByLabel('Aangenomen rendement per jaar (%)').fill('4');
+  await page.getByRole('button', { name: 'Scenario doorrekenen' }).click();
+  await expect(page.getByText(/rekenwaarde .* bij een totale inleg van/)).toBeVisible();
+
+  await page.getByLabel('Onderwerp').fill('Eerste evaluatie');
+  await page.getByRole('button', { name: 'Notitie opslaan' }).click();
+  await expect(page.locator('.metric').filter({ hasText: 'Voortgang' }).locator('.metric-value')).toHaveText('op koers');
+
+  await page.reload();
+  await page.goto(`${base}/financien`);
+  await expect(page.locator('.metric').filter({ hasText: 'Uitgaven deze maand' }).locator('.metric-value')).toHaveText(/€\s?450,00/);
+  await expect(page.locator('.metric').filter({ hasText: 'Budgetten' }).locator('.metric-value')).toHaveText('0/1');
+  await expect(page.getByText('Budget overschreden')).toBeVisible();
+  await expect(page.getByRole('progressbar', { name: 'Voortgang Buffer' })).toHaveAttribute('value', '10');
+  await expect(page.getByRole('link', { name: 'Lange termijn' })).toBeVisible();
+  expect(errors).toEqual([]);
 });
 
 test('Kennis: bron met doel, highlight, inzicht, actie in Groei, studieprogramma en logboek', async ({ page }) => {
@@ -959,7 +1048,7 @@ test('een Sport-back-up van schema 1 (oud adres) is nog te herstellen', async ({
 for (const width of [375, 768, 1280]) {
   test(`Personal Ecosystem past op ${width}px zonder horizontaal scrollen`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    for (const path of ['/', '/sport', '/sport/planning', '/sport/coach', '/quest', '/quest/quests', '/quest/voortgang', '/lichaam', '/lichaam/invoeren', '/voeding', '/voeding/toevoegen', '/kracht', '/kracht/training', '/kracht/oefeningen', '/kracht/schemas/nieuw', '/duur', '/duur/importeren', '/duur/toevoegen', '/dagboek', '/dagboek/schrijven', '/dagboek/archief', '/groei', '/groei/doelen', '/groei/acties', '/groei/gewoontes', '/groei/systeem', '/kennis', '/kennis/bibliotheek', '/kennis/inzichten', '/kennis/studie', '/kennis/logboek', '/back-up']) {
+    for (const path of ['/', '/sport', '/sport/planning', '/sport/coach', '/quest', '/quest/quests', '/quest/voortgang', '/lichaam', '/lichaam/invoeren', '/voeding', '/voeding/toevoegen', '/kracht', '/kracht/training', '/kracht/oefeningen', '/kracht/schemas/nieuw', '/duur', '/duur/importeren', '/duur/toevoegen', '/dagboek', '/dagboek/schrijven', '/dagboek/archief', '/groei', '/groei/doelen', '/groei/acties', '/groei/gewoontes', '/groei/systeem', '/kennis', '/kennis/bibliotheek', '/kennis/inzichten', '/kennis/studie', '/kennis/logboek', '/financien', '/financien/transacties', '/financien/budgetten', '/financien/rapportage', '/financien/money-manual', '/financien/beleggingsplan', '/back-up']) {
       await page.goto(`${base}${path}`);
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
@@ -981,7 +1070,7 @@ test('centrale back-up: exporteren, ongeldig bestand weigeren en herstellen', as
   await download.saveAs(exportPath);
   const backup = JSON.parse(await readFile(exportPath, 'utf8')) as { format: string; modules: Record<string, { stores: Record<string, unknown[]> }> };
   expect(backup.format).toBe('personal-ecosystem-backup');
-  expect(Object.keys(backup.modules).sort()).toEqual(['dagboek', 'duur', 'groei', 'hub', 'kracht', 'lichaam', 'sidequest', 'sport', 'voeding']);
+  expect(Object.keys(backup.modules).sort()).toEqual(['dagboek', 'duur', 'financien', 'groei', 'hub', 'kracht', 'lichaam', 'sidequest', 'sport', 'voeding']);
   expect(backup.modules.sport?.stores.activities).toHaveLength(1);
   await expect(page.getByText(/Laatste back-up op dit apparaat: (?!nog niet)/)).toBeVisible();
 
