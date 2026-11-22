@@ -1,6 +1,6 @@
 # ADR 0027 — Persoonlijke financiën en de 10/10-regel
 
-- **Status:** voorgesteld (2026-11-21). Akkoord eigenaar op de richting (2026-11-21); definitief na controle van deze PR.
+- **Status:** geaccepteerd (2026-11-21), na controle van PR 20 (#38)
 - **Besluit-ID:** B-30
 - **Bouwt voort op:** [ADR 0023](0023-modulestructuur-groei-kennis-financien-voetbal-reizen.md), [ADR 0025](0025-notion-import.md), [ADR 0028](0028-gegevens-van-anderen.md)
 - **Herziet deels:** [DATA_OWNERSHIP.md](../../DATA_OWNERSHIP.md) § 1, rijen "Financiën" en "Beleggen" (zie "Conflicten")

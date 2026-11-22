@@ -1,6 +1,6 @@
 # ADR 0025 — Notion-import: herhaalbaar, idempotent en controleerbaar
 
-- **Status:** voorgesteld (2026-11-21). Akkoord eigenaar op de richting (2026-11-21), met de aanvulling dat een import pas "geslaagd" is als ook relaties, historie, bijlagen en Notion-ID's zijn gecontroleerd (§ 11); definitief na controle van deze PR.
+- **Status:** geaccepteerd (2026-11-21), na controle van PR 20 (#38)
 - **Besluit-ID:** B-28
 - **Bouwt voort op:** [ADR 0009](0009-geen-platformkoppelingen-bestandsimport.md) (import via bestanden), [ADR 0020](0020-een-app-met-modules.md) § 3 (back-up en herstel), [ADR 0023](0023-modulestructuur-groei-kennis-financien-voetbal-reizen.md), [ADR 0024](0024-koppelingen-tussen-modules.md)
 - **Herziet deels:** ADR 0020 § 3 — naast "herstel per module" (alles vervangen) komt "samenvoegen" voor imports

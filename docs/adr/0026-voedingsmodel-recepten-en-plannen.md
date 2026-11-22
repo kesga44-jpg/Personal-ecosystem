@@ -1,6 +1,6 @@
 # ADR 0026 — Voeding: ingrediënten, recepten, voedingsplannen en registratie
 
-- **Status:** voorgesteld (2026-11-21). K-D akkoord onder voorwaarde (2026-11-21), zie "Conflicten".
+- **Status:** geaccepteerd (2026-11-21), na controle van PR 20 (#38)
 - **Besluit-ID:** B-29
 - **Bouwt voort op:** [ADR 0020](0020-een-app-met-modules.md) (Voeding als module), [ADR 0008](0008-ai-regelgebaseerd-eerst.md) (regelgebaseerd, geen betaalde AI), [ADR 0023](0023-modulestructuur-groei-kennis-financien-voetbal-reizen.md)
 - **Herziet deels:** de afbakening van Voeding in ADR 0020 (zie "Conflicten")

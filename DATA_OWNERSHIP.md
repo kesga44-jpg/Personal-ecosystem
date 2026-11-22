@@ -46,6 +46,22 @@ Deze lokale databases vervangen of lezen de bestaande opslag van Samen Thuis/Coa
 
 **Regel:** één domein, één eigenaar. Geen tweede kopie van brongegevens. Afgeleide gegevens (bijv. "quest voltooid door training X") verwijzen naar de bron via ID en slaan geen kopie van de training op.
 
+### Besluitronde 4 (2026-11-21): nieuwe modules en verschoven eigenaarschap
+
+Vastgelegd in [ADR 0023](docs/adr/0023-modulestructuur-groei-kennis-financien-voetbal-reizen.md) t/m [ADR 0028](docs/adr/0028-gegevens-van-anderen.md). Deze afspraken gaan voor de tabellen hierboven; de tabellen worden per module bijgewerkt in de PR die die module bouwt.
+
+| Domein | Eigenaar | Opslag (lokaal) | Was | Besluit |
+|---|---|---|---|---|
+| Persoonlijke doelen, vaardigheden, gewoontes, acties, evaluaties, The Ultimate Growth System, 10/10-regel | Groei | `personal-ecosystem-groei` | Doelen en gewoontes: SIDEQUEST | K-A. SIDEQUEST houdt quests, XP en beloningen en verwijst naar Groei. Bestaande SIDEQUEST-doelen en -gewoontes gaan pas over na back-up en bevestiging (stap A7) |
+| Leerbronnen, highlights, inzichten, studieprogramma | Kennis & Ontwikkeling | `personal-ecosystem-groei` (gedeeld met Groei) | — | B-26 |
+| **Persoonlijke** inkomsten, uitgaven, budgetten, spaarpotten, beleggingsplan | Financiën | `personal-ecosystem-financien` | Samen Thuis (financiën en beleggen) | K-B. **Huishoud**financiën, gezamenlijke potjes, verdelingen en vermogensbeheer van het huishouden blijven bij Samen Thuis. Geen gegevens tussen beide |
+| **Persoonlijke** trainerskennis, oefeningen, speelprincipes, tactische inzichten | Voetbal | `personal-ecosystem-voetbal` | Coach (tactiek) | K-C. Alles van een club, team of speler blijft bij Coach. Geen spelersgegevens in Personal Ecosystem (ADR 0028) |
+| Persoonlijke voedingsplannen, recepten, ingrediënten | Voeding | `personal-ecosystem-voeding` (schema 2) | — | K-D, onder voorwaarde: weekmenu en boodschappen blijven bij Samen Thuis; geen automatische koppeling met of wijziging van Samen Thuis zonder afzonderlijke toestemming |
+| Reizen, verblijven, dagplanning | Reizen | `personal-ecosystem-reizen` | — | B-26 |
+| Koppelingen tussen modules | De module van de bron | store `links` per module | — | ADR 0024 |
+
+Personal Ecosystem leest of schrijft niets in Samen Thuis of Coach (V-3). Accountverwijdering en export voor Personal Ecosystem: [ADR 0029](docs/adr/0029-accountverwijdering-export-en-herstelcode.md).
+
 ## 2. Gebruikerseigendom en zichtbaarheid
 
 | Gegevens | Zichtbaar voor | Basis |

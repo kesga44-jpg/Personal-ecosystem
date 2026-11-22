@@ -2,6 +2,7 @@
 
 - **Status:** geaccepteerd (2026-11-07)
 - **Besluit-ID:** V-2
+- **Voor Personal Ecosystem herzien door:** [ADR 0029](0029-accountverwijdering-export-en-herstelcode.md) (2026-11-21): accountverwijdering en volledige export in P-6, zonder de login of Samen Thuis te raken. Voor Samen Thuis en Coach blijft dit ADR ongewijzigd gelden.
 
 ## Context
 

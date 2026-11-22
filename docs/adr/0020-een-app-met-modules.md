@@ -4,6 +4,7 @@
 - **Besluit-ID:** B-17
 - **Wijzigt:** [ADR 0005](0005-hosting-cloudflare-pages.md) (eigen origin per app) voor Hub, Sportapp en SIDEQUEST
 - **Raakt niet:** Samen Thuis en Coach (blijven eigen repo, hosting en opslag)
+- **Aangevuld en deels herzien door (2026-11-21):** [ADR 0023](0023-modulestructuur-groei-kennis-financien-voetbal-reizen.md) (nieuwe modules), [ADR 0024](0024-koppelingen-tussen-modules.md) (koppelingen binnen § 2), [ADR 0025](0025-notion-import.md) (§ 3: samenvoegen naast herstel), [ADR 0026](0026-voedingsmodel-recepten-en-plannen.md) (afbakening Voeding: persoonlijke voedingsplannen; weekmenu en boodschappen blijven in Samen Thuis, zonder koppeling)
 
 ## Context
 

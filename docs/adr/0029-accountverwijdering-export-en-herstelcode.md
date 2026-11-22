@@ -1,6 +1,6 @@
 # ADR 0029 — Accountverwijdering, volledige export en verplichte herstelcode (amendement op ADR 0021 en ADR 0019)
 
-- **Status:** voorgesteld (2026-11-21). Akkoord eigenaar nadat de accountverwijdering expliciet is afgebakend (§ 3) en het opnieuw maken van de herstelcode is aangescherpt (§ 1); definitief na controle van deze PR.
+- **Status:** geaccepteerd (2026-11-21), na controle van PR 20 (#38)
 - **Besluit-ID:** B-32
 - **Herziet deels:**
   - [ADR 0021](0021-accounts-met-eind-tot-eind-versleuteling.md): § 2 herstelcode, § 3 verwijderen, § 6 inhoud van P-6;
