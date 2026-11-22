@@ -5,6 +5,10 @@ Elke app in de monorepo krijgt een eigen sectie zodra die bestaat. Bestaande app
 
 ## [Unreleased]
 
+### Toegevoegd
+
+- `@ecosystem/core` (A4): gedeelde basis voor koppelingen en import, alleen typen en zuivere functies. Het gaat om `ModuleLink` met de relatiecategorieën en hun toegestane combinaties, inclusief het behoud van onbekende categorieën (ADR 0024); de leescontracten `Lookup` en `linksTo`, die alleen `{ id, title, kind }` of ID's, categorie en titel teruggeven; en `ImportOrigin` met `notion_page_id` en `replacement_key` (`rk1`, met vaste testvectoren), de rijkoppeling met status, bevestigen alleen door de eigenaar, en de controles uit ADR 0025 § 11. Nog geen gebruik in de apps, geen opslag en geen import.
+
 ### Gewijzigd
 
 - Documentatie: ADR 0031 geaccepteerd met de besluiten van de eigenaar: vergrendelen na 15 minuten (instelbaar 5–60), kluiswachtwoord opnieuw na sluiten of herladen, vingerafdruk later apart; A4 t/m A9 en de proefimport mogen vóór P-6, de echte import (A10) pas na P-6. Verwijzingen bijgewerkt in ADR 0021, 0025, 0030, het implementatieplan en `docs/accounts/P-1_PROTOTYPE.md`. Geen codewijziging.
