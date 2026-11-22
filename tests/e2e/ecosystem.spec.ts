@@ -34,6 +34,13 @@ for (const [path, text] of [
   ['/duur/instellingen', 'Instellingen'],
   ['/dagboek', 'Hoe was je dag?'],
   ['/dagboek/schrijven', 'Schrijven'],
+  ['/groei', 'Waar groei je naartoe?'],
+  ['/groei/doelen', 'Doelen'],
+  ['/groei/acties', 'Acties'],
+  ['/groei/gewoontes', 'Gewoontes'],
+  ['/groei/vaardigheden', 'Vaardigheden'],
+  ['/groei/evaluaties', 'Evaluaties'],
+  ['/groei/systeem', 'Groeisysteem'],
   ['/back-up', 'Back-up']
 ] as const) {
   test(`Personal Ecosystem laadt ${path} zonder fouten`, async ({ page }) => {
@@ -201,6 +208,86 @@ test('Dagboek: stemming verplicht, notitie opslaan, zoeken en dashboard ziet all
   await expect(widget).not.toContainText('fietstocht');
   await expect(widget).not.toContainText('🙂');
   expect(errors).toEqual([]);
+});
+
+test('Groei: doel met subdoel, actie, gewoonte, vaardigheid en 10/10; blijft bewaard na herladen', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto(`${base}/groei/doelen?nieuw=1`);
+  await page.getByRole('button', { name: 'Doel opslaan' }).click();
+  await expect(page.getByRole('alert')).toContainText('titel');
+  await page.getByLabel('Titel', { exact: true }).fill('Marathon lopen');
+  await page.getByLabel('Levensgebied').fill('Gezondheid');
+  await page.getByLabel('Voortgang (%)').fill('20');
+  await page.getByRole('button', { name: 'Doel opslaan' }).click();
+  await page.getByRole('link', { name: 'Marathon lopen' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Marathon lopen' })).toBeVisible();
+
+  await page.getByRole('link', { name: '＋ Subdoel' }).click();
+  await page.getByLabel('Titel', { exact: true }).fill('Halve marathon');
+  await expect(page.getByLabel('Subdoel van')).toHaveValue(/.+/);
+  await page.getByRole('button', { name: 'Doel opslaan' }).click();
+  await page.getByLabel('Zoeken').fill('halve');
+  await expect(page.getByText('Subdoel van Marathon lopen')).toBeVisible();
+
+  await page.goto(`${base}/groei/doelen`);
+  await page.getByRole('link', { name: 'Marathon lopen' }).click();
+  await page.getByRole('link', { name: '＋ Actie' }).click();
+  await page.getByLabel('Actie', { exact: true }).fill('Trainingsschema kiezen');
+  await page.getByRole('button', { name: 'Actie opslaan' }).click();
+  await page.getByLabel('Status van Trainingsschema kiezen').selectOption('klaar');
+  await page.getByLabel('Tonen').selectOption('klaar');
+  await expect(page.getByText('Trainingsschema kiezen')).toBeVisible();
+
+  await page.goto(`${base}/groei/gewoontes`);
+  await page.getByLabel('Gewoonte', { exact: true }).fill('10 minuten lezen');
+  await page.getByRole('button', { name: 'Gewoonte toevoegen' }).click();
+  await page.getByRole('button', { name: 'Vandaag afvinken' }).click();
+  await expect(page.getByRole('button', { name: '✓ Vandaag gedaan' })).toBeVisible();
+
+  await page.goto(`${base}/groei/vaardigheden`);
+  await page.getByLabel('Vaardigheid', { exact: true }).fill('Hardlooptechniek');
+  await page.getByLabel('Huidig niveau (1–10)').fill('4');
+  await page.getByRole('button', { name: 'Marathon lopen' }).click();
+  await page.getByRole('button', { name: 'Vaardigheid opslaan' }).click();
+  await expect(page.getByText('Niveau 4/10 → 5/10 · Marathon lopen')).toBeVisible();
+
+  await page.goto(`${base}/groei/systeem`);
+  await expect(page.getByText('1-1-5-3-1-35-30-5-10-10')).toBeVisible();
+  await expect(page.getByLabel('Betekenis van 35')).toHaveValue('');
+  await page.getByLabel('Inkomen (€)').fill('3000');
+  await page.getByLabel('Anderen helpen (€)').fill('300');
+  await page.getByLabel('Ontwikkeling (€)').fill('150');
+  await page.getByRole('button', { name: 'Maand opslaan' }).click();
+  await expect(page.getByRole('table')).toContainText('10%');
+  await expect(page.getByRole('table')).toContainText('5%');
+
+  await page.reload();
+  await page.goto(`${base}/groei`);
+  await expect(page.locator('.metric').filter({ hasText: 'Actieve doelen' }).locator('.metric-value')).toHaveText('2');
+  await expect(page.locator('.metric').filter({ hasText: 'Gewoontes vandaag' }).locator('.metric-value')).toHaveText('1/1');
+  await page.getByRole('link', { name: 'Marathon lopen' }).click();
+  await expect(page.getByText('Halve marathon')).toBeVisible();
+  await expect(page.getByText('Hardlooptechniek')).toBeVisible();
+  await expect(page.locator('.metric').filter({ hasText: 'Acties' }).locator('.metric-value')).toHaveText('1/1');
+  expect(errors).toEqual([]);
+});
+
+test('Groei: doel met subdoel kan niet worden verwijderd; actie wel, na bevestiging', async ({ page }) => {
+  await page.goto(`${base}/groei/doelen?nieuw=1`);
+  await page.getByLabel('Titel', { exact: true }).fill('Hoofddoel');
+  await page.getByRole('button', { name: 'Doel opslaan' }).click();
+  await page.getByRole('link', { name: 'Hoofddoel' }).click();
+  await page.getByRole('link', { name: '＋ Subdoel' }).click();
+  await page.getByLabel('Titel', { exact: true }).fill('Onderdeel');
+  await page.getByRole('button', { name: 'Doel opslaan' }).click();
+  await page.getByRole('link', { name: 'Hoofddoel' }).click();
+  await expect(page.getByText('Verplaats of verwijder die eerst')).toBeVisible();
+  await page.goto(`${base}/groei/acties?nieuw=1`);
+  await page.getByLabel('Actie', { exact: true }).fill('Weg ermee');
+  await page.getByRole('button', { name: 'Actie opslaan' }).click();
+  page.once('dialog', (dialog) => void dialog.accept());
+  await page.getByRole('button', { name: 'Actie Weg ermee verwijderen' }).click();
+  await expect(page.getByText('Geen acties', { exact: true })).toBeVisible();
 });
 
 test('Dagboek: notitie verwijderen na bevestiging', async ({ page }) => {
@@ -810,7 +897,7 @@ test('een Sport-back-up van schema 1 (oud adres) is nog te herstellen', async ({
 for (const width of [375, 768, 1280]) {
   test(`Personal Ecosystem past op ${width}px zonder horizontaal scrollen`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    for (const path of ['/', '/sport', '/sport/planning', '/sport/coach', '/quest', '/quest/quests', '/quest/voortgang', '/lichaam', '/lichaam/invoeren', '/voeding', '/voeding/toevoegen', '/kracht', '/kracht/training', '/kracht/oefeningen', '/kracht/schemas/nieuw', '/duur', '/duur/importeren', '/duur/toevoegen', '/dagboek', '/dagboek/schrijven', '/dagboek/archief', '/back-up']) {
+    for (const path of ['/', '/sport', '/sport/planning', '/sport/coach', '/quest', '/quest/quests', '/quest/voortgang', '/lichaam', '/lichaam/invoeren', '/voeding', '/voeding/toevoegen', '/kracht', '/kracht/training', '/kracht/oefeningen', '/kracht/schemas/nieuw', '/duur', '/duur/importeren', '/duur/toevoegen', '/dagboek', '/dagboek/schrijven', '/dagboek/archief', '/groei', '/groei/doelen', '/groei/acties', '/groei/gewoontes', '/groei/systeem', '/back-up']) {
       await page.goto(`${base}${path}`);
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
@@ -832,7 +919,7 @@ test('centrale back-up: exporteren, ongeldig bestand weigeren en herstellen', as
   await download.saveAs(exportPath);
   const backup = JSON.parse(await readFile(exportPath, 'utf8')) as { format: string; modules: Record<string, { stores: Record<string, unknown[]> }> };
   expect(backup.format).toBe('personal-ecosystem-backup');
-  expect(Object.keys(backup.modules).sort()).toEqual(['dagboek', 'duur', 'hub', 'kracht', 'lichaam', 'sidequest', 'sport', 'voeding']);
+  expect(Object.keys(backup.modules).sort()).toEqual(['dagboek', 'duur', 'groei', 'hub', 'kracht', 'lichaam', 'sidequest', 'sport', 'voeding']);
   expect(backup.modules.sport?.stores.activities).toHaveLength(1);
   await expect(page.getByText(/Laatste back-up op dit apparaat: (?!nog niet)/)).toBeVisible();
 
