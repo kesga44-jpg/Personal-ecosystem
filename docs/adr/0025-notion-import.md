@@ -250,7 +250,7 @@ Het rapport bevat titels, maar geen bedragen of gezondheidswaarden. Het kan word
 ### 7. Wat niet wordt geïmporteerd
 
 - Generieke templates, voorbeelddata en voorbeeld-cv's van anderen;
-- lege placeholders, zoals de 3 lege rijen in het Five-Step Study Program;
+- lege placeholders;
 - spelersgegevens uit O23;
 - financiële gegevens van Daphne of gezamenlijke huishoudadministratie (ADR 0028);
 - pagina's in een databasemap zonder rij in de CSV (§ 3e).
