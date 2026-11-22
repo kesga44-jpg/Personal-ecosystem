@@ -58,7 +58,8 @@ Vastgelegd in [ADR 0023](docs/adr/0023-modulestructuur-groei-kennis-financien-vo
 | **Persoonlijke** trainerskennis, oefeningen, speelprincipes, tactische inzichten | Voetbal | `personal-ecosystem-voetbal` | Coach (tactiek) | K-C. Alles van een club, team of speler blijft bij Coach. Geen spelersgegevens in Personal Ecosystem (ADR 0028) |
 | Persoonlijke voedingsplannen, recepten, ingrediënten | Voeding | `personal-ecosystem-voeding` (schema 2) | — | K-D, onder voorwaarde: weekmenu en boodschappen blijven bij Samen Thuis; geen automatische koppeling met of wijziging van Samen Thuis zonder afzonderlijke toestemming |
 | Reizen, verblijven, dagplanning | Reizen | `personal-ecosystem-reizen` | — | B-26 |
-| Koppelingen tussen modules | De module van de bron | store `links` per module | — | ADR 0024 |
+| Koppelingen tussen modules met **verschillende** fysieke databases (`EcosystemModuleLink`) | De module van de bron | store `links` per module | — | ADR 0024 § 1 |
+| Relaties tussen Groei en Kennis & Ontwikkeling | De bronmodule, binnen de gedeelde database | ID-velden in `personal-ecosystem-groei`, geen koppelrecord | — | ADR 0024 § 6 |
 
 Personal Ecosystem leest of schrijft niets in Samen Thuis of Coach (V-3). Accountverwijdering en export voor Personal Ecosystem: [ADR 0029](docs/adr/0029-accountverwijdering-export-en-herstelcode.md).
 

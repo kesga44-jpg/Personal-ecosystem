@@ -88,7 +88,7 @@ Akkoord van de eigenaar op de richting uit het analyse- en ontwerprapport (fase 
 | # | Besluit | Uitkomst | Uitwerking | ADR |
 |---|---|---|---|---|
 | B-26 | Modulestructuur | ✅ Geaccepteerd (2026-11-21) | Groei, Kennis & Ontwikkeling (gedeelde database), Financiën, Voetbal, Reizen; geen extra apps | [0023](docs/adr/0023-modulestructuur-groei-kennis-financien-voetbal-reizen.md) |
-| B-27 | Koppelingen tussen modules | ✅ Geaccepteerd (2026-11-21) | Koppelrecord bij de bron, met uitbreidbare relatiecategorie; Lichaam en Dagboek nooit als doel | [0024](docs/adr/0024-koppelingen-tussen-modules.md) |
+| B-27 | Koppelingen tussen modules | ✅ Geaccepteerd (2026-11-21) | Koppelrecord (`EcosystemModuleLink`) bij de bron, alleen tussen verschillende fysieke databases, met uitbreidbare relatiecategorie; Groei ↔ Kennis via ID-velden; gesloten set soorten (`doel`, `vaardigheid`, `actie`, `quest`, `inzicht`); Lichaam en Dagboek nooit als doel (aangevuld 2026-11-22) | [0024](docs/adr/0024-koppelingen-tussen-modules.md) |
 | B-28 | Notion-import | ✅ Geaccepteerd (2026-11-21) | Herhaalbaar en idempotent; Notion-ID en herkomst bewaard; conflicten; overzicht; droogloop en proefimport; back-up vooraf; nooit verwijderen | [0025](docs/adr/0025-notion-import.md) |
 | B-29 | Voeding | ✅ Geaccepteerd (2026-11-21) | Schema 2: ingrediënten (bestaande `products`), recepten, plannen; registratie met kopie; planner met voorkeuren en uitsluitingen, zonder AI | [0026](docs/adr/0026-voedingsmodel-recepten-en-plannen.md) |
 | B-30 | Persoonlijke financiën | ✅ Geaccepteerd (2026-11-21) | Eén transactiemodel in centen; gepland en werkelijk apart; 10/10-regel in Groei | [0027](docs/adr/0027-persoonlijke-financien-en-10-10-regel.md) |
