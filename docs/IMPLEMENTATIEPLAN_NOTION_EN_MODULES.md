@@ -39,7 +39,7 @@
 | ~~A13~~ | Vervallen (2026-11-22): geen Voetbal-module. Persoonlijke voetbalkennis gaat via A6 en A9 naar Kennis, categorie Voetbal | — | — | — |
 | ~~A14~~ | Vervallen (2026-11-22): Reizen wordt niet gebouwd en niet geïmporteerd | — | — | — |
 | A15 | PR: overige Notion-bronnen uit de inventaris (Fitness, Workout Tracker, Habit Tracker) naar bestaande modules, waar de inventaris dat aanwijst | Claude | A3, A8 | M |
-| A16 | PR: dashboard uitbreiden — prioriteiten, actieve doelen en acties, gewoontes, voortgang uit Kennis, recente inzichten, financiële samenvatting en maaltijdplanning; per blok aan of uit | Claude | A5, A6 (later A11, A12) | M |
+| A16 | PR: dashboard uitbreiden — prioriteiten, actieve doelen en acties, gewoontes, voortgang uit Kennis, recente inzichten, financiële samenvatting en maaltijdplanning; per blok aan of uit. Blokken Groei, Kennis, Financiën en Maaltijdplanning (PR 42); prioriteiten tonen als tellers, geen titels | Claude | A5, A6 (later A11, A12) | M |
 
 Elke import na A10 volgt dezelfde stappen: proefimport door Claude in een tijdelijke browser → overzicht met de vijf controles uit ADR 0025 § 11 → akkoord → de eigenaar importeert (pas na P-6) → controle na de import.
 
