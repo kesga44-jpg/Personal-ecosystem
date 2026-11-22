@@ -84,3 +84,11 @@ Er gaan geen gegevens tussen beide, in geen enkele richting, zonder apart beslui
   - controle van inkomsten tegen het Income overview;
   - de 10/10-berekening.
 - Geen externe diensten: geen bankkoppeling of koersen. Een bankimport (CSV) is een later, apart besluit.
+
+## Wijzigingen na acceptatie
+
+- **2026-11-22**, K-B opnieuw bevestigd door de eigenaar (PR 36), ook tegenover de scopebeschrijving in de masteropdracht. Uitgangspunt: **Personal Ecosystem bepaalt wat je financiële strategie is; Samen Thuis registreert wat er daadwerkelijk met je geld en vermogen gebeurt.**
+  - **Investment Plan in Personal Ecosystem** (strategisch planningsinstrument): beleggingsstrategie en uitgangspunten, financiële doelen en tijdshorizon, gewenste assetallocatie, risicoprofiel, periodiek inlegplan, scenarioanalyses, beslisnotities en evaluaties, en voortgang richting de strategische doelen.
+  - **Personal Ecosystem registreert niet:** werkelijke portefeuille of posities, aankopen, verkopen of andere transacties, werkelijke inlegregistratie, actuele portefeuillewaardes en gerealiseerde rendementen. Die gegevens en het werkelijke vermogensbeheer blijven bij Samen Thuis.
+  - Geen dubbele vermogensadministratie, geen koppeling en geen wijziging in Samen Thuis. Notion-databases met posities of transacties worden niet geïmporteerd.
+  - Acceptatiecriterium voor A12: de stores van Financiën bevatten geen velden voor posities, transacties in effecten, koersen of gerealiseerd rendement; een test controleert dat.

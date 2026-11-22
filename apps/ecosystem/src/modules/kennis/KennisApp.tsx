@@ -60,7 +60,6 @@ interface Ref {
   id: string;
   title: string;
 }
-
 interface Data {
   sources: Source[];
   creators: Creator[];
@@ -998,4 +997,3 @@ function CreatorsPage({ data, run }: { data: Data; run: Run }) {
     </div>
   );
 }
-
