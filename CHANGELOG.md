@@ -7,6 +7,7 @@ Elke app in de monorepo krijgt een eigen sectie zodra die bestaat. Bestaande app
 
 ### Gewijzigd
 
+- Documentatie: ADR 0031 geaccepteerd met de besluiten van de eigenaar: vergrendelen na 15 minuten (instelbaar 5–60), kluiswachtwoord opnieuw na sluiten of herladen, vingerafdruk later apart; A4 t/m A9 en de proefimport mogen vóór P-6, de echte import (A10) pas na P-6. Verwijzingen bijgewerkt in ADR 0021, 0025, 0030, het implementatieplan en `docs/accounts/P-1_PROTOTYPE.md`. Geen codewijziging.
 - Documentatie: ADR 0030 geaccepteerd met aanvullingen van de eigenaar: tijdelijk offline alleen binnen een bestaande sessie, met zichtbare syncstatus; uitloggen wist pas na door de server bevestigde sync, zonder conflicten en na bevestiging; alleen de inlogidentiteit wordt gedeeld met Samen Thuis. Nieuw: ADR 0031 (voorgesteld), lokale versleuteling in rust als voorwaarde voor P-6. Geen codewijziging.
 - Documentatie: ADR 0030 (voorgesteld): Personal Ecosystem vraagt vanaf P-6 een account, net als Samen Thuis en Coach. Zelfde login als Samen Thuis, TOTP en een geopende kluis; geen lokale modus meer; lokale gegevens van vóór het account gaan alleen na bevestiging mee. Tot P-6 verandert er niets. Geen codewijziging.
 - Documentatie: ADR 0023 t/m 0029 geaccepteerd (na PR 20, #38). ADR 0019, 0020 en 0021 verwijzen naar de nieuwe besluiten; `DATA_OWNERSHIP.md` heeft een paragraaf over het verschoven eigenaarschap (K-A t/m K-D). Implementatieplan: het inventarisrapport (A2) gaat alleen privé naar de eigenaar, niet in de openbare repository. Geen codewijziging.
