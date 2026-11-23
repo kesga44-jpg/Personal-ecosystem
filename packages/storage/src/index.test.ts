@@ -52,6 +52,20 @@ describe('app-local IndexedDB', () => {
     database.close();
   });
 
+  it('closes its connection when another tab requests deletion', async () => {
+    const database = await openLocalDatabase(config);
+    const deletion = new Promise<void>((resolve, reject) => {
+      const request = indexedDB.deleteDatabase(config.databaseName);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+      request.onblocked = () => reject(new Error('Local database deletion was blocked.'));
+    });
+
+    await expect(deletion).resolves.toBeUndefined();
+    await expect(database.list('items')).rejects.toThrow('Local database is closed.');
+    database.close();
+  });
+
   it('inserts a record atomically only when its ID is absent', async () => {
     const database = await openLocalDatabase(config);
     const original = { id: 'one', title: 'Original' };

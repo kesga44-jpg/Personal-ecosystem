@@ -89,6 +89,11 @@ describe('versleutelde lokale opslag', () => {
     dek = correctKey;
   }, 30_000);
 
+  it('closes its encrypted IndexedDB connection when deletion is requested', async () => {
+    await deleteDatabase(encryptedDatabaseName(config.databaseName));
+    await expect(database!.get('items', 'missing')).rejects.toThrow('Versleutelde lokale database is gesloten.');
+  });
+
   it('maakt putIfAbsent veilig herhaalbaar en bewaart verwijderingen als versleutelde tombstones', async () => {
     const first = { id: 'stable-id', title: 'original' };
     const results = await Promise.all([
