@@ -13,7 +13,7 @@ import {
   unlockWithRecoveryCode,
   type VaultRecord
 } from './crypto';
-import { MemoryServer, canonicalJson, emptySyncState, resolveConflict, syncOnce, type LocalAdapter, type LocalRecord, type SyncState } from './sync';
+import { MemoryServer, RetryableSyncError, canonicalJson, emptySyncState, resolveConflict, syncOnce, syncWithRetry, type LocalAdapter, type LocalRecord, type SyncServer, type SyncState } from './sync';
 
 // Prototype ADR 0021, poort P-1. Echte Web Crypto (Node) met het echte minimum van 600.000 PBKDF2-iteraties.
 
@@ -228,4 +228,97 @@ describe('synchronisatie tussen apparaten', () => {
     const skip = await encryptRecord(dek, 'sport', 'id1', 3, { id: 'a', value: 3 });
     expect((await server.put(skip, 1)).ok).toBe(false);
   });
+});
+
+describe('sync-herstel', () => {
+  it('herstelt een verloren schrijfbevestiging zonder een geaccepteerd record dubbel te schrijven', async () => {
+    const memory = new MemoryServer();
+    let loseFirstAcknowledgement = true;
+    const server: SyncServer = {
+      pull: (since) => memory.pull(since),
+      async put(item, expectedVersion) {
+        const result = await memory.put(item, expectedVersion);
+        if (loseFirstAcknowledgement) {
+          loseFirstAcknowledgement = false;
+          throw new RetryableSyncError('Tijdelijke netwerkonderbreking.');
+        }
+        return result;
+      }
+    };
+    const local = device([
+      { module: 'sport', id: 'run-1', value: { minutes: 30 } },
+      { module: 'dagboek', id: 'entry-1', value: { text: 'synthetische testnotitie' } }
+    ]);
+    const delays: number[] = [];
+
+    const result = await syncWithRetry({ dek, server, local, state: emptySyncState() }, async (milliseconds) => {
+      delays.push(milliseconds);
+    });
+
+    expect(delays).toEqual([250]);
+    expect(result).toMatchObject({ pushed: 1, pulled: 0, newConflicts: 0 });
+    expect(memory.dump()).toHaveLength(2);
+    expect(memory.dump().map((item) => item.version)).toEqual([1, 1]);
+    expect(Object.values(result.state.entries).map((entry) => entry.version)).toEqual([1, 1]);
+  }, 30_000);
+
+  it('laat opslagfouten zichtbaar en herstelt op een volgende syncronde zonder de cursor te verliezen', async () => {
+    const server = new MemoryServer();
+    const remote = await encryptRecord(dek, 'sport', 'remote-item', 1, { id: 'remote-1', value: { minutes: 45 } });
+    await server.put(remote, 0);
+    const stored = device();
+    let failWrite = true;
+    const local: LocalAdapter = {
+      list: () => stored.list(),
+      async apply(record) {
+        if (failWrite) {
+          failWrite = false;
+          throw new Error('IndexedDB write failed.');
+        }
+        await stored.apply(record);
+      }
+    };
+    const state = emptySyncState();
+    const delays: number[] = [];
+
+    await expect(syncWithRetry({ dek, server, local, state }, async (milliseconds) => {
+      delays.push(milliseconds);
+    })).rejects.toThrow('IndexedDB write failed');
+    expect(delays).toEqual([]);
+    expect(state.cursor).toBe(0);
+
+    const recovered = await syncWithRetry({ dek, server, local, state }, async (milliseconds) => {
+      delays.push(milliseconds);
+    });
+    expect(recovered).toMatchObject({ pulled: 1, newConflicts: 0, state: { cursor: 1 } });
+    expect(value(stored, 'sport', 'remote-1')).toEqual({ minutes: 45 });
+    expect(delays).toEqual([]);
+  }, 30_000);
+
+  it('begrenset retries tot drie pogingen en geeft de laatste transportfout door', async () => {
+    const server: SyncServer = {
+      async pull() {
+        throw new RetryableSyncError('Netwerk niet beschikbaar.');
+      },
+      async put() {
+        throw new Error('Niet bereikbaar.');
+      }
+    };
+    const delays: number[] = [];
+    let attempts = 0;
+    const countingServer: SyncServer = {
+      async pull(since) {
+        attempts += 1;
+        return server.pull(since);
+      },
+      put: (item, expectedVersion) => server.put(item, expectedVersion)
+    };
+
+    await expect(syncWithRetry({ dek, server: countingServer, local: device(), state: emptySyncState() }, async (milliseconds) => {
+      delays.push(milliseconds);
+    })).rejects.toThrow('Netwerk niet beschikbaar');
+
+    expect(attempts).toBe(3);
+    expect(delays).toEqual([250, 500]);
+  }, 30_000);
 });
