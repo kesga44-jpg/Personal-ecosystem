@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { LocalExport } from '@ecosystem/storage';
-import { BACKUP_FORMAT, canonicalJson, createBackup, planRestore, sha256Hex, type BackupModuleId } from './backup';
+import { BACKUP_FORMAT, canonicalJson, createBackup, planRestore, sha256Hex, validateCompleteExports, type BackupModuleId } from './backup';
 
 function localExport(appId: string, stores: Record<string, { id: string }[]>): LocalExport {
   return { format: 'personal-ecosystem-local-data', appId, schemaVersion: 1, exportedAt: '2026-11-16T10:00:00.000Z', stores };
@@ -35,6 +35,25 @@ describe('createBackup', () => {
     expect(backup.createdAt).toBe('2026-11-16T12:00:00.000Z');
     expect(Object.keys(backup.modules)).toEqual(['hub', 'sport', 'sidequest', 'lichaam', 'dagboek', 'voeding', 'kracht', 'duur', 'groei', 'financien']);
     expect(backup.checksum).toBe(await sha256Hex(canonicalJson(exports)));
+  });
+
+  it('weigert een incomplete moduleverzameling of een verkeerd module-eigenaarschap', async () => {
+    const { financien: _financien, ...incomplete } = exports;
+    await expect(createBackup(incomplete as Record<BackupModuleId, LocalExport>)).rejects.toThrow('mist modules');
+
+    await expect(createBackup({
+      ...exports,
+      sport: { ...exports.sport, appId: 'sidequest' }
+    })).rejects.toThrow('Sport: de export heeft ongeldige metadata');
+  });
+
+  it('controleert alle domeinen voordat een export wordt geaccepteerd', () => {
+    const validators = accept();
+    validateCompleteExports(exports, validators);
+    for (const id of Object.keys(exports) as BackupModuleId[]) expect(validators[id]).toHaveBeenCalledOnce();
+
+    validators.voeding.mockImplementation(() => { throw new Error('ongeldig recept'); });
+    expect(() => validateCompleteExports(exports, validators)).toThrow('Voeding: ongeldig recept');
   });
 });
 

@@ -7,6 +7,7 @@ Elke app in de monorepo krijgt een eigen sectie zodra die bestaat. Bestaande app
 
 ### Toegevoegd
 
+- P-6 lokaal: centrale export valideert alle tien module-exporten en domeinen en houdt een gedeelde IndexedDB-mutatievergrendeling vast tijdens de multi-module snapshot. Bij exportfouten wordt geen bestand aangeboden; browsers zonder Web Locks krijgen geen onjuiste consistentieclaim.
 - P-6 lokaal (ADR 0021, 0029, 0030 en 0031), eerste stap: versleutelde IndexedDB-adapter met willekeurige record-ID's, runtime-sleutelleverancier, tombstones, expliciete export/herstel en tests met Web Crypto. Nog niet aangesloten op de app of bestaande databases; geen account, productieconfiguratie of live sync.
 - P-6 lokaal: voeg begrensde retries toe voor expliciet tijdelijke sync-transportfouten. Een volgende ronde herstelt gedeeltelijk opgeslagen wijzigingen via pull en versiecontrole; opslag- en validatiefouten blijven zichtbaar en worden niet stil herhaald. Alleen lokale testadapters, geen P-5-autorisatie of live transport.
 - P-6 lokaal: voeg de testbare afmeldbarrière uit ADR 0030/0031 toe. Afmelden blokkeert bij ongeldige sessie, ontbrekende AAL2, niet-bevestigde wijzigingen, conflicten of een lopende sync, maar biedt export aan zonder lokale data te wissen. Na syncbevestiging volgen exportkeuze, gebruikersbevestiging, kluisvergrendeling, lokale PE-datawissing en afmelden in vaste volgorde. Nog niet aangesloten op de app of een server-RPC.

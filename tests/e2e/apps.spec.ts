@@ -170,6 +170,7 @@ test('a failed habit check can be retried without duplicate points', async ({ pa
   await page.getByRole('button', { name: '＋ Gewoonte maken' }).click();
   await page.getByLabel('Gewoonte').fill('Retry habit');
   await page.getByRole('button', { name: 'Gewoonte opslaan' }).click();
+  await expect(page.getByText('Retry habit')).toBeVisible();
   await failNextIndexedDbWrite(page);
 
   await page.getByRole('button', { name: 'Vink vandaag af' }).click();

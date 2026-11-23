@@ -1,4 +1,5 @@
 import { validateLocalExport, type LocalDatabase, type LocalDatabaseConfig, type LocalExport, type RecordValue } from './index';
+import { withDatabaseMutationLock } from './coordination';
 
 export interface EncryptedRecord {
   module: string;
@@ -237,28 +238,28 @@ export async function openEncryptedLocalDatabase(
     async put<T extends RecordValue>(store: string, value: T): Promise<void> {
       assertStore(store);
       if (!validRecord(value)) throw new Error('Versleutelde lokale records vereisen een niet-lege ID.');
-      await lock(encryptedDatabaseLockName(config.databaseName), async () => {
+      await withDatabaseMutationLock(() => lock(encryptedDatabaseLockName(config.databaseName), async () => {
         assertStore(store);
         const found = await find(store, value.id);
         const envelope = await encode(store, value, found?.envelope);
         await writeEnvelope(store, envelope);
-      });
+      }));
     },
     async putIfAbsent<T extends RecordValue>(store: string, value: T): Promise<boolean> {
       assertStore(store);
       if (!validRecord(value)) throw new Error('Versleutelde lokale records vereisen een niet-lege ID.');
-      return lock(encryptedDatabaseLockName(config.databaseName), async () => {
+      return withDatabaseMutationLock(() => lock(encryptedDatabaseLockName(config.databaseName), async () => {
         assertStore(store);
         const found = await find(store, value.id);
         if (found && !found.deleted) return false;
         const envelope = await encode(store, value, found?.envelope);
         await writeEnvelope(store, envelope, !found);
         return true;
-      });
+      }));
     },
     async remove(store: string, id: string): Promise<void> {
       assertStore(store);
-      await lock(encryptedDatabaseLockName(config.databaseName), async () => {
+      await withDatabaseMutationLock(() => lock(encryptedDatabaseLockName(config.databaseName), async () => {
         assertStore(store);
         const found = await find(store, id);
         if (!found || found.deleted) return;
@@ -277,7 +278,7 @@ export async function openEncryptedLocalDatabase(
           throw new Error('De versleutelde opslagcode leverde een ongeldig verwijderrecord op.');
         }
         await writeEnvelope(store, tombstone);
-      });
+      }));
     },
     async exportData(): Promise<LocalExport> {
       if (closed) throw new Error('Versleutelde lokale database is gesloten.');
@@ -302,7 +303,7 @@ export async function openEncryptedLocalDatabase(
       assertStore(config.stores[0]!);
       options.keyProvider.getKey();
       const backup = validateLocalExport(config, input);
-      await lock(encryptedDatabaseLockName(config.databaseName), async () => {
+      await withDatabaseMutationLock(() => lock(encryptedDatabaseLockName(config.databaseName), async () => {
         if (closed) throw new Error('Versleutelde lokale database is gesloten.');
         const envelopes = await Promise.all(config.stores.flatMap((store) =>
           backup.stores[store]!.map(async (record) =>
@@ -320,7 +321,7 @@ export async function openEncryptedLocalDatabase(
           await done.catch(() => undefined);
           throw cause;
         }
-      });
+      }));
     },
     close(): void {
       closed = true;
