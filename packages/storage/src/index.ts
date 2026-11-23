@@ -160,6 +160,10 @@ function parseExport(config: LocalDatabaseConfig, input: unknown): LocalExport {
   return { ...(backup as LocalExport), schemaVersion: config.version, stores };
 }
 
+export function validateLocalExport(config: LocalDatabaseConfig, input: unknown): LocalExport {
+  return parseExport(config, input);
+}
+
 export async function openLocalDatabase(config: LocalDatabaseConfig): Promise<LocalDatabase> {
   if (typeof indexedDB === 'undefined') {
     throw new Error('Local database storage is not available in this browser.');
@@ -272,3 +276,6 @@ export async function openLocalDatabase(config: LocalDatabaseConfig): Promise<Lo
     }
   };
 }
+
+export { encryptedDatabaseLockName, encryptedDatabaseName, openEncryptedLocalDatabase } from './encrypted';
+export type { EncryptedDatabaseOptions, EncryptedRecord, EncryptedRecordCodec, KeyProvider, StorageLock } from './encrypted';
