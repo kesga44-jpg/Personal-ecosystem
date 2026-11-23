@@ -14,6 +14,8 @@ Elke stap is een afzonderlijke, gestapelde PR met gerichte tests, documentatie e
 
 ## Opslagcontract
 
+- De centrale export neemt `withConsistentDatabaseSnapshot` over alle module-databases. Normale en versleutelde IndexedDB-writes en restores gebruiken dezelfde gedeelde Web Lock; daardoor kunnen geen wijzigingen tussen module-exporten worden toegepast. Als een browser geen Web Locks ondersteunt, weigert de centrale export een consistentieclaim.
+- Voor downloaden moeten alle tien module-exporten aanwezig zijn, bij de juiste module horen en door hun domeinvalidators komen. Een fout levert geen download of successtatus op; het controlegetal detecteert daarna wijzigingen aan het bestand, maar is geen handtekening of bewijs van authenticiteit.
 - De huidige `openLocalDatabase`-adapter blijft de pre-P-6 lokale opslag tijdens de overgang. Hij is niet de definitieve opslag voor een ingeschakelde P-6-sessie.
 - `openEncryptedLocalDatabase` gebruikt een afzonderlijke database met `-encrypted` achter de databasenaam. Store-namen zijn zichtbaar; record-ID en inhoud zitten in het versleutelde payload.
 - Ruwe records bevatten module, willekeurige `itemId`, versie, IV, ciphertext en tombstone-indicator. Een `CryptoKey` wordt niet opgeslagen of door de adapter vastgehouden; iedere bewerking vraagt de actieve sleutel bij de runtimeprovider op.

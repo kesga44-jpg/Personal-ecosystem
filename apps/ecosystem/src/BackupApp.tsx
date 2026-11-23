@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { downloadJson } from '@ecosystem/core';
-import { openLocalDatabase, parseLocalBackup, type LocalDatabase, type LocalExport } from '@ecosystem/storage';
+import { openLocalDatabase, parseLocalBackup, withConsistentDatabaseSnapshot, type LocalDatabase, type LocalExport } from '@ecosystem/storage';
 import { AppFrame, Button, Card, ErrorBanner, Field, PageHeader, StatusPill, type ModuleLink } from '@ecosystem/ui';
 import { databaseConfig as hubConfig } from '@ecosystem/hub/App';
 import { databaseConfig as sportConfig } from '@ecosystem/sportapp/App';
@@ -30,6 +30,7 @@ import {
   createBackup,
   moduleLabel,
   planRestore,
+  validateCompleteExports,
   type BackupModuleId,
   type RestorePlan
 } from './backup';
@@ -100,11 +101,12 @@ function BackupPage() {
     setMessage('');
     setBusy(true);
     try {
-      const exports = await withDatabases(async (databases) => {
+      const exports = await withConsistentDatabaseSnapshot(() => withDatabases(async (databases) => {
         const result: Partial<Record<BackupModuleId, LocalExport>> = {};
         for (const id of MODULE_IDS) result[id] = await databases[id].exportData();
         return result as Record<BackupModuleId, LocalExport>;
-      });
+      }));
+      validateCompleteExports(exports, domainValidators);
       const now = new Date();
       downloadJson(backupFileName(now), await createBackup(exports, now));
       writeLastExport(now.toISOString());
@@ -172,7 +174,7 @@ function BackupPage() {
       <PageHeader
         eyebrow="Jouw gegevens"
         title="Back-up"
-        description="Eén bestand met de gegevens van Dashboard, Sport, SIDEQUEST, Lichaam, Dagboek, Voeding, Kracht, Duur, Groei, Kennis en Financiën. Je gegevens staan alleen op dit apparaat; maak regelmatig een back-up. Het bestand bevat ook gezondheidsgegevens, je dagboek, je GPS-routes en je persoonlijke financiën: bewaar het veilig."
+        description="Eén bestand met de gegevens van Dashboard, Sport, SIDEQUEST, Lichaam, Dagboek, Voeding, Kracht, Duur, Groei, Kennis en Financiën. Tijdens het maken worden wijzigingen tijdelijk gepauzeerd zodat alle modules uit één stabiel moment komen. Je gegevens staan alleen op dit apparaat; maak regelmatig een back-up. Het bestand bevat ook gezondheidsgegevens, je dagboek, je GPS-routes en je persoonlijke financiën: bewaar het veilig."
       />
       {error && <ErrorBanner message={error} />}
       {message && <p role="status"><StatusPill tone="good">{message}</StatusPill></p>}

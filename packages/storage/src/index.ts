@@ -1,3 +1,5 @@
+import { withDatabaseMutationLock } from './coordination';
+
 export type RecordValue = { id: string };
 
 export type DatabaseMigration = (database: IDBDatabase, transaction: IDBTransaction) => void;
@@ -214,19 +216,23 @@ export async function openLocalDatabase(config: LocalDatabaseConfig): Promise<Lo
     },
     async put<T extends RecordValue>(store: string, value: T): Promise<void> {
       assertStore(store);
-      const transaction = database.transaction(store, 'readwrite');
-      await runTransaction(transaction, async () => {
-        await requestResult(transaction.objectStore(store).put(value));
+      await withDatabaseMutationLock(async () => {
+        const transaction = database.transaction(store, 'readwrite');
+        await runTransaction(transaction, async () => {
+          await requestResult(transaction.objectStore(store).put(value));
+        });
       });
     },
     async putIfAbsent<T extends RecordValue>(store: string, value: T): Promise<boolean> {
       assertStore(store);
-      const transaction = database.transaction(store, 'readwrite');
       try {
-        await runTransaction(transaction, async () => {
-          await requestResult(transaction.objectStore(store).add(value));
+        return await withDatabaseMutationLock(async () => {
+          const transaction = database.transaction(store, 'readwrite');
+          await runTransaction(transaction, async () => {
+            await requestResult(transaction.objectStore(store).add(value));
+          });
+          return true;
         });
-        return true;
       } catch (cause) {
         if (cause instanceof DOMException && cause.name === 'ConstraintError') return false;
         throw cause;
@@ -234,9 +240,11 @@ export async function openLocalDatabase(config: LocalDatabaseConfig): Promise<Lo
     },
     async remove(store: string, id: string): Promise<void> {
       assertStore(store);
-      const transaction = database.transaction(store, 'readwrite');
-      await runTransaction(transaction, async () => {
-        await requestResult(transaction.objectStore(store).delete(id));
+      await withDatabaseMutationLock(async () => {
+        const transaction = database.transaction(store, 'readwrite');
+        await runTransaction(transaction, async () => {
+          await requestResult(transaction.objectStore(store).delete(id));
+        });
       });
     },
     async exportData(): Promise<LocalExport> {
@@ -262,13 +270,15 @@ export async function openLocalDatabase(config: LocalDatabaseConfig): Promise<Lo
     },
     async restore(input: unknown): Promise<void> {
       const backup = parseExport(config, input);
-      const transaction = database.transaction([...config.stores], 'readwrite');
-      await runTransaction(transaction, async () => {
-        for (const store of config.stores) {
-          const objectStore = transaction.objectStore(store);
-          await requestResult(objectStore.clear());
-          await Promise.all(backup.stores[store]!.map((record) => requestResult(objectStore.put(record))));
-        }
+      await withDatabaseMutationLock(async () => {
+        const transaction = database.transaction([...config.stores], 'readwrite');
+        await runTransaction(transaction, async () => {
+          for (const store of config.stores) {
+            const objectStore = transaction.objectStore(store);
+            await requestResult(objectStore.clear());
+            await Promise.all(backup.stores[store]!.map((record) => requestResult(objectStore.put(record))));
+          }
+        });
       });
     },
     close(): void {
@@ -279,3 +289,4 @@ export async function openLocalDatabase(config: LocalDatabaseConfig): Promise<Lo
 
 export { encryptedDatabaseLockName, encryptedDatabaseName, openEncryptedLocalDatabase } from './encrypted';
 export type { EncryptedDatabaseOptions, EncryptedRecord, EncryptedRecordCodec, KeyProvider, StorageLock } from './encrypted';
+export { DATABASE_MUTATION_LOCK, withConsistentDatabaseSnapshot, withDatabaseMutationLock } from './coordination';

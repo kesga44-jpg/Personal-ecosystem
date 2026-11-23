@@ -66,12 +66,67 @@ export function canonicalJson(value: unknown): string {
   return JSON.stringify(value ?? null);
 }
 
+function validateExportEnvelope(module: BackupModuleId, value: LocalExport): void {
+  if (
+    !value ||
+    value.format !== 'personal-ecosystem-local-data' ||
+    value.appId !== module ||
+    !Number.isInteger(value.schemaVersion) ||
+    value.schemaVersion < 1 ||
+    typeof value.exportedAt !== 'string' ||
+    !Number.isFinite(Date.parse(value.exportedAt)) ||
+    !value.stores ||
+    typeof value.stores !== 'object' ||
+    Array.isArray(value.stores)
+  ) {
+    throw new Error(`${moduleLabel(module)}: de export heeft ongeldige metadata.`);
+  }
+  for (const [store, records] of Object.entries(value.stores)) {
+    if (!store || !Array.isArray(records) || !records.every((record) =>
+      !!record &&
+      typeof record === 'object' &&
+      typeof record.id === 'string' &&
+      record.id.trim().length > 0
+    )) {
+      throw new Error(`${moduleLabel(module)}: store "${store}" bevat ongeldige records.`);
+    }
+    if (new Set(records.map((record) => record.id)).size !== records.length) {
+      throw new Error(`${moduleLabel(module)}: store "${store}" bevat dubbele record-ID's.`);
+    }
+  }
+}
+
+/** Validates the complete module set and each domain before a plaintext export is created. */
+export function validateCompleteExports(
+  modules: Record<BackupModuleId, LocalExport>,
+  validators: Record<BackupModuleId, ModuleValidator>
+): void {
+  const keys = Object.keys(modules);
+  if (keys.length !== MODULE_IDS.length || MODULE_IDS.some((id) => !Object.hasOwn(modules, id))) {
+    throw new Error('De export mist modules of bevat onbekende modules.');
+  }
+  for (const id of MODULE_IDS) {
+    validateExportEnvelope(id, modules[id]);
+    try {
+      validators[id](modules[id]);
+    } catch (cause) {
+      const reason = cause instanceof Error ? cause.message : 'ongeldige gegevens';
+      throw new Error(`${moduleLabel(id)}: ${reason}`);
+    }
+  }
+}
+
 export async function sha256Hex(text: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
 export async function createBackup(modules: Record<BackupModuleId, LocalExport>, now = new Date()): Promise<EcosystemBackup> {
+  const keys = Object.keys(modules);
+  if (keys.length !== MODULE_IDS.length || MODULE_IDS.some((id) => !Object.hasOwn(modules, id))) {
+    throw new Error('De export mist modules of bevat onbekende modules.');
+  }
+  for (const id of MODULE_IDS) validateExportEnvelope(id, modules[id]);
   return {
     format: BACKUP_FORMAT,
     version: BACKUP_VERSION,
