@@ -6,7 +6,7 @@
 
 1. **Versleutelde opslagbasis:** `@ecosystem/storage` krijgt een adapter die alleen versleutelde enveloppen met willekeurige record-ID's naar IndexedDB schrijft. De adapter ontvangt de sleutel uitsluitend via een runtimeprovider en hergebruikt de lokale back-upvalidatie. Nog niet aangesloten op de modules.
 2. **Kluis en sessielevenscyclus:** aanmaken, controle van de herstelcode, ontgrendelen, handmatig en automatisch vergrendelen, en veilige afhandeling van openstaande invoer. `VaultSession` houdt de niet-exporteerbare DEK uitsluitend in een ECMAScript private geheugenproperty; bij een lockfout blijft de sessie open en wordt de fout beschikbaar gemaakt voor de UI.
-3. **Lokale account- en TOTP-testomgeving:** uitsluitend synthetische accounts en een lokale auth-adapter. De productieauth-adapter blijft uitgeschakeld; tests moeten de verplichte TOTP/AAL2-contracten aantonen.
+3. **Lokale account- en TOTP-testomgeving:** Supabase CLI start een geïsoleerde lokale Auth-stack; integratietests maken willekeurige synthetische accounts aan, enrollen TOTP, verifiëren een authenticatorcode en bewijzen dat toegang pas op `aal2` is toegestaan. De teststack maakt geen PE-schema of migratie aan, gebruikt geen persistente browser-sessie en wordt met zijn tijdelijke volumes verwijderd. Er is geen productieauth-adapter.
 4. **Sync en herstel:** transportcontract, retry na netwerkfouten, versiecontrole, expliciete conflictoplossing, back-up en herstel. Alleen testtransporten totdat P-5 is vrijgegeven.
 5. **App-integratie:** alle PE-databases aansluiten op versleutelde opslag; lokale bestaande gegevens alleen via een expliciete, controleerbare migratie omzetten. Accountexport en -verwijdering integreren; serververwijdering blijft afhankelijk van P-5.
 
@@ -26,6 +26,7 @@ Elke stap is een afzonderlijke, gestapelde PR met gerichte tests, documentatie e
 ## Beveiligingsgrenzen
 
 - Lokale tests gebruiken alleen synthetische records en sleutels.
-- De lokale storage-adapter en tests zijn geen bewijs voor Supabase Auth, de P-5-RPC's, productieautorisatie of ISO-17.
-- Er is nog geen lokale Supabase-configuratie of root database-testscript in deze repository. De lokale auth-/database-testvoorziening moet vóór de bijbehorende PR's expliciet worden ingericht.
+- De lokale Auth-testclient weigert niet-loopback endpoints, bewaart sessies niet en maakt willekeurige testinloggegevens aan die niet worden gelogd.
+- De lokale Auth/TOTP-test bewijst alleen de lokale Supabase Auth MFA-flow; hij is geen bewijs voor productieconfiguratie, P-5-RPC's, RLS/autorisatie, appgebonden sessies of ISO-17. De storage-adaptertests bewijzen geen serverauth.
+- `npm run test:auth` is uitsluitend een lokale Auth/MFA-integratietest. Hij bewijst geen schema-isolatie, RLS, P-5-RPC's, appgebonden sessies of ISO-17; B-13/ADR 0013 blijft ter beoordeling en P-2/P-4/P-5 blijven afzonderlijke poorten.
 - Productieconfiguratie, productiegegevens, live TOTP, externe databaseverbindingen en live synchronisatie blijven uitgeschakeld totdat de vereiste poorten en afzonderlijke livegangvrijgave zijn voltooid.

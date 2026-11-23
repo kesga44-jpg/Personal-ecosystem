@@ -104,3 +104,4 @@ Elke app in de monorepo krijgt een eigen sectie zodra die bestaat. Bestaande app
 - PR-1 en PR-2: wachten op schrijftoegang via GitHub-koppeling.
 - H-PR1-e (Node 24) en eventueel splitsen H-PR1a/H-PR1b.
 - P-6 lokaal: voeg `VaultSession` toe voor verplichte opslag- en controlebevestiging van de herstelcode, heropenen met wachtwoord of herstelcode, DEK alleen in private geheugenstaat, handmatige vergrendeling en automatische vergrendeling (standaard 15 minuten, instelbaar 5–60 minuten). Bij een opslag-/verificatiefout blijft de kluis toegankelijk; de app-koppeling volgt later.
+- P-6 lokaal: voeg een tijdelijke Supabase CLI Auth-stack en synthetische integratietest toe die e-mail/wachtwoord, TOTP-enrollment en de overgang van `aal1` naar `aal2` controleert. De lokale test maakt geen PE-schema/migraties en verwijdert de tijdelijke testvolumes; productieauth blijft uitgeschakeld.

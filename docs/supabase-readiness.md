@@ -1,6 +1,6 @@
 # Supabase-readiness — niet aangesloten in de MVP
 
-De huidige apps werken volledig lokaal. Er zijn geen client keys, SQL-migraties, schema-exposure wijzigingen, auth changes of productie requests. Dit document maakt de afgesproken toekomstige grens expliciet; het is geen opdracht om productie te wijzigen.
+De huidige apps werken volledig lokaal. Er zijn geen productieclient keys, SQL-migraties, schema-exposure wijzigingen, auth changes of productie requests. De P-6-testfixture in `supabase/config.toml` start uitsluitend lokaal; hij bevat geen migraties of productieconfiguratie en wordt alleen met synthetische accounts gebruikt. Dit document maakt de afgesproken toekomstige grens expliciet; het is geen opdracht om productie te wijzigen.
 
 ## Appgrenzen
 
@@ -17,7 +17,7 @@ De volledige voorgestelde relationele structuur staat in [DATABASE_DESIGN.md](..
 - Een toekomstige browserclient mag alleen een Supabase publishable key bevatten, via `VITE_SUPABASE_URL` en `VITE_SUPABASE_PUBLISHABLE_KEY`.
 - Service-role keys zijn uitsluitend server-side en worden nooit in browserbundels, logs of deze repository gezet.
 - Per app schema-specific client/access; appnaam of client-id is geen beveiligingsgrens.
-- B-13/ADR 0013 staat nog op beoordeling. Gedeelde auth, appgebonden sessies, verplichte TOTP en AUTH-1–10/ISO-13–18-tests zijn vereisten vóór F3.
+- B-13/ADR 0013 staat nog op beoordeling. De lokale P-6-test valideert alleen Supabase Auth TOTP en `aal2`; hij keurt appgebonden sessies of de voorgestelde F3-architectuur niet goed. Gedeelde auth, appgebonden sessies, verplichte TOTP en AUTH-1–10/ISO-13–18-tests zijn vereisten vóór F3.
 - Tot dan blijft lokale opslag het enige runtime-pad; geen accountprompt of automatische upload.
 
 ## RPC-contracten en RLS
@@ -32,7 +32,7 @@ Minimale toekomstige RLS:
 - Sport → SIDEQUEST alleen via minimale events met actuele expliciete consent; Hub alleen via summary-RPC's.
 - `security definer`-functies met vaste `search_path`, volledige objectkwalificatie, inputlimieten en tests.
 
-Er zijn geen migrations/RPC's/RLS policies in de huidige code; dus er zijn ook geen productie- of lokale databasewijzigingen uitgevoerd.
+Er zijn geen migrations/RPC's/RLS policies voor PE in de huidige code; dus er zijn ook geen productie- of lokale applicatiedatabasewijzigingen uitgevoerd. De Supabase CLI initialiseert alleen zijn tijdelijke ingebouwde Auth-teststack.
 
 ## Storage, migratievolgorde en herstel
 
