@@ -1,5 +1,6 @@
 import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it } from 'vitest';
+import { withDatabaseMutationLock } from '@ecosystem/storage';
 import {
   deletePersonalEcosystemLocalData,
   LocalDataDeletionError,
@@ -121,19 +122,48 @@ describe('Personal Ecosystem local data deletion adapter', () => {
     expect(storage.has(keys[1]!)).toBe(false);
   });
 
-  it('does not claim success when a PE database is still open and can be retried after closing it', async () => {
+  it('keeps deletion and the mutation lock pending while a database connection blocks it', async () => {
     const open = await openDatabase(names[0]!);
     const deps = adapters([names[0]!], []);
-
-    await expect(deletePersonalEcosystemLocalData(deps)).rejects.toMatchObject({
-      failedDatabases: [{ name: names[0], reason: expect.stringContaining('nog geopend') }]
-    });
+    let blocked!: (name: string) => void;
+    const blockedNotification = new Promise<string>((resolve) => { blocked = resolve; });
+    deps.onDatabaseBlocked = blocked;
+    let deletionSettled = false;
+    const deletion = deletePersonalEcosystemLocalData(deps).finally(() => { deletionSettled = true; });
+    expect(await blockedNotification).toBe(names[0]);
+    let mutationRan = false;
+    const mutation = withDatabaseMutationLock(async () => { mutationRan = true; });
+    await Promise.resolve();
+    expect(deletionSettled).toBe(false);
+    expect(mutationRan).toBe(false);
     open.close();
     openConnections.delete(open);
-
-    await expect(deletePersonalEcosystemLocalData(deps)).resolves.toEqual({
+    await expect(deletion).resolves.toEqual({
       deletedDatabases: [names[0]],
       deletedLocalStorageKeys: []
+    });
+    await mutation;
+    expect(mutationRan).toBe(true);
+    expect(await databaseNames()).toEqual([]);
+  });
+
+  it('waits for the deletion even when the blocked notification fails', async () => {
+    const open = await openDatabase(names[0]!);
+    let blocked!: () => void;
+    const blockedNotification = new Promise<void>((resolve) => { blocked = resolve; });
+    const deps = adapters([names[0]!], []);
+    deps.onDatabaseBlocked = async () => {
+      blocked();
+      throw new Error('Notification unavailable.');
+    };
+    const deletion = deletePersonalEcosystemLocalData(deps);
+    await blockedNotification;
+    open.close();
+    openConnections.delete(open);
+    await expect(deletion).rejects.toMatchObject({
+      report: { deletedDatabases: [names[0]], deletedLocalStorageKeys: [] },
+      failedDatabases: [],
+      failedNotifications: [{ name: names[0], reason: 'Notification unavailable.' }]
     });
     expect(await databaseNames()).toEqual([]);
   });
