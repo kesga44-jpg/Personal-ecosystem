@@ -5,7 +5,7 @@
 ## PR-volgorde
 
 1. **Versleutelde opslagbasis:** `@ecosystem/storage` krijgt een adapter die alleen versleutelde enveloppen met willekeurige record-ID's naar IndexedDB schrijft. De adapter ontvangt de sleutel uitsluitend via een runtimeprovider en hergebruikt de lokale back-upvalidatie. Nog niet aangesloten op de modules.
-2. **Kluis en sessielevenscyclus:** aanmaken, controle van de herstelcode, ontgrendelen, handmatig en automatisch vergrendelen, en veilige afhandeling van openstaande invoer.
+2. **Kluis en sessielevenscyclus:** aanmaken, controle van de herstelcode, ontgrendelen, handmatig en automatisch vergrendelen, en veilige afhandeling van openstaande invoer. `VaultSession` houdt de niet-exporteerbare DEK uitsluitend in een ECMAScript private geheugenproperty; bij een lockfout blijft de sessie open en wordt de fout beschikbaar gemaakt voor de UI.
 3. **Lokale account- en TOTP-testomgeving:** uitsluitend synthetische accounts en een lokale auth-adapter. De productieauth-adapter blijft uitgeschakeld; tests moeten de verplichte TOTP/AAL2-contracten aantonen.
 4. **Sync en herstel:** transportcontract, retry na netwerkfouten, versiecontrole, expliciete conflictoplossing, back-up en herstel. Alleen testtransporten totdat P-5 is vrijgegeven.
 5. **App-integratie:** alle PE-databases aansluiten op versleutelde opslag; lokale bestaande gegevens alleen via een expliciete, controleerbare migratie omzetten. Accountexport en -verwijdering integreren; serververwijdering blijft afhankelijk van P-5.
@@ -21,6 +21,7 @@ Elke stap is een afzonderlijke, gestapelde PR met gerichte tests, documentatie e
 - Lees-, schrijf-, export- en herstelbewerkingen gebruiken dezelfde `encryptedDatabaseLockName`. De sessiebeheerder moet alle geopende database-locks innemen voordat hij de sleutel wist, zodat een lopende decryptie of opslagbewerking niet achter een vergrendelde UI doorloopt.
 - Verwijderen schrijft een versleutelde tombstone. Export ontsleutelt alleen na een expliciete aanroep. Herstel valideert eerst en schrijft daarna alleen versleutelde enveloppen.
 - De adapter is nog niet op de app aangesloten en migreert nog geen bestaande plaintext databases. Gebruik hem daarom nog niet voor bestaande gebruikersgegevens.
+- `VaultSession` is een lokale lifecycle-bouwsteen, nog niet aangesloten op de app of de opslagadapter. De app-integratiestap moet vóór een lock nieuwe invoer blokkeren, openstaande invoer opslaan en teruglezen, alle opslagbewerkingen laten uitlopen, en daarna de ontsleutelde UI-toestand wissen. Als voorbereiden faalt, mag de sessie niet worden vergrendeld.
 
 ## Beveiligingsgrenzen
 
