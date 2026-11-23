@@ -25,6 +25,14 @@ export interface SyncServer {
   put(item: EncryptedItem, expectedVersion: number): Promise<PutResult>;
 }
 
+/** Transport adapters should use this only for temporary network or server-availability failures. */
+export class RetryableSyncError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RetryableSyncError';
+  }
+}
+
 /** Server in het geheugen met dezelfde regels als de geplande `security definer`-RPC. Alleen voor het prototype en tests. */
 export class MemoryServer implements SyncServer {
   private items = new Map<string, ServerItem>();
@@ -127,6 +135,8 @@ export interface SyncResult {
   newConflicts: number;
 }
 
+const SYNC_RETRY_DELAYS_MS = [250, 500] as const;
+
 /**
  * Eén syncronde: eerst ophalen (en conflicten vaststellen), dan lokale wijzigingen versleuteld versturen.
  * Geeft een nieuwe toestand terug; de oude wordt niet gewijzigd.
@@ -210,6 +220,24 @@ export async function syncOnce(options: { dek: CryptoKey; server: SyncServer; lo
   }
 
   return { state, pushed, pulled, newConflicts };
+}
+
+/**
+ * Herhaalt alleen expliciet als tijdelijk aangemerkte transportfouten. Een nieuwe ronde haalt eerst
+ * serverwijzigingen op, zodat een eerder opgeslagen maar onbevestigd record via versiecontrole herstelt.
+ */
+export async function syncWithRetry(
+  options: { dek: CryptoKey; server: SyncServer; local: LocalAdapter; state: SyncState },
+  wait: (milliseconds: number) => Promise<void> = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds))
+): Promise<SyncResult> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await syncOnce(options);
+    } catch (cause) {
+      if (!(cause instanceof RetryableSyncError) || attempt >= SYNC_RETRY_DELAYS_MS.length) throw cause;
+      await wait(SYNC_RETRY_DELAYS_MS[attempt]!);
+    }
+  }
 }
 
 /**
