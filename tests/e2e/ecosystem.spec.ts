@@ -454,15 +454,22 @@ test('spaarpot en voedingsplan koppelen, wijzigen en ontkoppelen Groei-doelen', 
   await page.goto(`${base}/voeding/planning`);
   await page.getByRole('button', { name: '＋ Plan' }).click();
   await page.getByLabel('Naam van het plan').fill('Week');
+  await page.getByLabel('Van', { exact: true }).fill('2026-11-22');
+  await page.getByLabel('Tot en met').fill('2026-11-28');
   await page.getByRole('button', { name: 'Plan opslaan' }).click();
   const card = page.locator('.card').filter({ has: page.getByText('Groei-doelen', { exact: true }) });
   await expect(card.getByRole('option', { name: 'Doel een' })).toBeAttached();
   await card.getByLabel('Groei-doel koppelen').selectOption({ label: 'Doel een' });
   await card.getByRole('button', { name: 'Doel koppelen' }).click();
   await expect(card.locator('span').filter({ hasText: /^Doel een$/ })).toBeVisible();
+  await page.addStyleTag({ content: ':root { font-family: "DejaVu Sans", sans-serif; }' });
   for (const width of [375, 768, 1280]) {
     await page.setViewportSize({ width, height: 900 });
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    const overflow = await page.evaluate(() => ({
+      width: window.innerWidth, scroll: document.documentElement.scrollWidth,
+      elements: [...document.querySelectorAll('main *')].filter((element) => element.getBoundingClientRect().right > window.innerWidth + 1).map((element) => `${element.tagName}.${element.className}:${Math.round(element.getBoundingClientRect().width)}`)
+    }));
+    expect(overflow.scroll, JSON.stringify(overflow)).toBeLessThanOrEqual(overflow.width);
   }
   await page.reload();
   await expect(card.locator('span').filter({ hasText: /^Doel een$/ })).toBeVisible();
@@ -1049,6 +1056,7 @@ async function stubTiles(page: Page): Promise<string[]> {
 test('Duur: FIT, TCX en GPX importeren, dubbel herkennen, route met kaart en dashboard ziet alleen totalen', async ({ page }) => {
   const errors = collectErrors(page);
   const tiles = await stubTiles(page);
+  await page.clock.setFixedTime(new Date('2026-11-18T12:00:00Z'));
   await page.goto(`${base}/duur/importeren`);
   await page.getByLabel('Bestanden kiezen').setInputFiles([
     { name: 'loop.fit', mimeType: 'application/octet-stream', buffer: Buffer.from(fit()) },
