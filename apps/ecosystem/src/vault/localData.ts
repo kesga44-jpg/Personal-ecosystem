@@ -43,6 +43,7 @@ export interface LocalDataDeletionAdapters {
   localStorage: Pick<Storage, 'removeItem'>;
   databaseNames: readonly string[];
   localStorageKeys: readonly string[];
+  onDatabaseBlocked?: (name: string) => void | Promise<void>;
 }
 
 export interface LocalDataDeletionReport {
@@ -54,35 +55,28 @@ export class LocalDataDeletionError extends Error {
   constructor(
     readonly report: LocalDataDeletionReport,
     readonly failedDatabases: { name: string; reason: string }[],
-    readonly failedLocalStorageKeys: { name: string; reason: string }[]
+    readonly failedLocalStorageKeys: { name: string; reason: string }[],
+    readonly failedNotifications: { name: string; reason: string }[] = []
   ) {
     super(
-      `Lokale PE-data zijn gedeeltelijk verwijderd. Databasefouten: ${failedDatabases.map(({ name, reason }) => `${name} (${reason})`).join(', ') || 'geen'}; ` +
-      `browseropslagfouten: ${failedLocalStorageKeys.map(({ name, reason }) => `${name} (${reason})`).join(', ') || 'geen'}.`
+      `Lokale PE-wisactie niet volledig bevestigd. Databasefouten: ${failedDatabases.map(({ name, reason }) => `${name} (${reason})`).join(', ') || 'geen'}; ` +
+      `browseropslagfouten: ${failedLocalStorageKeys.map(({ name, reason }) => `${name} (${reason})`).join(', ') || 'geen'}; ` +
+      `meldingsfouten: ${failedNotifications.map(({ name, reason }) => `${name} (${reason})`).join(', ') || 'geen'}.`
     );
     this.name = 'LocalDataDeletionError';
   }
 }
 
-function deleteDatabase(factory: Pick<IDBFactory, 'deleteDatabase'>, name: string): Promise<void> {
+function deleteDatabase(
+  factory: Pick<IDBFactory, 'deleteDatabase'>,
+  name: string,
+  notifyBlocked: () => void
+): Promise<void> {
   return new Promise((resolve, reject) => {
-    let settled = false;
     const request = factory.deleteDatabase(name);
-    request.onsuccess = () => {
-      if (settled) return;
-      settled = true;
-      resolve();
-    };
-    request.onerror = () => {
-      if (settled) return;
-      settled = true;
-      reject(request.error ?? new Error(`IndexedDB kon "${name}" niet verwijderen.`));
-    };
-    request.onblocked = () => {
-      if (settled) return;
-      settled = true;
-      reject(new Error(`IndexedDB "${name}" is nog geopend in een tabblad.`));
-    };
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error ?? new Error(`IndexedDB kon "${name}" niet verwijderen.`));
+    request.onblocked = notifyBlocked;
   });
 }
 
@@ -102,10 +96,18 @@ export async function deletePersonalEcosystemLocalData(
     const report: LocalDataDeletionReport = { deletedDatabases: [], deletedLocalStorageKeys: [] };
     const failedDatabases: { name: string; reason: string }[] = [];
     const failedLocalStorageKeys: { name: string; reason: string }[] = [];
+    const failedNotifications: { name: string; reason: string }[] = [];
+    const notifications: Promise<void>[] = [];
 
     for (const name of adapters.databaseNames) {
       try {
-        await deleteDatabase(adapters.indexedDB, name);
+        await deleteDatabase(adapters.indexedDB, name, () => {
+          notifications.push(Promise.resolve()
+            .then(() => adapters.onDatabaseBlocked?.(name))
+            .catch((cause: unknown) => {
+              failedNotifications.push({ name, reason: cause instanceof Error ? cause.message : 'Onbekende fout' });
+            }));
+        });
         report.deletedDatabases.push(name);
       } catch (cause) {
         failedDatabases.push({ name, reason: cause instanceof Error ? cause.message : 'Onbekende fout' });
@@ -121,8 +123,9 @@ export async function deletePersonalEcosystemLocalData(
       }
     }
 
-    if (failedDatabases.length || failedLocalStorageKeys.length) {
-      throw new LocalDataDeletionError(report, failedDatabases, failedLocalStorageKeys);
+    await Promise.all(notifications);
+    if (failedDatabases.length || failedLocalStorageKeys.length || failedNotifications.length) {
+      throw new LocalDataDeletionError(report, failedDatabases, failedLocalStorageKeys, failedNotifications);
     }
     return report;
   });
