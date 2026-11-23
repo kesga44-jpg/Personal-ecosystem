@@ -41,11 +41,14 @@ npm run build:ecosystem
 npm run build:all
 npm run check:dist
 npm run test:e2e
+npm run test:auth   # lokale Supabase Auth/TOTP-test; vereist Docker
 ```
 
 ## Gegevens en privacy
 
 De Hub, Sportapp en SIDEQUEST gebruiken aparte IndexedDB-databases en app-ID's. Hub bewaart alleen Hub-instellingen, eigen snelkoppelingen en app-openingen; Sport- en SIDEQUEST-data worden niet ingelezen of gekopieerd. Iedere app biedt een eigen gevalideerde JSON-back-up en herstel na bevestiging. Er is geen automatische upload. Supabase/Auth zijn bewust niet aangesloten: de lokale applicaties zijn volledig bruikbaar zonder accounts, en de bestaande beveiligings- en autorisatiepoort voor gedeelde auth is nog open.
+
+`npm run test:auth` start tijdelijk een geïsoleerde Supabase Auth-stack op loopback, test MFA/TOTP met een synthetisch account en verwijdert daarna alleen de lokale teststack en volumes. Dit sluit geen productie-auth aan en maakt geen applicatieschema of migratie aan.
 
 GPX-bestanden worden lokaal geparseerd. Alleen route-naam, starttijd, duur, afstand en een SHA-256-vingerafdruk voor dubbele import worden bewaard; GPS-punten niet. FIT- en TCX-import, accountgebonden synchronisatie en groepsfuncties zijn niet geïmplementeerd.
 
