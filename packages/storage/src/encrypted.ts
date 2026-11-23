@@ -151,6 +151,10 @@ export async function openEncryptedLocalDatabase(
   };
   const database = await requestResult(openRequest);
   let closed = false;
+  database.onversionchange = () => {
+    closed = true;
+    database.close();
+  };
   const assertStore = (store: string) => {
     if (closed) throw new Error('Versleutelde lokale database is gesloten.');
     if (!config.stores.includes(store)) throw new Error(`Storage "${store}" does not belong to ${config.appId}.`);

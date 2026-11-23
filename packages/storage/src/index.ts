@@ -191,7 +191,16 @@ export async function openLocalDatabase(config: LocalDatabaseConfig): Promise<Lo
   };
 
   const database = await requestResult(openRequest);
+  let closed = false;
+  database.onversionchange = () => {
+    closed = true;
+    database.close();
+  };
+  const assertOpen = () => {
+    if (closed) throw new Error('Local database is closed.');
+  };
   const assertStore = (store: string) => {
+    assertOpen();
     if (!config.stores.includes(store)) {
       throw new Error(`Storage "${store}" does not belong to ${config.appId}.`);
     }
@@ -248,6 +257,7 @@ export async function openLocalDatabase(config: LocalDatabaseConfig): Promise<Lo
       });
     },
     async exportData(): Promise<LocalExport> {
+      assertOpen();
       const transaction = database.transaction([...config.stores], 'readonly');
       return runTransaction(transaction, async () => {
         const stores: Record<string, RecordValue[]> = {};
@@ -269,6 +279,7 @@ export async function openLocalDatabase(config: LocalDatabaseConfig): Promise<Lo
       parseExport(config, input);
     },
     async restore(input: unknown): Promise<void> {
+      assertOpen();
       const backup = parseExport(config, input);
       await withDatabaseMutationLock(async () => {
         const transaction = database.transaction([...config.stores], 'readwrite');
@@ -282,6 +293,7 @@ export async function openLocalDatabase(config: LocalDatabaseConfig): Promise<Lo
       });
     },
     close(): void {
+      closed = true;
       database.close();
     }
   };
