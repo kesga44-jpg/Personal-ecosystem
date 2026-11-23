@@ -382,7 +382,7 @@ export function PlanPage({ data, run, database }: { data: PlannerData; run: Run;
         title={plan.name}
         description={`${formatDay(plan.from)} t/m ${formatDay(plan.to)} · ${plan.mealsPerDay} maaltijden per dag · ${plan.status}`}
         action={
-          <div className="row">
+          <div className="row" style={{ flexWrap: 'wrap', justifyContent: 'flex-start' }}>
             <Link className="button button-secondary" to={`/planning/${plan.id}/boodschappen`}>Boodschappenlijst</Link>
             {plan.status === 'concept' && <Button onClick={() => void run((db) => db.put('nutritionPlans', { ...plan, status: 'bevestigd', updatedAt: nowIso() }))}>Plan bevestigen</Button>}
             <Button variant="secondary" onClick={() => setEditing((value) => !value)}>{editing ? 'Sluiten' : 'Aanpassen'}</Button>
