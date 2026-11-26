@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  endLogoutBarrier,
   logoutPersonalEcosystem,
+  resumeInterruptedLogout,
+  type LogoutBarrier,
+  type LogoutBarrierPhase,
   PersonalEcosystemRemovalError,
   removePersonalEcosystemAccount,
   type LogoutDependencies,
@@ -18,6 +22,33 @@ const ready: LogoutSyncStatus = {
   syncInProgress: false
 };
 
+/** In-memory stand-in for Web Locks + the localStorage marker, shared by simulated tabs. */
+function memoryBarrier(): LogoutBarrier & { phase: LogoutBarrierPhase | null; log: string[] } {
+  const queues = new Map<string, Promise<void>>();
+  const lock = async <T>(name: string, operation: () => Promise<T>): Promise<T> => {
+    const previous = queues.get(name) ?? Promise.resolve();
+    let release!: () => void;
+    const current = new Promise<void>((resolve) => { release = resolve; });
+    queues.set(name, previous.then(() => current));
+    await previous;
+    try {
+      return await operation();
+    } finally {
+      release();
+    }
+  };
+  const barrier = {
+    phase: null as LogoutBarrierPhase | null,
+    log: [] as string[],
+    withSyncExcluded: <T>(operation: () => Promise<T>) => lock('sync', operation),
+    withMutationsExcluded: <T>(operation: () => Promise<T>) => lock('mutation', operation),
+    read: () => barrier.phase,
+    write: (phase: LogoutBarrierPhase) => { barrier.phase = phase; barrier.log.push(phase); },
+    clear: () => { barrier.phase = null; }
+  };
+  return barrier;
+}
+
 function dependencies(
   status: LogoutSyncStatus = ready,
   exportChoice: 'export' | 'continue' | 'cancel' = 'continue',
@@ -32,7 +63,8 @@ function dependencies(
     async confirmLocalDataRemoval() { calls.push('confirm-removal'); return confirmRemoval; },
     async lockVault() { calls.push('lock'); },
     async clearLocalPersonalEcosystemCache() { calls.push('clear-local-cache'); },
-    async closePersonalEcosystemAppSession() { calls.push('close-pe-app-session'); }
+    async closePersonalEcosystemAppSession() { calls.push('close-pe-app-session'); },
+    barrier: memoryBarrier()
   };
 }
 
@@ -61,6 +93,7 @@ describe('Personal Ecosystem logout barrier', () => {
       'export',
       'confirm-removal',
       'lock',
+      'status',
       'clear-local-cache',
       'close-pe-app-session'
     ]);
@@ -115,6 +148,149 @@ describe('Personal Ecosystem logout barrier', () => {
 
     await expect(logoutPersonalEcosystem(deps)).rejects.toThrow('Export failed');
     expect(deps.calls).not.toContain('lock');
+    expect(deps.calls).not.toContain('clear-local-cache');
+  });
+});
+
+describe('logout/sync race barrier', () => {
+  /** Local store with sync bookkeeping: a mutation is unconfirmed until a sync round pushes it. */
+  function world() {
+    const barrier = memoryBarrier();
+    const records = new Map<string, string>();
+    let unconfirmed = 0;
+    let syncing = 0;
+    const write = (id: string, value: string) => barrier.withMutationsExcluded(async () => {
+      if (barrier.read()) throw new Error('Personal Ecosystem wordt afgemeld; nieuwe wijzigingen en synchronisatie zijn geblokkeerd.');
+      records.set(id, value);
+      unconfirmed += 1;
+    });
+    const sync = (online: boolean, during?: () => Promise<void>) => barrier.withSyncExcluded(async () => {
+      if (barrier.read()) throw new Error('Personal Ecosystem wordt afgemeld; nieuwe wijzigingen en synchronisatie zijn geblokkeerd.');
+      syncing += 1;
+      try {
+        await during?.();
+        if (!online) throw new Error('offline');
+        unconfirmed = 0;
+      } finally {
+        syncing -= 1;
+      }
+    });
+    const status = async (): Promise<LogoutSyncStatus> => ({ ...ready, allMutationsConfirmed: unconfirmed === 0, syncInProgress: syncing > 0 });
+    const logoutDeps = (hooks: { onConfirm?: () => Promise<void>; onLock?: () => Promise<void> } = {}): LogoutDependencies & { calls: string[] } => {
+      const calls: string[] = [];
+      return {
+        calls,
+        barrier,
+        getSyncStatus: async () => { calls.push('status'); return status(); },
+        chooseExport: async () => 'continue',
+        exportPersonalData: async () => undefined,
+        confirmLocalDataRemoval: async () => { calls.push('confirm-removal'); await hooks.onConfirm?.(); return true; },
+        lockVault: async () => { calls.push('lock'); await hooks.onLock?.(); },
+        clearLocalPersonalEcosystemCache: async () => { calls.push('clear-local-cache'); records.clear(); },
+        closePersonalEcosystemAppSession: async () => { calls.push('close-pe-app-session'); }
+      };
+    };
+    return { barrier, records, write, sync, logoutDeps, get unconfirmed() { return unconfirmed; } };
+  }
+
+  it('a change made while the confirmation dialog is open blocks the wipe (concurrent local change)', async () => {
+    const w = world();
+    const deps = w.logoutDeps({ onConfirm: () => w.write('r1', 'typed during the dialog') });
+
+    await expect(logoutPersonalEcosystem(deps)).resolves.toMatchObject({ status: 'blocked', vaultLocked: true, reason: expect.stringContaining('niet alle wijzigingen') });
+    expect(w.records.get('r1')).toBe('typed during the dialog');
+    expect(deps.calls).not.toContain('clear-local-cache');
+    expect(w.barrier.phase).toBeNull();
+  });
+
+  it('waits for a sync round that started during the dialog, then re-checks before wiping', async () => {
+    const w = world();
+    let running: Promise<void> | undefined;
+    let syncFinished = false;
+    const deps = w.logoutDeps({ onConfirm: async () => {
+      await w.write('r1', 'v1');
+      running = w.sync(true, async () => {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        syncFinished = true;
+      });
+      await Promise.resolve();
+    }, onLock: async () => {
+      expect(syncFinished).toBe(true);
+    } });
+
+    await expect(logoutPersonalEcosystem(deps)).resolves.toEqual({ status: 'logged-out' });
+    await running;
+    expect(w.unconfirmed).toBe(0);
+    expect(deps.calls).toEqual(['status', 'confirm-removal', 'lock', 'status', 'clear-local-cache', 'close-pe-app-session']);
+  });
+
+  it('a sync round that fails during the dialog (offline) keeps the data and blocks logout', async () => {
+    const w = world();
+    const deps = w.logoutDeps({ onConfirm: async () => {
+      await w.write('r1', 'offline change');
+      await expect(w.sync(false)).rejects.toThrow('offline');
+    } });
+
+    await expect(logoutPersonalEcosystem(deps)).resolves.toMatchObject({ status: 'blocked' });
+    expect(w.records.get('r1')).toBe('offline change');
+  });
+
+  it('a write from another tab that queued behind the wipe is refused instead of resurrecting data', async () => {
+    const w = world();
+    let otherTab: Promise<void> | undefined;
+    const deps = w.logoutDeps({ onLock: async () => {
+      // Another tab: write and sync are queued; they run only after the barrier releases its locks.
+      otherTab = w.barrier.withMutationsExcluded(async () => undefined).then(() => w.write('late', 'other tab'));
+    } });
+
+    await expect(logoutPersonalEcosystem(deps)).resolves.toEqual({ status: 'logged-out' });
+    await expect(otherTab).rejects.toThrow('wordt afgemeld');
+    await expect(w.sync(true)).rejects.toThrow('wordt afgemeld');
+    expect(w.records.size).toBe(0);
+    expect(w.barrier.log).toEqual(['clearing', 'cleared']);
+  });
+
+  it('a second logout from another tab waits and then completes idempotently', async () => {
+    const w = world();
+    const [first, second] = await Promise.all([logoutPersonalEcosystem(w.logoutDeps()), logoutPersonalEcosystem(w.logoutDeps())]);
+    expect(first).toEqual({ status: 'logged-out' });
+    expect(second).toEqual({ status: 'logged-out' });
+  });
+
+  it('a wipe that failed or was interrupted (restart) is completed on the next start, and the barrier stays until a new login', async () => {
+    const w = world();
+    await w.sync(true);
+    const deps = w.logoutDeps();
+    deps.clearLocalPersonalEcosystemCache = async () => { throw new Error('Tab closed while deleting.'); };
+    await expect(logoutPersonalEcosystem(deps)).rejects.toThrow('Tab closed');
+    expect(w.barrier.phase).toBe('clearing');
+    await expect(w.write('x', 'after crash')).rejects.toThrow('wordt afgemeld');
+    expect(() => endLogoutBarrier(w.barrier)).toThrow('onderbroken afmelding');
+
+    const cleared: string[] = [];
+    await expect(resumeInterruptedLogout({ barrier: w.barrier, clearLocalPersonalEcosystemCache: async () => { cleared.push('wipe'); } })).resolves.toBe('resumed');
+    expect(cleared).toEqual(['wipe']);
+    await expect(resumeInterruptedLogout({ barrier: w.barrier, clearLocalPersonalEcosystemCache: async () => { cleared.push('again'); } })).resolves.toBe('awaiting-login');
+    expect(cleared).toEqual(['wipe']);
+
+    endLogoutBarrier(w.barrier);
+    await expect(resumeInterruptedLogout({ barrier: w.barrier, clearLocalPersonalEcosystemCache: async () => undefined })).resolves.toBe('none');
+    await expect(w.write('y', 'next session')).resolves.toBeUndefined();
+  });
+
+  it('a vault lock failure leaves no marker and wipes nothing', async () => {
+    const w = world();
+    const deps = w.logoutDeps({ onLock: async () => { throw new Error('Pending input could not be saved.'); } });
+    await expect(logoutPersonalEcosystem(deps)).rejects.toThrow('Pending input');
+    expect(w.barrier.phase).toBeNull();
+    expect(deps.calls).not.toContain('clear-local-cache');
+  });
+
+  it('does not start the wipe when the marker cannot be stored', async () => {
+    const w = world();
+    w.barrier.write = () => { throw new Error('De afmeldmarkering kon niet worden opgeslagen.'); };
+    const deps = w.logoutDeps();
+    await expect(logoutPersonalEcosystem(deps)).rejects.toThrow('afmeldmarkering');
     expect(deps.calls).not.toContain('clear-local-cache');
   });
 });

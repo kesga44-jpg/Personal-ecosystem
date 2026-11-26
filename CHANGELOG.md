@@ -7,6 +7,7 @@ Elke app in de monorepo krijgt een eigen sectie zodra die bestaat. Bestaande app
 
 ### Toegevoegd
 
+- P-6 lokaal: afmeld- en syncbarrière tegen races. De eerste statuscontrole vóór de dialogen is niet meer genoeg: afmelden wacht via een browserbrede sync-lock op een lopende syncronde, vergrendelt de kluis, controleert onder de mutatie-lock opnieuw of alles bevestigd is en wist pas daarna. Een wijziging uit een ander tabblad, een mislukte of offline sync tijdens de bevestiging blokkeert de wisactie. Een duurzame afmeldmarkering laat latere writes en syncrondes in alle tabbladen weigeren, ook na herladen, en een onderbroken wisactie wordt bij de volgende start afgerond. Synchroniseren gaat via `syncExclusive`. Nog niet aangesloten op de app-UI.
 - P-6 lokaal: cachewissing vereist een browserbrede Web Lock en weigert zonder die ondersteuning voordat IndexedDB of localStorage wordt gewist.
 - P-6 lokaal: een geblokkeerde IndexedDB-wisactie blijft onder de mutatie-lock wachten op de werkelijke uitkomst; een optionele melding kan vragen het blokkerende tabblad te sluiten.
 - P-6 lokaal: voeg een herhaalbare PE-cache-adapter toe die uitsluitend de expliciet geregistreerde module- en versleutelde IndexedDB-databases en bekende PE-localStorage-sleutels wist. Opslagadapters sluiten op `versionchange`; een andere geblokkeerde of mislukte verwijdering rapporteert precies wat wel en niet lukte, terwijl niet-PE-opslag ongemoeid blijft.

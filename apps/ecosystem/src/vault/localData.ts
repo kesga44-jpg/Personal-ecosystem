@@ -1,7 +1,14 @@
 import { databaseConfig as hubConfig } from '@ecosystem/hub/App';
 import { databaseConfig as sportConfig } from '@ecosystem/sportapp/App';
 import { databaseConfig as sidequestConfig } from '@ecosystem/sidequest/App';
-import { encryptedDatabaseName, withCrossTabDatabaseLock, type LocalDatabaseConfig } from '@ecosystem/storage';
+import {
+  encryptedDatabaseName,
+  LOGOUT_BARRIER_STORAGE_KEY,
+  withCrossTabDatabaseLock,
+  withSyncExcludedForLogout,
+  type LocalDatabaseConfig
+} from '@ecosystem/storage';
+import type { LogoutBarrier, LogoutBarrierPhase } from './lifecycle';
 import { databaseConfig as lichaamConfig } from '../modules/lichaam/storage';
 import { databaseConfig as dagboekConfig } from '../modules/dagboek/storage';
 import { databaseConfig as voedingConfig } from '../modules/voeding/storage';
@@ -92,41 +99,92 @@ export async function deletePersonalEcosystemLocalData(
     throw new Error('Lokale PE-opslag is niet beschikbaar; gegevens zijn niet bevestigd verwijderd.');
   }
 
-  return withCrossTabDatabaseLock(async () => {
-    const report: LocalDataDeletionReport = { deletedDatabases: [], deletedLocalStorageKeys: [] };
-    const failedDatabases: { name: string; reason: string }[] = [];
-    const failedLocalStorageKeys: { name: string; reason: string }[] = [];
-    const failedNotifications: { name: string; reason: string }[] = [];
-    const notifications: Promise<void>[] = [];
+  return withCrossTabDatabaseLock(() => deletePersonalEcosystemLocalDataWithinLock(adapters));
+}
 
-    for (const name of adapters.databaseNames) {
+/**
+ * Same wipe, for a caller that already holds the cross-tab mutation lock (the logout barrier).
+ * Web Locks are not re-entrant, so this variant must not request the lock again.
+ */
+export async function deletePersonalEcosystemLocalDataWithinLock(adapters: LocalDataDeletionAdapters): Promise<LocalDataDeletionReport> {
+  if (!adapters.indexedDB || !adapters.localStorage) {
+    throw new Error('Lokale PE-opslag is niet beschikbaar; gegevens zijn niet bevestigd verwijderd.');
+  }
+  const report: LocalDataDeletionReport = { deletedDatabases: [], deletedLocalStorageKeys: [] };
+  const failedDatabases: { name: string; reason: string }[] = [];
+  const failedLocalStorageKeys: { name: string; reason: string }[] = [];
+  const failedNotifications: { name: string; reason: string }[] = [];
+  const notifications: Promise<void>[] = [];
+
+  for (const name of adapters.databaseNames) {
+    try {
+      await deleteDatabase(adapters.indexedDB, name, () => {
+        notifications.push(Promise.resolve()
+          .then(() => adapters.onDatabaseBlocked?.(name))
+          .catch((cause: unknown) => {
+            failedNotifications.push({ name, reason: cause instanceof Error ? cause.message : 'Onbekende fout' });
+          }));
+      });
+      report.deletedDatabases.push(name);
+    } catch (cause) {
+      failedDatabases.push({ name, reason: cause instanceof Error ? cause.message : 'Onbekende fout' });
+    }
+  }
+
+  for (const key of adapters.localStorageKeys) {
+    try {
+      adapters.localStorage.removeItem(key);
+      report.deletedLocalStorageKeys.push(key);
+    } catch (cause) {
+      failedLocalStorageKeys.push({ name: key, reason: cause instanceof Error ? cause.message : 'Onbekende fout' });
+    }
+  }
+
+  await Promise.all(notifications);
+  if (failedDatabases.length || failedLocalStorageKeys.length || failedNotifications.length) {
+    throw new LocalDataDeletionError(report, failedDatabases, failedLocalStorageKeys, failedNotifications);
+  }
+  return report;
+}
+
+export const defaultLocalDataDeletionAdapters = (): LocalDataDeletionAdapters => ({
+  indexedDB: globalThis.indexedDB,
+  localStorage: globalThis.localStorage,
+  databaseNames: PERSONAL_ECOSYSTEM_DATABASE_NAMES,
+  localStorageKeys: PERSONAL_ECOSYSTEM_LOCAL_STORAGE_KEYS
+});
+
+interface StoredBarrier {
+  phase: LogoutBarrierPhase;
+  startedAt: string;
+}
+
+/** Browser barrier: Web Locks shared by all tabs plus the marker the storage adapters check. */
+export function browserLogoutBarrier(storage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> = globalThis.localStorage): LogoutBarrier {
+  return {
+    withSyncExcluded: withSyncExcludedForLogout,
+    withMutationsExcluded: withCrossTabDatabaseLock,
+    read() {
+      const raw = storage.getItem(LOGOUT_BARRIER_STORAGE_KEY);
+      if (raw == null) return null;
       try {
-        await deleteDatabase(adapters.indexedDB, name, () => {
-          notifications.push(Promise.resolve()
-            .then(() => adapters.onDatabaseBlocked?.(name))
-            .catch((cause: unknown) => {
-              failedNotifications.push({ name, reason: cause instanceof Error ? cause.message : 'Onbekende fout' });
-            }));
-        });
-        report.deletedDatabases.push(name);
-      } catch (cause) {
-        failedDatabases.push({ name, reason: cause instanceof Error ? cause.message : 'Onbekende fout' });
+        const phase = (JSON.parse(raw) as Partial<StoredBarrier>).phase;
+        return phase === 'cleared' ? 'cleared' : 'clearing';
+      } catch {
+        return 'clearing';
       }
-    }
-
-    for (const key of adapters.localStorageKeys) {
+    },
+    write(phase) {
+      const current = storage.getItem(LOGOUT_BARRIER_STORAGE_KEY);
+      let startedAt = new Date().toISOString();
       try {
-        adapters.localStorage.removeItem(key);
-        report.deletedLocalStorageKeys.push(key);
-      } catch (cause) {
-        failedLocalStorageKeys.push({ name: key, reason: cause instanceof Error ? cause.message : 'Onbekende fout' });
-      }
+        if (current) startedAt = (JSON.parse(current) as StoredBarrier).startedAt ?? startedAt;
+      } catch { /* een beschadigde markering wordt overschreven */ }
+      storage.setItem(LOGOUT_BARRIER_STORAGE_KEY, JSON.stringify({ phase, startedAt } satisfies StoredBarrier));
+      if (storage.getItem(LOGOUT_BARRIER_STORAGE_KEY) == null) throw new Error('De afmeldmarkering kon niet worden opgeslagen.');
+    },
+    clear() {
+      storage.removeItem(LOGOUT_BARRIER_STORAGE_KEY);
     }
-
-    await Promise.all(notifications);
-    if (failedDatabases.length || failedLocalStorageKeys.length || failedNotifications.length) {
-      throw new LocalDataDeletionError(report, failedDatabases, failedLocalStorageKeys, failedNotifications);
-    }
-    return report;
-  });
+  };
 }
