@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { withDatabaseMutationLock } from '@ecosystem/storage';
 import {
   deletePersonalEcosystemLocalData,
@@ -30,6 +30,25 @@ async function databaseNames(): Promise<string[]> {
 
 const storage = new Map<string, string>(keys.map((key) => [key, 'synthetic']));
 
+beforeEach(() => {
+  let previous = Promise.resolve();
+  vi.stubGlobal('navigator', {
+    locks: {
+      request: async (_name: string, _options: LockOptions, operation: () => Promise<unknown>) => {
+        const wait = previous;
+        let release!: () => void;
+        previous = new Promise<void>((resolve) => { release = resolve; });
+        await wait;
+        try {
+          return await operation();
+        } finally {
+          release();
+        }
+      }
+    }
+  });
+});
+
 function adapters(
   databaseNames = names.slice(0, 2),
   localStorageKeys = keys.slice(0, 1),
@@ -55,9 +74,24 @@ afterEach(async () => {
   }
   storage.clear();
   for (const key of keys) storage.set(key, 'synthetic');
+  vi.unstubAllGlobals();
 });
 
 describe('Personal Ecosystem local data deletion adapter', () => {
+  it('refuses deletion before touching either storage when Web Locks are unavailable', async () => {
+    vi.stubGlobal('navigator', {});
+    const deleteDatabase = vi.fn();
+    const removeItem = vi.fn();
+    await expect(deletePersonalEcosystemLocalData({
+      indexedDB: { deleteDatabase },
+      localStorage: { removeItem },
+      databaseNames: names.slice(0, 1),
+      localStorageKeys: keys.slice(0, 1)
+    })).rejects.toThrow('browservergrendeling tussen tabbladen');
+    expect(deleteDatabase).not.toHaveBeenCalled();
+    expect(removeItem).not.toHaveBeenCalled();
+  });
+
   it('registers only the ten PE module databases and their encrypted counterparts', () => {
     expect(PERSONAL_ECOSYSTEM_DATABASE_NAMES).toEqual([
       'personal-ecosystem-hub',

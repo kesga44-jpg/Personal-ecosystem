@@ -7,6 +7,7 @@ Elke app in de monorepo krijgt een eigen sectie zodra die bestaat. Bestaande app
 
 ### Toegevoegd
 
+- P-6 lokaal: cachewissing vereist een browserbrede Web Lock en weigert zonder die ondersteuning voordat IndexedDB of localStorage wordt gewist.
 - P-6 lokaal: een geblokkeerde IndexedDB-wisactie blijft onder de mutatie-lock wachten op de werkelijke uitkomst; een optionele melding kan vragen het blokkerende tabblad te sluiten.
 - P-6 lokaal: voeg een herhaalbare PE-cache-adapter toe die uitsluitend de expliciet geregistreerde module- en versleutelde IndexedDB-databases en bekende PE-localStorage-sleutels wist. Opslagadapters sluiten op `versionchange`; een andere geblokkeerde of mislukte verwijdering rapporteert precies wat wel en niet lukte, terwijl niet-PE-opslag ongemoeid blijft.
 - P-6 lokaal: scheid afmelden (PE-cache wissen na bevestigde sync) van verwijdering van PE-servergegevens. De verwijdercoördinator vraagt exportkeuze, bevestiging en herauthenticatie, verwijdert alleen PE-data via een nog niet aangesloten RPC-seam, rapporteert elke deels geslaagde fase en behoudt de gedeelde Auth-identiteit; alleen synthetische mockadapters.

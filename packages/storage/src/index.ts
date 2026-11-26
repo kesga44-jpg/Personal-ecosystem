@@ -301,4 +301,4 @@ export async function openLocalDatabase(config: LocalDatabaseConfig): Promise<Lo
 
 export { encryptedDatabaseLockName, encryptedDatabaseName, openEncryptedLocalDatabase } from './encrypted';
 export type { EncryptedDatabaseOptions, EncryptedRecord, EncryptedRecordCodec, KeyProvider, StorageLock } from './encrypted';
-export { DATABASE_MUTATION_LOCK, withConsistentDatabaseSnapshot, withDatabaseMutationLock } from './coordination';
+export { DATABASE_MUTATION_LOCK, withConsistentDatabaseSnapshot, withCrossTabDatabaseLock, withDatabaseMutationLock } from './coordination';

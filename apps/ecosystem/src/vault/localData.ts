@@ -1,7 +1,7 @@
 import { databaseConfig as hubConfig } from '@ecosystem/hub/App';
 import { databaseConfig as sportConfig } from '@ecosystem/sportapp/App';
 import { databaseConfig as sidequestConfig } from '@ecosystem/sidequest/App';
-import { encryptedDatabaseName, withDatabaseMutationLock, type LocalDatabaseConfig } from '@ecosystem/storage';
+import { encryptedDatabaseName, withCrossTabDatabaseLock, type LocalDatabaseConfig } from '@ecosystem/storage';
 import { databaseConfig as lichaamConfig } from '../modules/lichaam/storage';
 import { databaseConfig as dagboekConfig } from '../modules/dagboek/storage';
 import { databaseConfig as voedingConfig } from '../modules/voeding/storage';
@@ -92,7 +92,7 @@ export async function deletePersonalEcosystemLocalData(
     throw new Error('Lokale PE-opslag is niet beschikbaar; gegevens zijn niet bevestigd verwijderd.');
   }
 
-  return withDatabaseMutationLock(async () => {
+  return withCrossTabDatabaseLock(async () => {
     const report: LocalDataDeletionReport = { deletedDatabases: [], deletedLocalStorageKeys: [] };
     const failedDatabases: { name: string; reason: string }[] = [];
     const failedLocalStorageKeys: { name: string; reason: string }[] = [];

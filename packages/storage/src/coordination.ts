@@ -32,6 +32,15 @@ export function withDatabaseMutationLock<T>(operation: () => Promise<T>): Promis
   return withSharedLock(operation);
 }
 
+/** Destructive operations require the same origin-wide lock used by database writes. */
+export async function withCrossTabDatabaseLock<T>(operation: () => Promise<T>): Promise<T> {
+  const locks = globalThis.navigator?.locks;
+  if (!locks) {
+    throw new Error('Lokale PE-gegevens wissen vereist browservergrendeling tussen tabbladen.');
+  }
+  return locks.request(DATABASE_MUTATION_LOCK, { mode: 'exclusive' }, operation);
+}
+
 /**
  * Take a consistent cross-module snapshot. Browsers without Web Locks cannot guarantee
  * that writes in another tab stay out of the snapshot, so fail rather than claim consistency.
