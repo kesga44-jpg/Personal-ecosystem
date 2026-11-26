@@ -8,6 +8,7 @@
  * - Schrijven met versiecontrole: de server accepteert versie n+1 alleen als hij nu versie n heeft.
  * - Conflicten worden nooit stil opgelost: beide versies blijven bewaard tot de gebruiker kiest.
  */
+import { withSyncLock } from '@ecosystem/storage';
 import { decryptRecord, encryptRecord, randomItemId, type EncryptedItem } from './crypto';
 
 /* ---------- Servercontract (zoals de geplande RPC op `pe.items`) ---------- */
@@ -238,6 +239,18 @@ export async function syncWithRetry(
       await wait(SYNC_RETRY_DELAYS_MS[attempt]!);
     }
   }
+}
+
+/**
+ * De enige ingang die de app voor een syncronde mag gebruiken: één ronde tegelijk over alle tabbladen,
+ * en geweigerd zodra afmelden de barrière heeft gezet. Afmelden wacht zo op een lopende ronde en
+ * een ronde die erachter wachtte kan niet in een gewiste cache schrijven.
+ */
+export function syncExclusive(
+  options: { dek: CryptoKey; server: SyncServer; local: LocalAdapter; state: SyncState },
+  wait?: (milliseconds: number) => Promise<void>
+): Promise<SyncResult> {
+  return withSyncLock(() => syncWithRetry(options, wait));
 }
 
 /**

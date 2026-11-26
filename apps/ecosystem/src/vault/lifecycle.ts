@@ -10,17 +10,42 @@ export interface LogoutSyncStatus {
 export type LogoutExportChoice = 'export' | 'continue' | 'cancel';
 export type LogoutResult =
   | { status: 'cancelled' }
-  | { status: 'blocked'; reason: string; exported: boolean }
+  /** `vaultLocked`: the final check failed after the vault was locked; nothing was wiped. */
+  | { status: 'blocked'; reason: string; exported: boolean; vaultLocked?: boolean }
   | { status: 'logged-out' };
 
+export type LogoutBarrierPhase = 'clearing' | 'cleared';
+
+/**
+ * Cross-tab coordination for logout. The browser implementation (browserLogoutBarrier in
+ * localData.ts) uses Web Locks and a durable marker; tests inject an in-memory one.
+ */
+export interface LogoutBarrier {
+  /** Hold the cross-tab sync lock: waits for a running sync round and keeps new rounds out. */
+  withSyncExcluded<T>(operation: () => Promise<T>): Promise<T>;
+  /** Hold the cross-tab database mutation lock: no cooperating write can run meanwhile. */
+  withMutationsExcluded<T>(operation: () => Promise<T>): Promise<T>;
+  read(): LogoutBarrierPhase | null;
+  /** Persist the phase. Must throw if it cannot be stored; the wipe then does not start. */
+  write(phase: LogoutBarrierPhase): void;
+  clear(): void;
+}
+
 export interface LogoutDependencies {
+  /**
+   * Fresh status from persisted sync bookkeeping. Called twice: before the dialogs and again
+   * inside the barrier, after the vault is locked, so it must not need the data key.
+   */
   getSyncStatus(): Promise<LogoutSyncStatus>;
   chooseExport(): Promise<LogoutExportChoice>;
   exportPersonalData(): Promise<void>;
   confirmLocalDataRemoval(): Promise<boolean>;
+  /** Saves open input and locks the vault. Runs while sync is excluded, before the mutation lock. */
   lockVault(): Promise<void>;
+  /** Runs inside the mutation lock: must not request it again (see deletePersonalEcosystemLocalDataWithinLock). */
   clearLocalPersonalEcosystemCache(): Promise<void>;
   closePersonalEcosystemAppSession(): Promise<void>;
+  barrier: LogoutBarrier;
 }
 
 function logoutBlockReason(status: LogoutSyncStatus): string | undefined {
@@ -64,10 +89,51 @@ export async function logoutPersonalEcosystem(dependencies: LogoutDependencies):
 
   if (!await dependencies.confirmLocalDataRemoval()) return { status: 'cancelled' };
 
-  await dependencies.lockVault();
-  await dependencies.clearLocalPersonalEcosystemCache();
+  // The first check was before the dialogs; sync, other tabs or this tab may have changed data since.
+  const { barrier } = dependencies;
+  const outcome = await barrier.withSyncExcluded(async () => {
+    await dependencies.lockVault();
+    return barrier.withMutationsExcluded(async () => {
+      const finalReason = logoutBlockReason(await dependencies.getSyncStatus());
+      if (finalReason) return { status: 'blocked', reason: finalReason, exported, vaultLocked: true } as const;
+      barrier.write('clearing');
+      await dependencies.clearLocalPersonalEcosystemCache();
+      barrier.write('cleared');
+      return null;
+    });
+  });
+  if (outcome) return outcome;
   await dependencies.closePersonalEcosystemAppSession();
   return { status: 'logged-out' };
+}
+
+export type InterruptedLogoutResult = 'none' | 'resumed' | 'awaiting-login';
+
+/**
+ * Call at app start, before any PE database is opened. A logout that stopped while wiping
+ * (crash, closed tab, failed deletion) is completed; its data was confirmed synced before the
+ * marker was written, so finishing the wipe loses nothing that is not on the server.
+ */
+export async function resumeInterruptedLogout(dependencies: {
+  clearLocalPersonalEcosystemCache(): Promise<void>;
+  barrier: LogoutBarrier;
+}): Promise<InterruptedLogoutResult> {
+  const { barrier } = dependencies;
+  const phase = barrier.read();
+  if (phase === null) return 'none';
+  if (phase === 'cleared') return 'awaiting-login';
+  await barrier.withMutationsExcluded(async () => {
+    if (barrier.read() !== 'clearing') return;
+    await dependencies.clearLocalPersonalEcosystemCache();
+    barrier.write('cleared');
+  });
+  return 'resumed';
+}
+
+/** After a new successful login and vault unlock: lift the barrier so writes and sync work again. */
+export function endLogoutBarrier(barrier: LogoutBarrier): void {
+  if (barrier.read() === 'clearing') throw new Error('Een onderbroken afmelding moet eerst worden afgerond.');
+  barrier.clear();
 }
 
 export interface PersonalEcosystemRemovalAuthStatus {
