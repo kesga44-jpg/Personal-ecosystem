@@ -226,3 +226,24 @@ test('Financiën: twee Money Manual-secties en een nieuwe transactie komen na ve
   await expect(page.getByLabel('Bedrag (€)')).toHaveValue('12,34', { timeout: 15_000 });
   await expect(page.getByLabel('Omschrijving')).toHaveValue('Synthetische boeking');
 });
+
+test('Voeding: een half ingevuld recept komt na vergrendelen en openen terug', async ({ page }) => {
+  const conceptKey = 'personal-ecosystem.sealed.personal-ecosystem.concept.voeding.recept';
+  await page.goto(`${base}/voeding/recepten/nieuw`);
+  await createVault(page);
+  await expect(page.getByRole('region', { name: 'Kluis' })).toBeVisible({ timeout: 15_000 });
+  await page.getByLabel('Naam van het recept').fill('Synthetische Zeeuwse mosselsoep');
+  await page.getByRole('textbox', { name: 'Bereiding Eén stap per regel' }).fill('Stap een\nStap twee');
+
+  await page.getByRole('button', { name: 'Vergrendelen' }).click();
+  await expect(page.getByRole('heading', { name: 'Kluis openen' })).toBeVisible();
+  const raw = await page.evaluate(() => JSON.stringify({ ...localStorage }));
+  expect(raw).toContain(conceptKey);
+  expect(raw).not.toContain('mosselsoep');
+
+  await page.getByLabel('Kluiswachtwoord').fill(password);
+  await page.getByRole('button', { name: 'Openen', exact: true }).click();
+  await expect(page.getByLabel('Naam van het recept')).toHaveValue('Synthetische Zeeuwse mosselsoep', { timeout: 15_000 });
+  await expect(page.getByRole('textbox', { name: 'Bereiding Eén stap per regel' })).toHaveValue('Stap een\nStap twee');
+  await expect(page.getByText('Niet-opgeslagen invoer van de vorige keer is teruggezet.')).toBeVisible();
+});
