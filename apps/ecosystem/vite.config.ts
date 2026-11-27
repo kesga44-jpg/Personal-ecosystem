@@ -1,29 +1,46 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { rejectSharpModules } from '../../packages/build-check/no-sharp';
+import { appIconSvg, iconPath, installableApps, manifestPath, webManifest } from './src/installableApps';
+
+/** Eén manifest en icoon per installeerbare app (optie A); dev-server en build gebruiken dezelfde bron. */
+function installableAppManifests(): Plugin {
+  const files = new Map<string, { type: string; body: string }>();
+  for (const app of installableApps) {
+    files.set(manifestPath(app), { type: 'application/manifest+json', body: `${JSON.stringify(webManifest(app), null, 2)}\n` });
+    files.set(iconPath(app), { type: 'image/svg+xml', body: appIconSvg(app) });
+  }
+  return {
+    name: 'pe-installable-app-manifests',
+    configureServer(server) {
+      server.middlewares.use((request, response, next) => {
+        const file = files.get((request.url ?? '').split('?')[0]!);
+        if (!file) return next();
+        response.setHeader('Content-Type', file.type);
+        response.end(file.body);
+      });
+    },
+    generateBundle() {
+      for (const [path, file] of files) this.emitFile({ type: 'asset', fileName: path.slice(1), source: file.body });
+    }
+  };
+}
 
 export default defineConfig({
   base: '/',
   plugins: [
     rejectSharpModules(),
     react(),
+    installableAppManifests(),
     VitePWA({
       registerType: 'prompt',
       includeAssets: ['icon.svg'],
-      manifest: {
-        name: 'Personal Ecosystem',
-        short_name: 'Ecosystem',
-        description: 'Dashboard, Sport, Kracht, Duur, SIDEQUEST, Lichaam, Voeding en Dagboek in één persoonlijke app.',
-        theme_color: '#397d71',
-        background_color: '#f4f6f7',
-        display: 'standalone',
-        start_url: '/',
-        icons: [{ src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' }]
-      },
+      // Manifesten per installeerbare app komen uit installableAppManifests(); main.tsx kiest per route.
+      manifest: false,
       workbox: {
         navigateFallback: '/index.html',
-        globPatterns: ['**/*.{js,css,html,svg,woff2}']
+        globPatterns: ['**/*.{js,css,html,svg,woff2,webmanifest}']
       }
     })
   ],

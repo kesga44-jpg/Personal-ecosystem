@@ -1,6 +1,16 @@
 import { expect, test } from '@playwright/test';
 
 const landingUrl = 'http://127.0.0.1:4176/';
+/** Personal Ecosystem as separately installable apps (option A); kept in sync with installableApps.ts by a unit test. */
+const peApps = [
+  ['personal-ecosystem', '/', 'Personal Ecosystem'],
+  ['groei-kennis', '/groei', 'Groei & Kennis'],
+  ['financien', '/financien', 'Financiën'],
+  ['voeding', '/voeding', 'Voeding'],
+  ['sport', '/sport', 'Sport'],
+  ['sidequest', '/quest', 'SIDEQUEST'],
+  ['lichaam-dagboek', '/lichaam', 'Lichaam & Dagboek']
+] as const;
 for (const width of [375, 768, 1280]) {
   test(`public landing page fits a ${width}px viewport`, async ({ page }) => {
     const requestOrigins = new Set<string>();
@@ -15,8 +25,8 @@ for (const width of [375, 768, 1280]) {
       /default-src 'none'; script-src 'self'; style-src 'self'/
     );
     await expect(page.locator('script[src^="http"]')).toHaveCount(0);
-    await expect(page.locator('[data-app-card]')).toHaveCount(3);
-    await expect(page.getByText('Lokaal, geen account nodig', { exact: true })).toHaveCount(1);
+    await expect(page.locator('[data-app-card]')).toHaveCount(2 + peApps.length);
+    await expect(page.getByText('Personal Ecosystem · lokaal', { exact: true })).toHaveCount(peApps.length);
     await expect(page.getByText('Bestaande app · met account', { exact: true })).toHaveCount(2);
     await expect(page.getByRole('link', { name: 'Documentatie' })).toBeVisible();
 
@@ -31,10 +41,12 @@ for (const width of [375, 768, 1280]) {
       await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     }
 
-    for (const [appId, url] of [['hub', 'https://pe-hub.kesga44.workers.dev/']]) {
-      const link = page.locator(`[data-app-card="${appId}"]`).getByRole('link', { name: 'Openen' });
+    for (const [appId, path, name] of peApps) {
+      const card = page.locator(`[data-app-id="${appId}"]`);
+      await expect(card.getByRole('heading', { name, exact: true })).toBeVisible();
+      const link = card.getByRole('link', { name: 'Openen' });
       await expect(link).toBeVisible();
-      await expect(link).toHaveAttribute('href', url);
+      await expect(link).toHaveAttribute('href', `https://pe-hub.kesga44.workers.dev${path}`);
       await expect(link).toHaveAttribute('target', '_blank');
       await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     }
@@ -43,7 +55,7 @@ for (const width of [375, 768, 1280]) {
       () => document.documentElement.scrollWidth > document.documentElement.clientWidth
     );
     expect(hasHorizontalOverflow).toBe(false);
-    const columns = await page.locator('.apps').evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').length);
+    const columns = await page.locator('.pe-apps .apps').evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').length);
     expect(columns).toBe(width <= 560 ? 1 : width <= 800 ? 2 : 3);
     expect([...requestOrigins]).toEqual(['http://127.0.0.1:4176']);
   });
@@ -56,11 +68,12 @@ test('configured Personal Ecosystem link uses the configured HTTPS origin', asyn
   }));
   await page.goto(landingUrl);
 
-  const card = page.locator('[data-app-card="hub"]');
-  await expect(card.getByRole('heading', { name: 'Personal Ecosystem' })).toBeVisible();
-  await expect(card.getByRole('link', { name: 'Openen' })).toHaveAttribute('href', 'https://hub.example.com/');
-  await expect(card.getByRole('link', { name: 'Openen' })).toHaveAttribute('rel', 'noopener noreferrer');
-  await expect(card.locator('[data-app-link-status]')).toBeEmpty();
+  for (const [appId, path] of peApps) {
+    const card = page.locator(`[data-app-id="${appId}"]`);
+    await expect(card.getByRole('link', { name: 'Openen' })).toHaveAttribute('href', `https://hub.example.com${path}`);
+    await expect(card.getByRole('link', { name: 'Openen' })).toHaveAttribute('rel', 'noopener noreferrer');
+    await expect(card.locator('[data-app-link-status]')).toBeEmpty();
+  }
 });
 
 test('existing apps open their configured URLs in separate tabs', async ({ page, context }) => {
@@ -88,7 +101,10 @@ test('rejects an insecure Personal Ecosystem link', async ({ page }) => {
   }));
   await page.goto(landingUrl);
 
-  const card = page.locator('[data-app-card="hub"]');
-  await expect(card.getByRole('button', { name: 'Openen' })).toBeDisabled();
-  await expect(card.locator('[data-app-link-status]')).toHaveText('De app-link is niet veilig ingesteld.');
+  const cards = page.locator('[data-app-card="hub"]');
+  await expect(cards).toHaveCount(peApps.length);
+  for (const card of await cards.all()) {
+    await expect(card.getByRole('button', { name: 'Openen' })).toBeDisabled();
+    await expect(card.locator('[data-app-link-status]')).toHaveText('De app-link is niet veilig ingesteld.');
+  }
 });

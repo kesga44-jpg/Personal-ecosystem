@@ -4,7 +4,7 @@ Een local-first platform met drie zelfstandig te bouwen webapps:
 
 [Publieke startpagina](https://kesga44-jpg.github.io/Personal-ecosystem/) · De documentatie en ontwikkelaarsinformatie staan in deze README en de documenten hieronder.
 
-De startpagina linkt ook naar de bestaande apps Samen Thuis en Coach, die een account gebruiken. De drie nieuwe apps hieronder werken lokaal zonder account; hun knoppen blijven uitgeschakeld totdat hun eigen online URL's zijn ingesteld.
+De startpagina linkt naar de bestaande apps Samen Thuis en Coach, die een eigen account gebruiken, en toont Personal Ecosystem als zeven losse apps (Personal Ecosystem, Groei & Kennis, Financiën, Voeding, Sport, SIDEQUEST, Lichaam & Dagboek). Die zijn elk apart te installeren, maar zijn technisch één app op één origin met dezelfde gegevens; zie `apps/ecosystem/src/installableApps.ts`.
 
 Sinds [ADR 0020](docs/adr/0020-een-app-met-modules.md) draaien Hub, Sportapp en SIDEQUEST als modules van één app, **Personal Ecosystem** (`apps/ecosystem`): Dashboard op `/`, Sport op `/sport`, SIDEQUEST op `/quest` en een centrale back-up op `/back-up`. Elke module houdt een eigen IndexedDB-database. De losse apps hieronder blijven tijdelijk bestaan met een verhuismelding.
 
