@@ -51,6 +51,12 @@ export interface RecipeExport {
   exportedAt: string;
 }
 
+export interface RecipePageCoverage {
+  withoutRow: { id: string; path: string }[];
+  ambiguous: { id: string; path: string }[];
+  unrecognizedPaths: string[];
+}
+
 export function validateImportedRecipe(input: unknown): asserts input is ImportedRecipe {
   if (!input || typeof input !== 'object') throw new Error('Ongeldig tussenformaat voor recept.');
   const value = input as ImportedRecipe;
@@ -134,6 +140,25 @@ function firstLine(value: string): string {
   return value.split('\n')[0]!.replace(/\s+/gu, ' ').trim();
 }
 
+function equalAttachments(left: string, right: string): boolean {
+  const pattern = /(!?\[[^\]]*\])\(([^)]+)\)/gu;
+  const leftLinks = [...left.matchAll(pattern)];
+  const rightLinks = [...right.matchAll(pattern)];
+  if (!leftLinks.length || leftLinks.length !== rightLinks.length ||
+      [...leftLinks, ...rightLinks].some((match) => /^(?:[a-z][a-z0-9+.-]*:|\/|#)/iu.test(match[2]!))) return false;
+  const normalize = (value: string) => {
+    let index = 0;
+    return value.replace(pattern, (_match, label: string, path: string) => {
+      const leftPath = leftLinks[index]![2]!;
+      const rightPath = rightLinks[index]![2]!;
+      index++;
+      const relative = /^(?:\.\.\/)+/u.test(leftPath) || /^(?:\.\.\/)+/u.test(rightPath);
+      return `${label}(${relative ? path.split('/').pop() : path})`;
+    });
+  };
+  return normalize(left) === normalize(right);
+}
+
 function readPage(file: NotionFile): Page | null {
   const id = file.path.match(/(?:^|\/)[^/]*?([0-9a-f]{32})\.md$/iu)?.[1]?.toLowerCase();
   if (!id) return null;
@@ -157,9 +182,57 @@ function comparePage(page: Page, columns: string[], cells: string[], titleIndex:
     const csvValue = firstLine(cells[index] ?? '');
     const pageValue = firstLine(page.properties.get(normalizeColumnName(column)) ?? '');
     if (csvValue) compared++;
-    if (csvValue !== pageValue) contradicts = true;
+    if (csvValue !== pageValue && !equalAttachments(csvValue, pageValue)) contradicts = true;
   });
   return { contradicts, compared };
+}
+
+interface PageCandidate {
+  page: Page;
+  compared: number;
+}
+
+interface RowCandidates {
+  title: string;
+  candidates: Page[];
+  comparable: PageCandidate[];
+}
+
+interface PageMatch {
+  candidate: PageCandidate;
+  method: 'unique_title' | 'properties' | 'elimination';
+}
+
+function matchPages(rows: RowCandidates[]): (PageMatch | undefined)[] {
+  const matches: (PageMatch | undefined)[] = rows.map(() => undefined);
+  const selected = rows.map((row) => {
+    if (row.comparable.length !== 1) return undefined;
+    if (row.title && row.candidates.length === 1) return { candidate: row.comparable[0]!, method: 'unique_title' as const };
+    if ((!row.title || row.candidates.length > 1) && row.comparable[0]!.compared > 0) {
+      return { candidate: row.comparable[0]!, method: 'properties' as const };
+    }
+    return undefined;
+  });
+  const used = new Set<string>();
+  selected.forEach((selection, index) => {
+    if (!selection || selected.filter((other) => other?.candidate.page.id === selection.candidate.page.id).length !== 1) return;
+    matches[index] = selection;
+    used.add(selection.candidate.page.id);
+  });
+
+  rows.forEach((row, index) => {
+    if (matches[index] || row.comparable.length < 2) return;
+    const group = rows.map((other, otherIndex) => ({ other, otherIndex })).filter(({ other }) => other.title === row.title);
+    if (group.length < 2 || group.filter(({ otherIndex }) => !matches[otherIndex]).length !== 1) return;
+    const remaining = row.comparable.filter((candidate) => !used.has(candidate.page.id));
+    if (remaining.length !== 1) return;
+    const candidate = remaining[0]!;
+    if (rows.some((other, otherIndex) => otherIndex !== index && !matches[otherIndex] &&
+      other.comparable.some((option) => option.page.id === candidate.page.id))) return;
+    matches[index] = { candidate, method: 'elimination' };
+    used.add(candidate.page.id);
+  });
+  return matches;
 }
 
 function sectionLines(markdown: string): Map<string, string[]> {
@@ -220,6 +293,7 @@ export async function parseRecipeExport(input: RecipeExport): Promise<ImportedRe
   if (!/^[0-9a-f]{32}$/u.test(input.databaseId) || !Number.isFinite(Date.parse(input.exportedAt))) {
     throw new Error('Ongeldige database-ID of exportdatum.');
   }
+
   const csvRows = parseCsv(input.csv.content);
   const columns = csvRows.shift();
   if (!columns?.length) throw new Error('CSV-kolomkoppen ontbreken.');
@@ -232,22 +306,21 @@ export async function parseRecipeExport(input: RecipeExport): Promise<ImportedRe
   const pages = input.pages.map(readPage).filter((page): page is Page => page !== null);
   const ids = pages.map((page) => page.id);
   if (new Set(ids).size !== ids.length) throw new Error('Dubbele pagina-ID in export.');
-  const titleCounts = new Map<string, number>();
-  for (const row of rows) {
-    const title = firstLine(row[titleIndex] ?? '');
-    titleCounts.set(title, (titleCounts.get(title) ?? 0) + 1);
-  }
-  return Promise.all(rows.map(async (cells, index) => {
-    const name = cells[titleIndex]!.trim();
-    const title = firstLine(name);
+  const rowCandidates = rows.map((cells): RowCandidates => {
+    const title = firstLine(cells[titleIndex] ?? '');
     const candidates = pages.filter((page) => title ? firstLine(page.title) === title : !page.title || page.title === 'Untitled');
     const comparable = candidates.map((page) => ({ page, ...comparePage(page, columns, cells, titleIndex) })).filter((candidate) => !candidate.contradicts);
-    const unique = title && titleCounts.get(title) === 1 && candidates.length === 1 && comparable.length === 1;
-    const probable = !unique && titleCounts.get(title) === 1 && candidates.length > 1 && comparable.length === 1 && comparable[0]!.compared > 0;
-    const matched = unique || probable ? comparable[0] : undefined;
-    const rowMatch: RowMatch = matched
-      ? { method: unique ? 'unique_title' : 'properties', confidence: unique ? 'bevestigd' : 'aannemelijk', candidates: candidates.length, comparedColumns: matched.compared, matchRules: MATCH_RULES_VERSION }
-      : { method: 'none', confidence: 'niet_van_toepassing', candidates: candidates.length, comparedColumns: 0, matchRules: MATCH_RULES_VERSION };
+    return { title, candidates, comparable };
+  });
+  const matches = matchPages(rowCandidates);
+  return Promise.all(rows.map(async (cells, index) => {
+    const name = cells[titleIndex]!.trim();
+    const candidateSet = rowCandidates[index]!;
+    const match = matches[index];
+    const matched = match?.candidate;
+    const rowMatch: RowMatch = match
+      ? { method: match.method, confidence: match.method === 'unique_title' ? 'bevestigd' : match.method === 'properties' ? 'aannemelijk' : 'onzeker', candidates: candidateSet.candidates.length, comparedColumns: match.candidate.compared, matchRules: MATCH_RULES_VERSION }
+      : { method: 'none', confidence: 'niet_van_toepassing', candidates: candidateSet.candidates.length, comparedColumns: 0, matchRules: MATCH_RULES_VERSION };
     const key: ImportKey = matched
       ? { kind: 'notion_page_id', value: matched.page.id }
       : await computeReplacementKey({ databaseId: input.databaseId, columns, cells, occurrence: occurrences[index]! });
@@ -261,7 +334,7 @@ export async function parseRecipeExport(input: RecipeExport): Promise<ImportedRe
     const servings = Number.isSafeInteger(servingsValue) && servingsValue > 0 ? servingsValue : null;
     const warnings: string[] = [];
     if (!matched) warnings.push('Geen eenduidige paginakoppeling; paginainhoud ontbreekt.');
-    if (matched && !unique) warnings.push('Paginakoppeling vereist controle.');
+    if (matched && match?.method !== 'unique_title') warnings.push('Paginakoppeling vereist controle.');
     if (servingsText && servings === null) warnings.push('Aantal porties is onleesbaar.');
     if (ingredients.some((line) => line.amount === null)) warnings.push('Een hoeveelheid of eenheid is onbekend; brontekst is bewaard.');
     const knownSections = new Set(['ingrediënten', 'bereiding', 'voedingswaarden', 'micronutriënten']);
@@ -291,4 +364,28 @@ export async function parseRecipeExport(input: RecipeExport): Promise<ImportedRe
     validateImportedRecipe(result);
     return result;
   }));
+}
+
+/** Classify supplied recipe pages without claiming that an ambiguous title has no CSV row. */
+export async function inspectRecipePageCoverage(input: RecipeExport): Promise<RecipePageCoverage> {
+  const rows = await parseRecipeExport(input);
+  const linked = new Set(rows.filter((row) => row.origin.key.kind === 'notion_page_id' &&
+    (row.origin.rowMatch.confidence === 'bevestigd' || row.origin.rowMatch.confidence === 'handmatig_bevestigd'))
+    .map((row) => row.origin.key.value));
+  const result: RecipePageCoverage = { withoutRow: [], ambiguous: [], unrecognizedPaths: [] };
+  for (const file of input.pages) {
+    const page = readPage(file);
+    if (!page) {
+      result.unrecognizedPaths.push(file.path);
+      continue;
+    }
+    if (linked.has(page.id)) continue;
+    const hasCandidate = rows.some((row) => {
+      const title = firstLine(row.name);
+      return title ? firstLine(page.title) === title : !page.title || page.title === 'Untitled';
+    });
+    const target = hasCandidate ? result.ambiguous : result.withoutRow;
+    target.push({ id: page.id, path: page.file.path });
+  }
+  return result;
 }

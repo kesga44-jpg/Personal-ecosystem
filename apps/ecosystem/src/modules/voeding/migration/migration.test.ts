@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { openLocalDatabase, type LocalExport } from '@ecosystem/storage';
 import csv from './fixtures/recipes.csv?raw';
 import markdown from './fixtures/Voorbeeldpap 11111111111111111111111111111111.md?raw';
-import { parseCsv, parseRecipeExport, validateImportedRecipe, type RecipeExport } from './notion';
+import { inspectRecipePageCoverage, parseCsv, parseRecipeExport, validateImportedRecipe, type RecipeExport } from './notion';
 import { mapRecipe, matchIngredient, previewRecipes } from './preview';
 import { prepareRunRollback, prepareVoedingBackup } from './recovery';
 import { databaseConfig } from '../storage';
@@ -90,6 +90,96 @@ describe('synthetische Notion-recepten', () => {
     const [unrecognized] = await parseRecipeExport({ ...input, pages: [{ ...input.pages[0]!, content: markdown.replace('## Ingrediënten', 'Extra toelichting.\n\n## Ingrediënten') }] });
     expect(unrecognized!.warnings.join(' ')).toContain('Niet-herkende pagina-inhoud');
     expect((await mapRecipe(unrecognized!, products, ids, now)).recipe).toBeNull();
+  });
+
+  it('koppelt dubbele titels alleen op onderscheidende eigenschappen en blijft controle vereisen', async () => {
+    const sameName = {
+      ...input,
+      csv: { ...input.csv, content: 'Naam,Porties,Categorie,Tags\nVoorbeeldpap,2,ontbijt,snel\nVoorbeeldpap,3,ontbijt,snel\n' },
+      pages: [
+        input.pages[0]!,
+        { path: 'Recepten/Voorbeeldpap 22222222222222222222222222222222.md', content: markdown.replace('Porties: 2', 'Porties: 3') }
+      ]
+    };
+    const rows = await parseRecipeExport(sameName);
+    expect(rows.map((row) => row.origin.key.value)).toEqual([
+      '11111111111111111111111111111111', '22222222222222222222222222222222'
+    ]);
+    expect(rows.map((row) => row.origin.rowMatch)).toMatchObject([
+      { method: 'properties', confidence: 'aannemelijk' },
+      { method: 'properties', confidence: 'aannemelijk' }
+    ]);
+    expect((await mapRecipe(rows[0]!, products, ids, now)).recipe).toBeNull();
+    const reversed = await parseRecipeExport({ ...sameName, pages: [...sameName.pages].reverse() });
+    expect(reversed.map((row) => row.origin)).toEqual(rows.map((row) => row.origin));
+  });
+
+  it('gebruikt geen pagina voor twee rijen, ook niet als de rijen inhoudelijk verschillen', async () => {
+    const repeated = {
+      ...input,
+      csv: { ...input.csv, content: 'Naam,Porties,Categorie,Tags\nVoorbeeldpap,2,ontbijt,"snel\nextra"\nVoorbeeldpap,2,ontbijt,snel\n' }
+    };
+    const rows = await parseRecipeExport(repeated);
+    expect(rows.map((row) => row.origin.key.kind)).toEqual(['replacement_key', 'replacement_key']);
+    expect(rows[0]!.origin.key.value).not.toBe(rows[1]!.origin.key.value);
+    expect(rows.every((row) => row.sourceMarkdown === null)).toBe(true);
+  });
+
+  it('vergelijkt relatieve bijlagepaden alleen binnen Markdown-links', async () => {
+    const withAttachment = {
+      ...input,
+      csv: { ...input.csv, content: 'Naam,Porties,Categorie,Tags,Bestand\nVoorbeeldpap,2,ontbijt,snel,[foto](foto.png)\n' },
+      pages: [{ ...input.pages[0]!, content: markdown.replace('Tags: snel', 'Tags: snel\nBestand: [foto](../map/foto.png)') }]
+    };
+    const [match] = await parseRecipeExport(withAttachment);
+    expect(match!.origin.key.kind).toBe('notion_page_id');
+    expect(match!.origin.sourceRow.cells[4]).toBe('[foto](foto.png)');
+    const different = { ...withAttachment, pages: [{ ...withAttachment.pages[0]!, content: withAttachment.pages[0]!.content.replace('../map/foto.png', '../map/ander.png') }] };
+    expect((await parseRecipeExport(different))[0]!.origin.key.kind).toBe('replacement_key');
+    const multiple = {
+      ...withAttachment,
+      csv: { ...withAttachment.csv, content: withAttachment.csv.content.replace('[foto](foto.png)', '[foto](foto.png) [ander](map1/b.png)') },
+      pages: [{ ...withAttachment.pages[0]!, content: withAttachment.pages[0]!.content.replace('[foto](../map/foto.png)', '[foto](../map/foto.png) [ander](map2/b.png)') }]
+    };
+    expect((await parseRecipeExport(multiple))[0]!.origin.key.kind).toBe('replacement_key');
+  });
+
+  it('meldt de laatst overgebleven koppeling door eliminatie altijd als onzeker', async () => {
+    const example: RecipeExport = {
+      ...input,
+      csv: { ...input.csv, content: 'Naam,Porties,Categorie,Tags,Bestand\nVoorbeeldpap,2,ontbijt,snel,[foto](map1/foto.png)\nVoorbeeldpap,2,ontbijt,snel,[foto](../foto.png)\n' },
+      pages: [
+        { ...input.pages[0]!, content: markdown.replace('Tags: snel', 'Tags: snel\nBestand: [foto](map1/foto.png)') },
+        { path: 'Recepten/Voorbeeldpap 22222222222222222222222222222222.md', content: markdown.replace('Tags: snel', 'Tags: snel\nBestand: [foto](map2/foto.png)') }
+      ]
+    };
+    const rows = await parseRecipeExport(example);
+    expect(rows.map((row) => row.origin.rowMatch)).toMatchObject([
+      { method: 'properties', confidence: 'aannemelijk' },
+      { method: 'elimination', confidence: 'onzeker' }
+    ]);
+    expect(rows.map((row) => row.origin.key.value)).toEqual([
+      '11111111111111111111111111111111', '22222222222222222222222222222222'
+    ]);
+    expect((await mapRecipe(rows[1]!, products, ids, now)).recipe).toBeNull();
+    const reordered = await parseRecipeExport({ ...example, pages: [...example.pages].reverse() });
+    expect(reordered.map((row) => row.origin)).toEqual(rows.map((row) => row.origin));
+  });
+
+  it('onderscheidt ongebruikte pagina’s zonder rij van onduidelijke koppelingen', async () => {
+    const duplicate = { path: 'Recepten/Voorbeeldpap 22222222222222222222222222222222.md', content: markdown };
+    const other = { path: 'Recepten/Los 33333333333333333333333333333333.md', content: '# Los\n' };
+    const invalid = { path: 'Recepten/zonder-id.md', content: '# Los\n' };
+    const coverage = await inspectRecipePageCoverage({ ...input, pages: [input.pages[0]!, duplicate, other, invalid] });
+    expect(coverage.withoutRow).toEqual([{ id: '33333333333333333333333333333333', path: other.path }]);
+    expect(coverage.ambiguous).toEqual([
+      { id: '11111111111111111111111111111111', path: input.pages[0]!.path },
+      { id: '22222222222222222222222222222222', path: duplicate.path }
+    ]);
+    expect(coverage.unrecognizedPaths).toEqual([invalid.path]);
+    expect((await inspectRecipePageCoverage(input)).ambiguous).toEqual([]);
+    const probable = { ...input, pages: [input.pages[0]!, { ...duplicate, content: markdown.replace('Porties: 2', 'Porties: 3') }] };
+    expect((await inspectRecipePageCoverage(probable)).ambiguous).toHaveLength(2);
   });
 
   it('weigert ongeldige tussenformaten en herkomst', async () => {
