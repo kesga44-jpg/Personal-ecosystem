@@ -48,6 +48,7 @@ import {
 import { ACCEPT, readActivityFile } from './parsers';
 import { RouteMap } from './RouteMap';
 import { databaseConfig } from './storage';
+import { ConceptNotice, useFormConcept } from '../../formConcept';
 
 const navigation = [
   { to: '/', label: 'Overzicht', icon: '⌂' },
@@ -357,6 +358,22 @@ function ManualPage({ error, onSave }: { error: string; onSave: (workout: Workou
   const [avgHr, setAvgHr] = useState('');
   const [notes, setNotes] = useState('');
   const [formError, setFormError] = useState('');
+  const concept = useFormConcept(
+    'duur.training',
+    'nieuw',
+    'Duurtraining',
+    { sport, date, time, duration, distance, avgHr, notes },
+    { sport: 'hardlopen' as Sport, date: todayKey(), time: '07:00', duration: '', distance: '', avgHr: '', notes: '' },
+    (value) => {
+      if (value.sport in sportLabels) setSport(value.sport);
+      setDate(value.date);
+      setTime(value.time);
+      setDuration(value.duration);
+      setDistance(value.distance);
+      setAvgHr(value.avgHr);
+      setNotes(value.notes);
+    }
+  );
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -390,7 +407,10 @@ function ManualPage({ error, onSave }: { error: string; onSave: (workout: Workou
         notes: notes.trim()
       };
       validateWorkout(workout, todayKey());
-      if (await onSave(workout)) navigate(`/activiteit/${encodeURIComponent(workout.id)}`);
+      if (await onSave(workout)) {
+        concept.clear();
+        navigate(`/activiteit/${encodeURIComponent(workout.id)}`);
+      }
     } catch (cause) {
       setFormError(message(cause, 'De training bevat ongeldige gegevens.'));
     }
@@ -402,6 +422,7 @@ function ManualPage({ error, onSave }: { error: string; onSave: (workout: Workou
       <PageHeader eyebrow="Duur" title="Training toevoegen" description="Zonder bestand, bijvoorbeeld een loopje zonder horloge." />
       <Card>
         <form onSubmit={(event) => void submit(event)} noValidate>
+          <ConceptNotice concept={concept} />
           <div className="form-grid">
             <Field label="Sport">
               <select value={sport} onChange={(event) => isSport(event.target.value) && setSport(event.target.value)}>
@@ -455,6 +476,18 @@ function DetailPage({ workouts, settings, error, loadTrack, onUpdate, onDelete }
   const [sport, setSport] = useState<Sport>(workout?.sport ?? 'overig');
   const [saved, setSaved] = useState(false);
   const [formError, setFormError] = useState('');
+  const concept = useFormConcept(
+    'duur.activiteit',
+    id ?? '',
+    'Training',
+    { title, notes, sport },
+    { title: workout?.title ?? '', notes: workout?.notes ?? '', sport: workout?.sport ?? ('overig' as Sport) },
+    (value) => {
+      setTitle(value.title);
+      setNotes(value.notes);
+      if (value.sport in sportLabels) setSport(value.sport);
+    }
+  );
 
   useEffect(() => {
     if (!workout?.hasTrack) {
@@ -485,7 +518,9 @@ function DetailPage({ workouts, settings, error, loadTrack, onUpdate, onDelete }
     try {
       const next = { ...current, title: title.trim(), notes: notes.trim(), sport };
       validateWorkout(next);
-      setSaved(await onUpdate(next));
+      const ok = await onUpdate(next);
+      if (ok) concept.clear();
+      setSaved(ok);
     } catch (cause) {
       setFormError(message(cause, 'De wijziging is ongeldig.'));
     }
@@ -560,6 +595,7 @@ function DetailPage({ workouts, settings, error, loadTrack, onUpdate, onDelete }
       )}
       <Card title="Gegevens">
         <form onSubmit={(event) => void save(event)} noValidate>
+          <ConceptNotice concept={concept} />
           <div className="form-grid">
             <Field label="Naam"><input type="text" maxLength={100} value={title} onChange={(event) => setTitle(event.target.value)} /></Field>
             <Field label="Sport">
@@ -589,6 +625,7 @@ function SettingsPage({ settings, error, onSave }: { settings: DuurSettings; err
   const [saved, setSaved] = useState(false);
 
   useEffect(() => setMaxHr(settings.maxHr ? String(settings.maxHr) : ''), [settings]);
+  const concept = useFormConcept('duur.instellingen', 'instellingen', 'Duurinstellingen', { maxHr }, { maxHr: settings.maxHr ? String(settings.maxHr) : '' }, (value) => setMaxHr(value.maxHr));
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -599,7 +636,9 @@ function SettingsPage({ settings, error, onSave }: { settings: DuurSettings; err
       if (Number.isNaN(value)) throw new Error('Vul een getal in.');
       const next: DuurSettings = { id: 'settings', maxHr: value === null ? null : Math.round(value) };
       validateSettings(next);
-      setSaved(await onSave(next));
+      const ok = await onSave(next);
+      if (ok) concept.clear();
+      setSaved(ok);
     } catch (cause) {
       setFormError(message(cause, 'De instelling is ongeldig.'));
     }
@@ -611,6 +650,7 @@ function SettingsPage({ settings, error, onSave }: { settings: DuurSettings; err
       <PageHeader eyebrow="Duur" title="Instellingen" />
       <Card title="Hartslagzones">
         <form onSubmit={(event) => void submit(event)} noValidate>
+          <ConceptNotice concept={concept} />
           <Field label="Maximale hartslag (bpm)" hint="Optioneel, 120–230. Gebruik bij voorkeur een gemeten waarde; formules zoals 220 min leeftijd zijn grof.">
             <input type="text" inputMode="numeric" value={maxHr} onChange={(event) => setMaxHr(event.target.value)} />
           </Field>

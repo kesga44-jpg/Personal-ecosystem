@@ -40,6 +40,7 @@ import {
   type MeasureField
 } from './domain';
 import { databaseConfig } from './storage';
+import { ConceptNotice, useFormConcept } from '../../formConcept';
 
 const navigation = [
   { to: '/', label: 'Overzicht', icon: '⌂' },
@@ -235,6 +236,19 @@ function EntryPage({ days, error, onSave }: { days: BodyDay[]; error: string; on
     setFormError('');
   }, [existing, date]);
 
+  const baselineSource = existing ?? emptyDay(date);
+  const concept = useFormConcept(
+    'lichaam.meting',
+    date,
+    'Lichaamsmeting',
+    { values, note },
+    { values: Object.fromEntries(MEASURE_FIELDS.map((field) => [field, toText(baselineSource[field])])) as Record<MeasureField, string>, note: baselineSource.note },
+    (value) => {
+      setValues(value.values);
+      setNote(value.note);
+    }
+  );
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     setFormError('');
@@ -243,7 +257,10 @@ function EntryPage({ days, error, onSave }: { days: BodyDay[]; error: string; on
       const parsed = Object.fromEntries(MEASURE_FIELDS.map((field) => [field, parseMeasure(field, values[field])])) as Record<MeasureField, number | null>;
       const day: BodyDay = { ...emptyDay(date), ...parsed, note: note.trim(), updatedAt: new Date().toISOString() };
       validateBodyDay(day, today);
-      if (await onSave(day)) navigate('/');
+      if (await onSave(day)) {
+        concept.clear();
+        navigate('/');
+      }
     } catch (cause) {
       setFormError(cause instanceof Error ? cause.message : 'De meting bevat ongeldige gegevens.');
     }
@@ -257,6 +274,7 @@ function EntryPage({ days, error, onSave }: { days: BodyDay[]; error: string; on
       <PageHeader eyebrow="Lichaam" title={existing ? 'Meting aanpassen' : 'Meting invoeren'} description="Vul alleen in wat je weet. Lege velden worden niet opgeslagen." />
       <Card>
         <form onSubmit={(event) => void submit(event)} noValidate>
+          <ConceptNotice concept={concept} />
           <div className="form-grid">
             <div style={{ gridColumn: '1 / -1' }}>
               <Field label="Datum" {...(existing ? { hint: 'Er is al een registratie voor deze dag; je past die aan.' } : {})}>
@@ -354,6 +372,11 @@ function SettingsPage({ profile, error, onSave }: { profile: BodyProfile; error:
     setGoal(toText(profile.goalWeightKg));
   }, [profile]);
 
+  const concept = useFormConcept('lichaam.profiel', 'profiel', 'Lichaamsprofiel', { height, goal }, { height: toText(profile.heightCm), goal: toText(profile.goalWeightKg) }, (value) => {
+    setHeight(value.height);
+    setGoal(value.goal);
+  });
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     setFormError('');
@@ -368,7 +391,9 @@ function SettingsPage({ profile, error, onSave }: { profile: BodyProfile; error:
       };
       const next: BodyProfile = { id: 'profile', heightCm: parse(height), goalWeightKg: parse(goal) };
       validateBodyProfile(next);
-      setSaved(await onSave(next));
+      const ok = await onSave(next);
+      if (ok) concept.clear();
+      setSaved(ok);
     } catch (cause) {
       setFormError(cause instanceof Error ? cause.message : 'Het profiel bevat ongeldige gegevens.');
     }
@@ -380,6 +405,7 @@ function SettingsPage({ profile, error, onSave }: { profile: BodyProfile; error:
       <PageHeader eyebrow="Lichaam" title="Instellingen" description="Gebruikt voor BMI en je voortgang naar een streefgewicht." />
       <Card title="Profiel">
         <form onSubmit={(event) => void submit(event)} noValidate>
+          <ConceptNotice concept={concept} />
           <div className="form-grid">
             <Field label="Lengte (cm)" hint="Optioneel">
               <input type="text" inputMode="decimal" autoComplete="off" value={height} onChange={(event) => setHeight(event.target.value)} />
