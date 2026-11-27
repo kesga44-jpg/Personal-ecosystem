@@ -69,10 +69,15 @@ function Shell() {
   return <ActiveModule links={links} />;
 }
 
+// P-6: de kluis staat alleen in builds met VITE_PE_VAULT=1 aan; productie verandert pas na vrijgave van P-6.
+const VaultGate = import.meta.env.VITE_PE_VAULT === '1'
+  ? lazy(() => import('./vault/VaultGate').then((module) => ({ default: module.VaultGate })))
+  : null;
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Suspense fallback={<LoadingState />}>
-      <Shell />
+      {VaultGate ? <VaultGate><Shell /></VaultGate> : <Shell />}
     </Suspense>
   </StrictMode>
 );

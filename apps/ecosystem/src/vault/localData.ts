@@ -9,6 +9,8 @@ import {
   type LocalDatabaseConfig
 } from '@ecosystem/storage';
 import type { LogoutBarrier, LogoutBarrierPhase } from './lifecycle';
+import { MIN_ITERATIONS, type VaultRecord, type WrappedKey } from './crypto';
+import { DEFAULT_INACTIVITY_TIMEOUT_MINUTES, MAX_INACTIVITY_TIMEOUT_MINUTES, MIN_INACTIVITY_TIMEOUT_MINUTES } from './session';
 import { databaseConfig as lichaamConfig } from '../modules/lichaam/storage';
 import { databaseConfig as dagboekConfig } from '../modules/dagboek/storage';
 import { databaseConfig as voedingConfig } from '../modules/voeding/storage';
@@ -42,7 +44,9 @@ export const PERSONAL_ECOSYSTEM_LOCAL_STORAGE_KEYS = [
   'personal-ecosystem.reminders.settings',
   'personal-ecosystem.kracht.concept',
   'personal-ecosystem.dashboard.layout',
-  'personal-ecosystem.dashboard.weather-location'
+  'personal-ecosystem.dashboard.weather-location',
+  'personal-ecosystem.vault.record',
+  'personal-ecosystem.vault.settings'
 ] as const;
 
 export interface LocalDataDeletionAdapters {
@@ -187,4 +191,59 @@ export function browserLogoutBarrier(storage: Pick<Storage, 'getItem' | 'setItem
       storage.removeItem(LOGOUT_BARRIER_STORAGE_KEY);
     }
   };
+}
+
+/* ---------- Kluisrecord en instellingen op dit apparaat (ADR 0031 § 2, ADR 0029 § 1) ---------- */
+
+/**
+ * Het kluisrecord bevat alleen gezouten, ingepakte sleutels en geen geheimen (zie `VaultRecord`);
+ * het staat lokaal zodat de kluis ook offline te openen is. De gegevenssleutel zelf staat hier nooit.
+ */
+export const VAULT_RECORD_KEY = 'personal-ecosystem.vault.record';
+export const VAULT_SETTINGS_KEY = 'personal-ecosystem.vault.settings';
+
+function isWrappedKey(value: unknown): value is WrappedKey {
+  return !!value && typeof value === 'object' && typeof (value as WrappedKey).iv === 'string' && typeof (value as WrappedKey).wrapped === 'string';
+}
+
+export function parseVaultRecord(value: unknown): VaultRecord {
+  const record = value as Partial<VaultRecord> | null;
+  if (
+    !record || typeof record !== 'object' ||
+    record.format !== 1 || record.kdf !== 'PBKDF2-SHA-256' ||
+    !Number.isInteger(record.iterations) || (record.iterations ?? 0) < MIN_ITERATIONS ||
+    typeof record.passwordSalt !== 'string' || typeof record.recoverySalt !== 'string' ||
+    !isWrappedKey(record.wrappedByPassword) || !isWrappedKey(record.wrappedByRecovery)
+  ) {
+    throw new Error('Het kluisrecord op dit apparaat is ongeldig.');
+  }
+  const { format, kdf, iterations, passwordSalt, recoverySalt, wrappedByPassword, wrappedByRecovery } = record as VaultRecord;
+  return { format, kdf, iterations, passwordSalt, recoverySalt, wrappedByPassword: { ...wrappedByPassword }, wrappedByRecovery: { ...wrappedByRecovery } };
+}
+
+export function loadVaultRecord(storage: Pick<Storage, 'getItem'> = globalThis.localStorage): VaultRecord | null {
+  const raw = storage.getItem(VAULT_RECORD_KEY);
+  if (raw === null) return null;
+  return parseVaultRecord(JSON.parse(raw));
+}
+
+export function saveVaultRecord(record: VaultRecord, storage: Pick<Storage, 'setItem' | 'getItem'> = globalThis.localStorage): void {
+  const clean = parseVaultRecord(record);
+  storage.setItem(VAULT_RECORD_KEY, JSON.stringify(clean));
+  if (storage.getItem(VAULT_RECORD_KEY) === null) throw new Error('Het kluisrecord kon niet worden opgeslagen.');
+}
+
+export function loadInactivityMinutes(storage: Pick<Storage, 'getItem'> = globalThis.localStorage): number {
+  try {
+    const minutes = (JSON.parse(storage.getItem(VAULT_SETTINGS_KEY) ?? '{}') as { inactivityMinutes?: unknown }).inactivityMinutes;
+    return Number.isInteger(minutes) && (minutes as number) >= MIN_INACTIVITY_TIMEOUT_MINUTES && (minutes as number) <= MAX_INACTIVITY_TIMEOUT_MINUTES
+      ? minutes as number
+      : DEFAULT_INACTIVITY_TIMEOUT_MINUTES;
+  } catch {
+    return DEFAULT_INACTIVITY_TIMEOUT_MINUTES;
+  }
+}
+
+export function saveInactivityMinutes(minutes: number, storage: Pick<Storage, 'setItem'> = globalThis.localStorage): void {
+  storage.setItem(VAULT_SETTINGS_KEY, JSON.stringify({ inactivityMinutes: minutes }));
 }

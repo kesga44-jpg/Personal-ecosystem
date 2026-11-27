@@ -12,6 +12,14 @@
 
 Elke stap is een afzonderlijke, gestapelde PR met gerichte tests, documentatie en changelog. Geen PR wordt automatisch gemerged.
 
+## App-integratie (stap 5)
+
+Staat achter Vite-mode `vault` (`npm run build:vault -w @ecosystem/ecosystem`, preview op poort 4178). De productiebuild bevat geen kluiscode; de E2E-tests draaien tegen beide builds. Aanzetten in productie vraagt een afzonderlijk akkoord na P-2, P-4 en P-5.
+
+1. **Kluis en ontgrendelen (deze stap):** `vault/VaultGate.tsx` laadt geen module zolang de kluis dicht is. Het kluisrecord (alleen gezouten, ingepakte sleutels) staat in `personal-ecosystem.vault.record`, de inactiviteitskeuze in `personal-ecosystem.vault.settings`; beide horen bij de PE-cache die afmelden wist. Formulieren met niet-opgeslagen invoer melden zich via `vault/pendingInput.ts`; nog geen enkele module doet dat, dat volgt per module samen met de versleutelde opslag.
+2. **Versleutelde opslag per module:** modules op `openEncryptedLocalDatabase` met een expliciete, per record gecontroleerde overzetting (ADR 0031 § 5).
+3. **Syncboekhouding, account- en exportpagina:** inclusief `resumeInterruptedLogout` bij de start en `endLogoutBarrier` na login.
+
 ## Opslagcontract
 
 - De centrale export neemt `withConsistentDatabaseSnapshot` over alle module-databases. Normale en versleutelde IndexedDB-writes en restores gebruiken dezelfde gedeelde Web Lock; daardoor kunnen geen wijzigingen tussen module-exporten worden toegepast. Als een browser geen Web Locks ondersteunt, weigert de centrale export een consistentieclaim.
