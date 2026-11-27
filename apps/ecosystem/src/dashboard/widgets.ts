@@ -1,3 +1,4 @@
+import { readLocalValue, writeLocalValue } from '../localValues';
 /** Widgetindeling van het dashboard: volgorde en zichtbaarheid, per apparaat bewaard. */
 
 export const WIDGET_IDS = ['today', 'sport-week', 'review', 'streaks', 'points', 'lichaam', 'kracht', 'duur', 'voeding', 'maaltijden', 'groei', 'kennis', 'financien', 'dagboek', 'weather', 'habits-heatmap', 'backup', 'apps'] as const;
@@ -63,7 +64,7 @@ export function toggleWidget(layout: WidgetLayout, id: WidgetId): WidgetLayout {
 
 export function readLayout(): WidgetLayout {
   try {
-    return normalizeLayout(JSON.parse(localStorage.getItem(storageKey) ?? 'null'));
+    return normalizeLayout(JSON.parse(readLocalValue(storageKey) ?? 'null'));
   } catch {
     return normalizeLayout(null);
   }
@@ -71,7 +72,7 @@ export function readLayout(): WidgetLayout {
 
 export function writeLayout(layout: WidgetLayout): void {
   try {
-    localStorage.setItem(storageKey, JSON.stringify(layout));
+    writeLocalValue(storageKey, JSON.stringify(layout));
   } catch {
     // Alleen een voorkeur; zonder opslag blijft de standaardindeling werken.
   }
