@@ -194,3 +194,35 @@ test('een half ingevulde lichaamsmeting en duurtraining komen na vergrendelen en
   await page.getByRole('button', { name: 'Openen', exact: true }).click();
   await expect(page.getByLabel('Notities', { exact: false })).toHaveValue('Synthetisch rondje Amstel', { timeout: 15_000 });
 });
+
+test('Financiën: twee Money Manual-secties en een nieuwe transactie komen na vergrendelen en openen terug', async ({ page }) => {
+  await page.goto(`${base}/financien/money-manual`);
+  await createVault(page);
+  await expect(page.getByRole('region', { name: 'Kluis' })).toBeVisible({ timeout: 15_000 });
+  await page.getByRole('textbox', { name: 'Uitgangspunten' }).fill('Synthetisch uitgangspunt: eerst een buffer');
+  await page.getByRole('textbox', { name: 'Spaarstrategie' }).fill('Synthetisch: maandelijks naar de Waddenpot');
+
+  await page.getByRole('button', { name: 'Vergrendelen' }).click();
+  await expect(page.getByRole('heading', { name: 'Kluis openen' })).toBeVisible();
+  const raw = await page.evaluate(() => JSON.stringify({ ...localStorage }));
+  expect(raw).toContain('personal-ecosystem.sealed.personal-ecosystem.concept.financien.manual.uitgangspunten');
+  expect(raw).toContain('personal-ecosystem.sealed.personal-ecosystem.concept.financien.manual.spaarstrategie');
+  expect(raw).not.toContain('buffer');
+  expect(raw).not.toContain('Waddenpot');
+
+  await page.getByLabel('Kluiswachtwoord').fill(password);
+  await page.getByRole('button', { name: 'Openen', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'Uitgangspunten' })).toHaveValue('Synthetisch uitgangspunt: eerst een buffer', { timeout: 15_000 });
+  await expect(page.getByRole('textbox', { name: 'Spaarstrategie' })).toHaveValue('Synthetisch: maandelijks naar de Waddenpot');
+
+  await page.goto(`${base}/financien/transacties?nieuw=1`);
+  await page.getByLabel('Kluiswachtwoord').fill(password);
+  await page.getByRole('button', { name: 'Openen', exact: true }).click();
+  await page.getByLabel('Bedrag (€)').fill('12,34');
+  await page.getByLabel('Omschrijving').fill('Synthetische boeking');
+  await page.getByRole('button', { name: 'Vergrendelen' }).click();
+  await page.getByLabel('Kluiswachtwoord').fill(password);
+  await page.getByRole('button', { name: 'Openen', exact: true }).click();
+  await expect(page.getByLabel('Bedrag (€)')).toHaveValue('12,34', { timeout: 15_000 });
+  await expect(page.getByLabel('Omschrijving')).toHaveValue('Synthetische boeking');
+});
