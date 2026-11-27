@@ -171,4 +171,54 @@ describe('versleutelde lokale opslag', () => {
     raw.close();
     await expect(database!.list('notes')).rejects.toThrow('hoort niet bij deze store');
   });
+
+  describe('index record-ID → opslag-ID (prestaties)', () => {
+    function counting() {
+      let decrypts = 0;
+      const counted = { ...codec, decryptRecord: (...args: Parameters<typeof decryptRecord>) => { decrypts += 1; return decryptRecord(...args); } };
+      return { open: () => openEncryptedLocalDatabase(config, { keyProvider, codec: counted }), decrypts: () => decrypts };
+    }
+
+    it('ontsleutelt bij get, put en remove niet meer de hele store zodra de index er is', async () => {
+      database!.close();
+      const counter = counting();
+      database = await counter.open();
+      for (let index = 0; index < 60; index += 1) await database.put('items', { id: `item-${index}`, title: `synthetisch ${index}` });
+      const before = counter.decrypts();
+      await expect(database.get('items', 'item-42')).resolves.toEqual({ id: 'item-42', title: 'synthetisch 42' });
+      await database.put('items', { id: 'item-7', title: 'aangepast' });
+      await database.remove('items', 'item-8');
+      await expect(database.get('items', 'item-8')).resolves.toBeUndefined();
+      await expect(database.get('items', 'bestaat-niet')).resolves.toBeUndefined();
+      expect(counter.decrypts() - before).toBeLessThanOrEqual(6);
+      expect((await database.list('items')).map((item) => item.id)).toHaveLength(59);
+    });
+
+    it('vindt een record dat een ander tabblad toevoegde en overschrijft het niet dubbel', async () => {
+      await database!.put('items', { id: 'a', title: 'tabblad A' });
+      await database!.get('items', 'a'); // index opgebouwd
+      const other = await open();
+      await other.put('items', { id: 'b', title: 'tabblad B' });
+      other.close();
+      await expect(database!.get('items', 'b')).resolves.toEqual({ id: 'b', title: 'tabblad B' });
+      await database!.put('items', { id: 'b', title: 'bijgewerkt in A' });
+      expect(await rawItems()).toHaveLength(2);
+      await expect(database!.get('items', 'b')).resolves.toEqual({ id: 'b', title: 'bijgewerkt in A' });
+    });
+
+    it('een herstel in een ander tabblad maakt de index ongeldig, ook bij een gelijk aantal records', async () => {
+      await database!.put('items', { id: 'oud', title: 'oud' });
+      await database!.get('items', 'oud');
+      const other = await open();
+      const backup = await other.exportData();
+      backup.stores.items = [{ id: 'nieuw', title: 'na herstel' } as { id: string }];
+      await other.restore(backup);
+      other.close();
+      await new Promise((resolve) => setTimeout(resolve, 20)); // BroadcastChannel-bericht afleveren
+      await expect(database!.get('items', 'nieuw')).resolves.toEqual({ id: 'nieuw', title: 'na herstel' });
+      await expect(database!.get('items', 'oud')).resolves.toBeUndefined();
+      await database!.put('items', { id: 'nieuw', title: 'bijgewerkt' });
+      expect(await rawItems()).toHaveLength(1);
+    });
+  });
 });
