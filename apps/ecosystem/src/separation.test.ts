@@ -93,8 +93,14 @@ describe('gescheiden opslag per module', () => {
         expect(/localStorage|indexedDB/.test(source), `vault/${file} bevat een onbedoelde opslagadapter`).toBe(false);
       }
     }
+    // Alleen main.tsx laadt de kluis, en uitsluitend het scherm VaultGate (P-6 stap 5, achter VITE_PE_VAULT).
     const appFiles = readdirSync(srcDir, { recursive: true, encoding: 'utf8' }).filter((name) => /\.(ts|tsx)$/.test(name) && !name.startsWith('vault') && !/\.test\./.test(name));
-    for (const file of appFiles) expect(/from ['"][./]*vault\//.test(readFileSync(join(srcDir, file), 'utf8')), `${file} gebruikt het kluisprototype`).toBe(false);
+    for (const file of appFiles) {
+      const imports = [...readFileSync(join(srcDir, file), 'utf8').matchAll(/(?:from |import\()['"]([./]*vault\/[^'"]+)['"]/g)].map((match) => match[1]);
+      expect(imports.every((path) => file === 'main.tsx' && path === './vault/VaultGate'), `${file} gebruikt de kluis buiten VaultGate`).toBe(true);
+    }
+    // Het kluisscherm gebruikt geen sync-prototype of testserver.
+    expect(/from ['"]\.\/sync['"]|MemoryServer/.test(readFileSync(join(srcDir, 'vault', 'VaultGate.tsx'), 'utf8'))).toBe(false);
   });
 
   it('herinneringen, dashboardgegevens en trainingsdagen lezen alleen en doen geen netwerkverzoeken (ADR 0022, PR 11)', () => {
