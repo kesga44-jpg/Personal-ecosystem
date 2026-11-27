@@ -4,6 +4,7 @@ import { databaseConfig } from '../groei/storage';
 import {
   STUDY_STEPS,
   filterSources,
+  kennisAnalysis,
   kennisLookupItems,
   kennisSummary,
   learningStreak,
@@ -138,5 +139,53 @@ describe('gedeelde database en back-up', () => {
     expect(() => validateGroeiBackup({ schemaVersion: 1, stores: groeiStores }, validateKennisStores)).not.toThrow();
     expect(databaseConfig.exportUpgrades[2](groeiStores)).toMatchObject({ sources: [], learningLog: [] });
     expect(() => validateKennisStores({ ...kennisStores, learningLog: undefined })).toThrow('learningLog');
+  });
+});
+
+describe('analyse (Plan → Execute → Record → Analyze)', () => {
+  it('telt per soort, categorie en activiteit en hoeveel inzichten tot een actie leidden', () => {
+    const result = kennisAnalysis({
+      sources: [
+        source({ id: 'b1', type: 'boek', status: 'afgerond', finishedAt: '2026-03-01', goalIds: ['g1'] }),
+        source({ id: 'b2', type: 'boek', status: 'afgerond', finishedAt: '2025-12-01' }),
+        source({ id: 'p1', type: 'podcast', status: 'bezig', category: 'voetbal' }),
+        source({ id: 'c1', type: 'cursus', status: 'wil ik', skillIds: ['s1'] })
+      ],
+      insights: [insight({ id: 'i1' }), insight({ id: 'i2', goalIds: [], category: 'voetbal' }), insight({ id: 'i3', goalIds: [] })],
+      log: [
+        { date: '2026-02-01', kind: 'lezen', minutes: 30, sourceId: 'b1' },
+        { date: '2026-02-02', kind: 'luisteren', minutes: 45, sourceId: 'p1' },
+        { date: '2025-12-31', kind: 'lezen', minutes: 99, sourceId: 'b1' },
+        { date: '2026-02-03', kind: 'studeren', minutes: 20, sourceId: null }
+      ],
+      actions: [
+        { insightId: 'i1', status: 'klaar' },
+        { insightId: 'i1', status: 'open' },
+        { insightId: 'i2', status: 'bezig' },
+        { insightId: null, status: 'klaar' },
+        { insightId: 'verwijderd', status: 'klaar' }
+      ]
+    }, '2026');
+    expect(result.byType.find((item) => item.type === 'boek')).toEqual({ type: 'boek', total: 2, inProgress: 0, finishedThisYear: 1 });
+    expect(result.byType.find((item) => item.type === 'podcast')).toEqual({ type: 'podcast', total: 1, inProgress: 1, finishedThisYear: 0 });
+    expect(result.byCategory).toEqual([
+      { category: 'algemeen', sources: 3, insights: 2, minutesThisYear: 30 },
+      { category: 'voetbal', sources: 1, insights: 1, minutesThisYear: 45 }
+    ]);
+    expect(result.minutesByKind).toEqual([
+      { kind: 'lezen', minutes: 30 },
+      { kind: 'luisteren', minutes: 45 },
+      { kind: 'kijken', minutes: 0 },
+      { kind: 'studeren', minutes: 20 }
+    ]);
+    expect(result.insights).toEqual({ total: 3, withAction: 2, linkedToGrowth: 1 });
+    expect(result.actions).toEqual({ total: 3, done: 1 });
+    expect(result.sources).toEqual({ total: 4, linkedToGrowth: 2 });
+  });
+
+  it('is leeg zonder gegevens, zonder voorbeeldwaarden', () => {
+    const result = kennisAnalysis({ sources: [], insights: [], log: [], actions: [] }, '2026');
+    expect(result.byType.every((item) => item.total === 0)).toBe(true);
+    expect(result.insights).toEqual({ total: 0, withAction: 0, linkedToGrowth: 0 });
   });
 });

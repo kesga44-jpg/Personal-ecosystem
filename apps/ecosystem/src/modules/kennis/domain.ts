@@ -393,3 +393,57 @@ export function insightsThisWeek(insights: readonly Pick<Insight, 'createdAt'>[]
   const week = weekStart(today);
   return insights.filter((insight) => insight.createdAt.slice(0, 10) >= week && insight.createdAt.slice(0, 10) <= today).length;
 }
+
+export interface KennisAnalysis {
+  byType: { type: SourceType; total: number; inProgress: number; finishedThisYear: number }[];
+  byCategory: { category: Category; sources: number; insights: number; minutesThisYear: number }[];
+  minutesByKind: { kind: LogKind; minutes: number }[];
+  insights: { total: number; withAction: number; linkedToGrowth: number };
+  actions: { total: number; done: number };
+  sources: { total: number; linkedToGrowth: number };
+}
+
+/**
+ * Analyse (Plan → Execute → Record → Analyze): aantallen per soort en categorie, minuten per activiteit in
+ * het gekozen jaar, en hoeveel inzichten tot een actie in Groei leidden. Alleen tellingen, geen inhoud.
+ */
+export function kennisAnalysis(
+  data: {
+    sources: readonly Pick<Source, 'id' | 'type' | 'category' | 'status' | 'finishedAt' | 'goalIds' | 'skillIds'>[];
+    insights: readonly Pick<Insight, 'id' | 'category' | 'goalIds' | 'skillIds'>[];
+    log: readonly Pick<LearningLog, 'date' | 'kind' | 'minutes' | 'sourceId'>[];
+    actions: readonly { insightId: string | null; status: string }[];
+  },
+  year: string
+): KennisAnalysis {
+  const inYear = data.log.filter((entry) => entry.date.startsWith(`${year}-`));
+  const categoryOf = new Map(data.sources.map((source) => [source.id, source.category]));
+  const insightIds = new Set(data.insights.map((insight) => insight.id));
+  const fromInsights = data.actions.filter((action) => action.insightId !== null && insightIds.has(action.insightId));
+  const withAction = new Set(fromInsights.map((action) => action.insightId));
+  return {
+    byType: SOURCE_TYPES.map((type) => {
+      const sources = data.sources.filter((source) => source.type === type);
+      return {
+        type,
+        total: sources.length,
+        inProgress: sources.filter((source) => source.status === 'bezig').length,
+        finishedThisYear: sources.filter((source) => source.status === 'afgerond' && source.finishedAt?.startsWith(`${year}-`)).length
+      };
+    }),
+    byCategory: CATEGORIES.map((category) => ({
+      category,
+      sources: data.sources.filter((source) => source.category === category).length,
+      insights: data.insights.filter((insight) => insight.category === category).length,
+      minutesThisYear: inYear.filter((entry) => entry.sourceId !== null && categoryOf.get(entry.sourceId) === category).reduce((sum, entry) => sum + entry.minutes, 0)
+    })),
+    minutesByKind: LOG_KINDS.map((kind) => ({ kind, minutes: inYear.filter((entry) => entry.kind === kind).reduce((sum, entry) => sum + entry.minutes, 0) })),
+    insights: {
+      total: data.insights.length,
+      withAction: withAction.size,
+      linkedToGrowth: data.insights.filter((insight) => insight.goalIds.length > 0 || insight.skillIds.length > 0).length
+    },
+    actions: { total: fromInsights.length, done: fromInsights.filter((action) => action.status === 'klaar').length },
+    sources: { total: data.sources.length, linkedToGrowth: data.sources.filter((source) => source.goalIds.length > 0 || source.skillIds.length > 0).length }
+  };
+}

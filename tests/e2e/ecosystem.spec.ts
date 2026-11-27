@@ -53,6 +53,7 @@ for (const [path, text] of [
   ['/kennis/studie', 'Studieprogramma'],
   ['/kennis/logboek', 'Logboek'],
   ['/kennis/makers', 'Makers'],
+  ['/kennis/analyse', 'Analyse'],
   ['/financien', 'Jouw geld, jouw strategie'],
   ['/financien/transacties', 'Transacties'],
   ['/financien/budgetten', 'Budgetten'],
@@ -663,6 +664,45 @@ test('Kennis: bron met doel, highlight, inzicht, actie in Groei, studieprogramma
   const kennis = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Uit Kennis' }) });
   await expect(kennis).toContainText('Extreme Ownership');
   await expect(kennis).toContainText('Neem eigenaarschap over resultaten');
+  expect(errors).toEqual([]);
+});
+
+test('Kennis: notities bij bron en highlight, acties per bron en de analyse', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto(`${base}/kennis/bibliotheek?nieuw=1`);
+  await page.getByLabel('Titel', { exact: true }).fill('Synthetisch voetbalboek');
+  await page.getByRole('combobox', { name: 'Categorie', exact: true }).selectOption('voetbal');
+  await page.getByLabel('Eigen notities').fill('Synthetische eigen notitie');
+  await page.getByRole('button', { name: 'Bron opslaan' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Synthetisch voetbalboek' })).toBeVisible();
+  await expect(page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Eigen notities' }) })).toContainText('Synthetische eigen notitie');
+
+  await page.getByLabel('Nieuwe highlight').fill('Synthetische highlight');
+  await page.getByRole('button', { name: 'Highlight toevoegen' }).click();
+  const row = page.locator('.list-item').filter({ hasText: 'Synthetische highlight' });
+  await expect(row).toBeVisible();
+  await row.getByRole('button', { name: 'Aanpassen', exact: true }).click();
+  const editor = page.getByRole('form', { name: 'Highlight aanpassen' });
+  await editor.getByLabel('Notitie bij highlight').fill('Synthetische notitie bij highlight');
+  await editor.getByRole('button', { name: 'Highlight opslaan' }).click();
+  await expect(page.getByText('Notitie: Synthetische notitie bij highlight')).toBeVisible();
+
+  await page.getByRole('link', { name: '＋ Inzicht' }).click();
+  await page.getByLabel('Inzicht', { exact: true }).fill('Synthetisch inzicht');
+  await page.getByRole('button', { name: 'Inzicht opslaan' }).click();
+  await page.getByRole('link', { name: '＋ Actie in Groei' }).first().click();
+  await page.getByLabel('Actie', { exact: true }).fill('Synthetische actie');
+  await page.getByRole('button', { name: 'Actie opslaan' }).click();
+  await expect(page.getByText('Synthetische actie')).toBeVisible();
+
+  await page.goto(`${base}/kennis/bibliotheek`);
+  await page.getByRole('link', { name: 'Synthetisch voetbalboek' }).click();
+  await expect(page.getByText('Acties in Groei uit deze inzichten: 0 van 1 klaar (Synthetische actie)')).toBeVisible();
+
+  await page.goto(`${base}/kennis/analyse`);
+  await expect(page.getByRole('heading', { level: 1, name: 'Analyse' })).toBeVisible();
+  await expect(page.getByText('1 van 1 inzichten')).toBeVisible();
+  await expect(page.getByRole('row', { name: /Voetbal/ })).toContainText('1');
   expect(errors).toEqual([]);
 });
 

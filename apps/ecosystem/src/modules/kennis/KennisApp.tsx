@@ -14,6 +14,7 @@ import {
   allLabels,
   filterSources,
   finishedInYear,
+  kennisAnalysis,
   learningStreak,
   measureState,
   minutesPerWeek,
@@ -51,6 +52,7 @@ const navigation = [
   { to: '/inzichten', label: 'Inzichten', icon: '✶' },
   { to: '/studie', label: 'Studieprogramma', icon: '⑤' },
   { to: '/logboek', label: 'Logboek', icon: '⏱' },
+  { to: '/analyse', label: 'Analyse', icon: '▦' },
   { to: '/makers', label: 'Makers', icon: '☺' }
 ];
 
@@ -71,7 +73,7 @@ interface Data {
   /** Uit Groei (zelfde database): alleen ID en titel. */
   goals: Ref[];
   skills: Ref[];
-  actions: (Ref & { insightId: string | null })[];
+  actions: (Ref & { insightId: string | null; status: string })[];
 }
 
 const empty: Data = { sources: [], creators: [], highlights: [], insights: [], programs: [], log: [], goals: [], skills: [], actions: [] };
@@ -118,7 +120,7 @@ function KennisRoutes({ links }: { links: ModuleLink[] }) {
       db.list<LearningLog>('learningLog'),
       db.list<Ref>('goals'),
       db.list<Ref>('skills'),
-      db.list<Ref & { insightId?: string | null }>('actions')
+      db.list<Ref & { insightId?: string | null; status: string }>('actions')
     ]);
     const byTitle = <T extends Ref>(list: T[]) => list.sort((a, b) => a.title.localeCompare(b.title, 'nl-NL'));
     setData({
@@ -130,7 +132,7 @@ function KennisRoutes({ links }: { links: ModuleLink[] }) {
       log: log.sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)),
       goals: byTitle(goals.map(({ id, title }) => ({ id, title }))),
       skills: byTitle(skills.map(({ id, title }) => ({ id, title }))),
-      actions: actions.map(({ id, title, insightId }) => ({ id, title, insightId: insightId ?? null }))
+      actions: actions.map(({ id, title, insightId, status }) => ({ id, title, insightId: insightId ?? null, status }))
     });
   }
 
@@ -174,6 +176,7 @@ function KennisRoutes({ links }: { links: ModuleLink[] }) {
             <Route path="/inzichten" element={<InsightsPage data={data} run={run} />} />
             <Route path="/studie" element={<StudyPage data={data} run={run} />} />
             <Route path="/logboek" element={<LogPage data={data} run={run} />} />
+            <Route path="/analyse" element={<AnalysisPage data={data} />} />
             <Route path="/makers" element={<CreatorsPage data={data} run={run} />} />
             <Route path="*" element={<OverviewPage data={data} run={run} />} />
           </Routes>
@@ -338,6 +341,7 @@ function SourceEditor({ data, run, source, onDone }: { data: Data; run: Run; sou
   const [progress, setProgress] = useState(String(source?.progress ?? 0));
   const [rating, setRating] = useState(source?.rating ? String(source.rating) : '');
   const [summary, setSummary] = useState(source?.summary ?? '');
+  const [notes, setNotes] = useState(source?.notes ?? '');
   const [goalIds, setGoalIds] = useState<string[]>(source?.goalIds ?? []);
   const [skillIds, setSkillIds] = useState<string[]>(source?.skillIds ?? []);
   const [formError, setFormError] = useState('');
@@ -345,7 +349,7 @@ function SourceEditor({ data, run, source, onDone }: { data: Data; run: Run; sou
     'kennis.bron',
     source?.id ?? 'nieuw',
     'Bron',
-    { title, type, category, creatorIds, labels, platform, url, status, progress, rating, summary, goalIds, skillIds },
+    { title, type, category, creatorIds, labels, platform, url, status, progress, rating, summary, notes, goalIds, skillIds },
     {
       title: source?.title ?? '',
       type: source?.type ?? ('boek' as SourceType),
@@ -358,6 +362,7 @@ function SourceEditor({ data, run, source, onDone }: { data: Data; run: Run; sou
       progress: String(source?.progress ?? 0),
       rating: source?.rating ? String(source.rating) : '',
       summary: source?.summary ?? '',
+      notes: source?.notes ?? '',
       goalIds: source?.goalIds ?? [],
       skillIds: source?.skillIds ?? []
     },
@@ -373,6 +378,7 @@ function SourceEditor({ data, run, source, onDone }: { data: Data; run: Run; sou
       setProgress(value.progress);
       setRating(value.rating);
       setSummary(value.summary);
+      setNotes(value.notes);
       setGoalIds(value.goalIds);
       setSkillIds(value.skillIds);
     }
@@ -400,7 +406,7 @@ function SourceEditor({ data, run, source, onDone }: { data: Data; run: Run; sou
         rating: rating ? Number(rating) : null,
         favorite: source?.favorite ?? false,
         summary: summary.trim(),
-        notes: source?.notes ?? '',
+        notes: notes.trim(),
         goalIds,
         skillIds,
         createdAt: source?.createdAt ?? now,
@@ -458,6 +464,9 @@ function SourceEditor({ data, run, source, onDone }: { data: Data; run: Run; sou
         </Field>
         <Field label="Samenvatting">
           <textarea value={summary} onChange={(event) => setSummary(event.target.value)} />
+        </Field>
+        <Field label="Eigen notities" hint="Wat je ervan vindt, vragen, verbanden">
+          <textarea value={notes} onChange={(event) => setNotes(event.target.value)} />
         </Field>
         <ChipPicker legend="Makers" options={data.creators.map((creator) => ({ id: creator.id, title: creator.name }))} selected={creatorIds} onChange={setCreatorIds} />
         <ChipPicker legend="Draagt bij aan doelen (Groei)" options={data.goals} selected={goalIds} onChange={setGoalIds} />
@@ -584,6 +593,7 @@ function SourcePage({ data, run }: { data: Data; run: Run }) {
   const current = source;
   const highlights = data.highlights.filter((item) => item.sourceId === current.id);
   const insights = data.insights.filter((item) => item.sourceId === current.id);
+  const sourceActions = data.actions.filter((action) => action.insightId !== null && insights.some((item) => item.id === action.insightId));
   const programs = data.programs.filter((item) => item.sourceId === current.id);
   const minutes = data.log.filter((entry) => entry.sourceId === current.id).reduce((sum, entry) => sum + entry.minutes, 0);
 
@@ -637,6 +647,11 @@ function SourcePage({ data, run }: { data: Data; run: Run }) {
           <p className="journal-text">{current.summary}</p>
         </Card>
       )}
+      {current.notes && (
+        <Card title="Eigen notities">
+          <p className="journal-text">{current.notes}</p>
+        </Card>
+      )}
       <div className="grid grid-2">
         <Card title="Highlights">
           <form className="stack" noValidate onSubmit={(event) => void addHighlight(event)}>
@@ -653,25 +668,15 @@ function SourcePage({ data, run }: { data: Data; run: Run }) {
             </div>
           </form>
           <div className="list">
-            {highlights.map((item) => (
-              <div className="list-item" key={item.id}>
-                <div>
-                  <p className="item-title">“{item.text}”</p>
-                  {item.location && <p className="item-subtitle">{item.location}</p>}
-                </div>
-                <div className="row">
-                  <Link className="text-button" to={`/inzichten?nieuw=1&bron=${current.id}&highlight=${item.id}`}>Inzicht</Link>
-                  <ConfirmAction label="Highlight verwijderen" confirmMessage="Deze highlight verwijderen?" onConfirm={() => void run((db) => db.remove('highlights', item.id))}>
-                    Verwijderen
-                  </ConfirmAction>
-                </div>
-              </div>
-            ))}
+            {highlights.map((item) => <HighlightRow key={`${item.id}:${item.updatedAt}`} item={item} sourceId={current.id} run={run} />)}
           </div>
         </Card>
         <div className="stack">
           <Card title="Inzichten" action={<Link className="text-button" to={`/inzichten?nieuw=1&bron=${current.id}`}>＋ Inzicht</Link>}>
             {insights.length ? <div className="list">{insights.map((item) => <p key={item.id} className="item-title">{item.title}</p>)}</div> : <p className="item-subtitle">Nog geen inzichten uit deze bron.</p>}
+            <p className="item-subtitle">
+              Acties in Groei uit deze inzichten: {sourceActions.length ? `${sourceActions.filter((action) => action.status === 'klaar').length} van ${sourceActions.length} klaar (${sourceActions.map((action) => action.title).join(', ')})` : 'nog geen'}
+            </p>
           </Card>
           <Card title="Studieprogramma">
             {programs.length ? (
@@ -890,6 +895,112 @@ function InsightsPage({ data, run }: { data: Data; run: Run }) {
           <EmptyState title={data.insights.length ? 'Niets gevonden' : 'Nog geen inzichten'}>{data.insights.length ? 'Pas je zoekterm of filter aan.' : 'Leg je eerste inzicht vast.'}</EmptyState>
         </Card>
       )}
+    </div>
+  );
+}
+
+function HighlightRow({ item, sourceId, run }: { item: Highlight; sourceId: string; run: Run }) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(item.text);
+  const [location, setLocation] = useState(item.location);
+  const [note, setNote] = useState(item.note);
+  const [formError, setFormError] = useState('');
+
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    setFormError('');
+    try {
+      const next: Highlight = { ...item, text: text.trim(), location: location.trim(), note: note.trim(), updatedAt: nowIso() };
+      validateHighlight(next);
+      if (await run((db) => db.put('highlights', next))) setEditing(false);
+    } catch (cause) {
+      setFormError(cause instanceof Error ? cause.message : 'Ongeldige highlight.');
+    }
+  }
+
+  if (editing) {
+    return (
+      <form className="stack" noValidate onSubmit={(event) => void save(event)} aria-label="Highlight aanpassen">
+        <Field label="Highlight">
+          <textarea value={text} onChange={(event) => setText(event.target.value)} />
+        </Field>
+        <Field label="Pagina of tijdstip">
+          <input value={location} onChange={(event) => setLocation(event.target.value)} />
+        </Field>
+        <Field label="Notitie bij highlight">
+          <textarea value={note} onChange={(event) => setNote(event.target.value)} />
+        </Field>
+        {formError && <ErrorBanner message={formError} />}
+        <div className="form-actions">
+          <Button type="button" variant="secondary" onClick={() => setEditing(false)}>Annuleren</Button>
+          <Button type="submit">Highlight opslaan</Button>
+        </div>
+      </form>
+    );
+  }
+
+  return (
+    <div className="list-item">
+      <div>
+        <p className="item-title">“{item.text}”</p>
+        {item.location && <p className="item-subtitle">{item.location}</p>}
+        {item.note && <p className="item-subtitle">Notitie: {item.note}</p>}
+      </div>
+      <div className="row">
+        <Link className="text-button" to={`/inzichten?nieuw=1&bron=${sourceId}&highlight=${item.id}`}>Inzicht</Link>
+        <button type="button" className="text-button" onClick={() => setEditing(true)}>Aanpassen</button>
+        <ConfirmAction label="Highlight verwijderen" confirmMessage="Deze highlight verwijderen?" onConfirm={() => void run((db) => db.remove('highlights', item.id))}>
+          Verwijderen
+        </ConfirmAction>
+      </div>
+    </div>
+  );
+}
+
+// ——— Analyse ———
+
+const sourceTypeLabel: Record<SourceType, string> = { boek: 'Boeken', podcast: "Podcasts", cursus: 'Cursussen', artikel: 'Artikelen', video: "Video's", document: 'Documenten', overig: 'Overig' };
+
+function AnalysisPage({ data }: { data: Data }) {
+  const [year, setYear] = useState(todayKey().slice(0, 4));
+  const result = kennisAnalysis(data, year);
+  const percent = (part: number, total: number) => (total ? `${Math.round((part / total) * 100)}%` : '–');
+
+  return (
+    <div className="stack">
+      <PageHeader eyebrow="Kennis & Ontwikkeling" title="Analyse" description="Wat je leest, luistert en leert, en wat je ermee doet in Groei. Alleen tellingen." />
+      <Card>
+        <Field label="Jaar">
+          <input inputMode="numeric" value={year} maxLength={4} onChange={(event) => setYear(event.target.value.replace(/\D/g, '').slice(0, 4))} />
+        </Field>
+      </Card>
+      <div className="grid grid-4">
+        <Metric label="Inzichten met actie" value={percent(result.insights.withAction, result.insights.total)} note={`${result.insights.withAction} van ${result.insights.total} inzichten`} />
+        <Metric label="Acties klaar" value={`${result.actions.done} van ${result.actions.total}`} note="Acties in Groei uit inzichten" />
+        <Metric label="Gekoppeld aan Groei" value={percent(result.sources.linkedToGrowth, result.sources.total)} note={`${result.sources.linkedToGrowth} van ${result.sources.total} bronnen`} />
+        <Metric label={`Minuten in ${year}`} value={String(result.minutesByKind.reduce((sum, item) => sum + item.minutes, 0))} note="Uit je logboek" />
+      </div>
+      <div className="grid grid-2">
+        <Card title="Per soort">
+          <table className="review-table">
+            <thead><tr><th scope="col">Soort</th><th scope="col">Totaal</th><th scope="col">Bezig</th><th scope="col">Afgerond in {year}</th></tr></thead>
+            <tbody>
+              {result.byType.map((item) => <tr key={item.type}><th scope="row">{sourceTypeLabel[item.type]}</th><td>{item.total}</td><td>{item.inProgress}</td><td>{item.finishedThisYear}</td></tr>)}
+            </tbody>
+          </table>
+        </Card>
+        <Card title="Per categorie">
+          <table className="review-table">
+            <thead><tr><th scope="col">Categorie</th><th scope="col">Bronnen</th><th scope="col">Inzichten</th><th scope="col">Minuten in {year}</th></tr></thead>
+            <tbody>
+              {result.byCategory.map((item) => <tr key={item.category}><th scope="row">{categoryLabel[item.category]}</th><td>{item.sources}</td><td>{item.insights}</td><td>{item.minutesThisYear}</td></tr>)}
+            </tbody>
+          </table>
+        </Card>
+      </div>
+      <Card title={`Minuten per activiteit in ${year}`}>
+        <BarChart title={`Minuten per activiteit in ${year}`} unit=" min" points={result.minutesByKind.map((item) => ({ label: item.kind, value: item.minutes }))} />
+      </Card>
     </div>
   );
 }
