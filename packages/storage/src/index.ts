@@ -166,7 +166,29 @@ export function validateLocalExport(config: LocalDatabaseConfig, input: unknown)
   return parseExport(config, input);
 }
 
-export async function openLocalDatabase(config: LocalDatabaseConfig): Promise<LocalDatabase> {
+export type DatabaseOpener = (config: LocalDatabaseConfig) => Promise<LocalDatabase>;
+
+let installedOpener: DatabaseOpener | null = null;
+
+/**
+ * P-6 (ADR 0031): een geopende kluis installeert hier de versleutelde opener; vergrendelen haalt hem weg.
+ * Zo openen alle modules, ook de ingebedde Sport-, Hub- en SIDEQUEST-code, dezelfde versleutelde opslag
+ * zonder dat elke aanroep verandert. Zonder geïnstalleerde opener blijft alles zoals het was.
+ */
+export function installDatabaseOpener(opener: DatabaseOpener | null): void {
+  installedOpener = opener;
+}
+
+export function hasInstalledDatabaseOpener(): boolean {
+  return installedOpener !== null;
+}
+
+export function openLocalDatabase(config: LocalDatabaseConfig): Promise<LocalDatabase> {
+  return installedOpener ? installedOpener(config) : openPlainLocalDatabase(config);
+}
+
+/** De onversleutelde opslag van vóór P-6; alleen voor gewone builds en de overzetting (ADR 0031 § 5). */
+export async function openPlainLocalDatabase(config: LocalDatabaseConfig): Promise<LocalDatabase> {
   if (typeof indexedDB === 'undefined') {
     throw new Error('Local database storage is not available in this browser.');
   }
