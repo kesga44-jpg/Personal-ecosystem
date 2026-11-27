@@ -114,3 +114,28 @@ test('een lopende krachttraining (concept) staat versleuteld in de browser en is
   await page.getByRole('button', { name: 'Openen', exact: true }).click();
   await expect(page.getByLabel('Squat set 1 gewicht')).toHaveValue('77,5', { timeout: 15_000 });
 });
+
+test('niet-opgeslagen dagboektekst wordt bij vergrendelen versleuteld bewaard en na openen teruggezet', async ({ page }) => {
+  await page.goto(`${base}/dagboek/schrijven`);
+  await createVault(page);
+  await expect(page.getByRole('region', { name: 'Kluis' })).toBeVisible({ timeout: 15_000 });
+  await page.getByLabel('Notitie', { exact: false }).fill('Half geschreven synthetische gedachte over de Waddenzee');
+  await page.getByRole('button', { name: /Goed/ }).click();
+
+  await page.getByRole('button', { name: 'Vergrendelen' }).click();
+  await expect(page.getByRole('heading', { name: 'Kluis openen' })).toBeVisible();
+  const raw = await page.evaluate(() => JSON.stringify({ ...localStorage }));
+  expect(raw).toContain('personal-ecosystem.sealed.personal-ecosystem.dagboek.concept');
+  expect(raw).not.toContain('Waddenzee');
+
+  await page.getByLabel('Kluiswachtwoord').fill(password);
+  await page.getByRole('button', { name: 'Openen', exact: true }).click();
+  await expect(page.getByLabel('Notitie', { exact: false })).toHaveValue('Half geschreven synthetische gedachte over de Waddenzee', { timeout: 15_000 });
+  await expect(page.getByText('Niet-opgeslagen invoer van de vorige keer is teruggezet.')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Goed/ })).toHaveAttribute('aria-pressed', 'true');
+
+  // Na opslaan is het concept weg.
+  await page.getByRole('button', { name: 'Notitie opslaan' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Vandaag: 🙂 Goed');
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('personal-ecosystem.sealed.personal-ecosystem.dagboek.concept'))).toBeNull();
+});
