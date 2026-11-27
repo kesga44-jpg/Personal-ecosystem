@@ -7,7 +7,7 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'"
     >
-    <meta name="description" content="Een startpagina voor vijf zelfstandige apps.">
+    <meta name="description" content="Startpagina voor Samen Thuis, Coach en de apps van Personal Ecosystem.">
     <title>Personal Ecosystem</title>
     <link rel="stylesheet" href="./landing.css">
     <script src="./app-urls.js" defer></script>
@@ -19,8 +19,8 @@
         <p class="eyebrow">PERSONAL ECOSYSTEM</p>
         <h1>Jouw apps. Jouw gegevens.</h1>
         <p class="intro">
-          Vijf zelfstandige apps: drie werken lokaal zonder account, en twee bestaande
-          apps gebruiken een account.
+          Samen Thuis en Coach met hun eigen account, en Personal Ecosystem als losse apps
+          die je apart kunt installeren en die dezelfde persoonlijke gegevens delen.
         </p>
       </header>
 
@@ -45,16 +45,78 @@
           <a class="open-button" href="https://kesga44-jpg.github.io/Coach/" target="_blank" rel="noopener noreferrer">Openen</a>
         </article>
 
-        <article class="app-card" data-app-card="hub">
-          <div class="app-mark" aria-hidden="true">P</div>
-          <h2>Personal Ecosystem</h2>
-          <p class="description">
-            Dashboard, Sport, SIDEQUEST, Lichaam, Voeding en Dagboek in één app: activiteiten en trainingen, doelen, gewoontes, quests, je gezondheid, wat je eet en je stemming.
-          </p>
-          <p class="status">Lokaal, geen account nodig</p>
+      </section>
+
+      <section class="pe-apps" aria-labelledby="pe-apps-title">
+        <h2 id="pe-apps-title">Personal Ecosystem</h2>
+        <p class="section-intro">
+          Elke app opent een deel van dezelfde persoonlijke omgeving. Open een app en kies in je browser
+          <q>Installeren</q> of <q>Zet op beginscherm</q> om hem als losse app te bewaren.
+        </p>
+        <div class="apps">
+        <article class="app-card" data-app-card="hub" data-app-id="personal-ecosystem" data-app-path="/">
+          <div class="app-mark" aria-hidden="true">PE</div>
+          <h3>Personal Ecosystem</h3>
+          <p class="description">Dashboard met de samenvatting van al je modules, herinneringen en back-up.</p>
+          <p class="status">Personal Ecosystem · lokaal</p>
           <button class="open-button" type="button" data-app-open disabled>Openen</button>
           <p class="link-status" data-app-link-status aria-live="polite"></p>
         </article>
+
+        <article class="app-card" data-app-card="hub" data-app-id="groei-kennis" data-app-path="/groei">
+          <div class="app-mark" aria-hidden="true">G</div>
+          <h3>Groei &amp; Kennis</h3>
+          <p class="description">Doelen, gewoontes, acties, evaluaties, bronnen, inzichten en wat je leert.</p>
+          <p class="status">Personal Ecosystem · lokaal</p>
+          <button class="open-button" type="button" data-app-open disabled>Openen</button>
+          <p class="link-status" data-app-link-status aria-live="polite"></p>
+        </article>
+
+        <article class="app-card" data-app-card="hub" data-app-id="financien" data-app-path="/financien">
+          <div class="app-mark" aria-hidden="true">€</div>
+          <h3>Financiën</h3>
+          <p class="description">Money Manual, budgetten, spaarpotten, rapportages en je beleggingsplan.</p>
+          <p class="status">Personal Ecosystem · lokaal</p>
+          <button class="open-button" type="button" data-app-open disabled>Openen</button>
+          <p class="link-status" data-app-link-status aria-live="polite"></p>
+        </article>
+
+        <article class="app-card" data-app-card="hub" data-app-id="voeding" data-app-path="/voeding">
+          <div class="app-mark" aria-hidden="true">V</div>
+          <h3>Voeding</h3>
+          <p class="description">Wat je eet, recepten en je persoonlijke maaltijdplanning.</p>
+          <p class="status">Personal Ecosystem · lokaal</p>
+          <button class="open-button" type="button" data-app-open disabled>Openen</button>
+          <p class="link-status" data-app-link-status aria-live="polite"></p>
+        </article>
+
+        <article class="app-card" data-app-card="hub" data-app-id="sport" data-app-path="/sport">
+          <div class="app-mark" aria-hidden="true">S</div>
+          <h3>Sport</h3>
+          <p class="description">Activiteiten, krachttraining en duurtrainingen.</p>
+          <p class="status">Personal Ecosystem · lokaal</p>
+          <button class="open-button" type="button" data-app-open disabled>Openen</button>
+          <p class="link-status" data-app-link-status aria-live="polite"></p>
+        </article>
+
+        <article class="app-card" data-app-card="hub" data-app-id="sidequest" data-app-path="/quest">
+          <div class="app-mark" aria-hidden="true">✦</div>
+          <h3>SIDEQUEST</h3>
+          <p class="description">Quests en beloningen; doelen en gewoontes staan in Groei.</p>
+          <p class="status">Personal Ecosystem · lokaal</p>
+          <button class="open-button" type="button" data-app-open disabled>Openen</button>
+          <p class="link-status" data-app-link-status aria-live="polite"></p>
+        </article>
+
+        <article class="app-card" data-app-card="hub" data-app-id="lichaam-dagboek" data-app-path="/lichaam">
+          <div class="app-mark" aria-hidden="true">L</div>
+          <h3>Lichaam &amp; Dagboek</h3>
+          <p class="description">Je lichaam, gezondheid, stemming en dagboek.</p>
+          <p class="status">Personal Ecosystem · lokaal</p>
+          <button class="open-button" type="button" data-app-open disabled>Openen</button>
+          <p class="link-status" data-app-link-status aria-live="polite"></p>
+        </article>
+        </div>
       </section>
 
       <footer class="footer">

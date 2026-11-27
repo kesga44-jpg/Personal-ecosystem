@@ -7,6 +7,7 @@ Elke app in de monorepo krijgt een eigen sectie zodra die bestaat. Bestaande app
 
 ### Toegevoegd
 
+- Personal Ecosystem als losse apps (optie A): Personal Ecosystem (dashboard), Groei & Kennis, Financiën, Voeding, Sport (met Kracht en Duur), SIDEQUEST en Lichaam & Dagboek hebben elk een eigen web-app-manifest met eigen naam, icoon en start-URL en zijn los te installeren. Technisch blijft het één app op één origin met dezelfde gegevens (ADR 0020). De startpagina toont ze als aparte tegels naast Samen Thuis en Coach; de verouderde tekst over vijf zelfstandige apps is vervangen.
 - P-6 lokaal: afmeld- en syncbarrière tegen races. De eerste statuscontrole vóór de dialogen is niet meer genoeg: afmelden wacht via een browserbrede sync-lock op een lopende syncronde, vergrendelt de kluis, controleert onder de mutatie-lock opnieuw of alles bevestigd is en wist pas daarna. Een wijziging uit een ander tabblad, een mislukte of offline sync tijdens de bevestiging blokkeert de wisactie. Een duurzame afmeldmarkering laat latere writes en syncrondes in alle tabbladen weigeren, ook na herladen, en een onderbroken wisactie wordt bij de volgende start afgerond. Synchroniseren gaat via `syncExclusive`. Nog niet aangesloten op de app-UI.
 - P-6 lokaal: cachewissing vereist een browserbrede Web Lock en weigert zonder die ondersteuning voordat IndexedDB of localStorage wordt gewist.
 - P-6 lokaal: een geblokkeerde IndexedDB-wisactie blijft onder de mutatie-lock wachten op de werkelijke uitkomst; een optionele melding kan vragen het blokkerende tabblad te sluiten.
