@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite --port 5177",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview --port 4177"
+    "preview": "vite preview --port 4177",
+    "build:vault": "tsc --noEmit && vite build --mode vault --outDir dist-vault",
+    "preview:vault": "vite preview --outDir dist-vault --port 4178 --strictPort"
   },
   "dependencies": {
     "@ecosystem/core": "*",

@@ -27,8 +27,10 @@ function installableAppManifests(): Plugin {
   };
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   base: '/',
+  // P-6-kluis alleen in de testbuild (`--mode vault`); productie blijft ongewijzigd tot P-6 is vrijgegeven.
+  define: { 'import.meta.env.VITE_PE_VAULT': JSON.stringify(mode === 'vault' ? '1' : '') },
   plugins: [
     rejectSharpModules(),
     react(),
@@ -46,4 +48,4 @@ export default defineConfig({
   ],
   server: { host: '127.0.0.1' },
   preview: { host: '127.0.0.1' }
-});
+}));
