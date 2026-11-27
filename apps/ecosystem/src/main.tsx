@@ -5,6 +5,7 @@ import '@ecosystem/ui/styles.css';
 import '@ecosystem/hub/theme.css';
 import { LoadingState, type ModuleLink } from '@ecosystem/ui';
 import { moduleForPath, moduleLinksFor, type ModuleId } from './modules';
+import { installableAppFor, iconPath, manifestPath } from './installableApps';
 import { REMINDERS_CHANGED } from './reminders/events';
 
 let updateSW: (reloadPage?: boolean) => Promise<void> = async () => {};
@@ -32,6 +33,11 @@ const loaders: Record<ModuleId, () => Promise<{ default: ComponentType<{ links: 
 };
 
 const active = moduleForPath(window.location.pathname);
+
+// Optie A: elke groep modules is los te installeren. Het manifest volgt de module die je opent.
+const app = installableAppFor(active);
+document.querySelector('link[rel="manifest"]')?.setAttribute('href', manifestPath(app));
+document.querySelector('meta[name="theme-color"]')?.setAttribute('content', app.color);
 const ActiveModule = lazy(loaders[active]);
 
 /** Teller bij Dashboard in de modulebalk: aantal herinneringen (ADR 0022). Wordt pas na het laden van de module berekend. */
