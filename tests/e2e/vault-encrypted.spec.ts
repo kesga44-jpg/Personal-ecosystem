@@ -164,3 +164,33 @@ test('niet-opgeslagen invoer in een Groei-formulier wordt bij vergrendelen versl
   await expect(page.getByText('Synthetisch doel: de Elfstedenroute fietsen').first()).toBeVisible();
   await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), conceptKey)).toBeNull();
 });
+
+test('een half ingevulde lichaamsmeting en duurtraining komen na vergrendelen en openen terug', async ({ page }) => {
+  await page.goto(`${base}/lichaam/invoeren`);
+  await createVault(page);
+  await expect(page.getByRole('region', { name: 'Kluis' })).toBeVisible({ timeout: 15_000 });
+  await page.getByLabel('Notitie', { exact: false }).fill('Synthetische notitie over de Veluwe');
+
+  await page.getByRole('button', { name: 'Vergrendelen' }).click();
+  await expect(page.getByRole('heading', { name: 'Kluis openen' })).toBeVisible();
+  const raw = await page.evaluate(() => JSON.stringify({ ...localStorage }));
+  expect(raw).toContain('personal-ecosystem.sealed.personal-ecosystem.concept.lichaam.meting');
+  expect(raw).not.toContain('Veluwe');
+
+  await page.getByLabel('Kluiswachtwoord').fill(password);
+  await page.getByRole('button', { name: 'Openen', exact: true }).click();
+  await expect(page.getByLabel('Notitie', { exact: false })).toHaveValue('Synthetische notitie over de Veluwe', { timeout: 15_000 });
+  await expect(page.getByText('Niet-opgeslagen invoer van de vorige keer is teruggezet.')).toBeVisible();
+  await page.getByRole('button', { name: 'Invoer weggooien' }).click();
+  await expect(page.getByLabel('Notitie', { exact: false })).toHaveValue('');
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('personal-ecosystem.sealed.personal-ecosystem.concept.lichaam.meting'))).toBeNull();
+
+  await page.goto(`${base}/duur/toevoegen`);
+  await page.getByLabel('Kluiswachtwoord').fill(password);
+  await page.getByRole('button', { name: 'Openen', exact: true }).click();
+  await page.getByLabel('Notities', { exact: false }).fill('Synthetisch rondje Amstel');
+  await page.getByRole('button', { name: 'Vergrendelen' }).click();
+  await page.getByLabel('Kluiswachtwoord').fill(password);
+  await page.getByRole('button', { name: 'Openen', exact: true }).click();
+  await expect(page.getByLabel('Notities', { exact: false })).toHaveValue('Synthetisch rondje Amstel', { timeout: 15_000 });
+});
