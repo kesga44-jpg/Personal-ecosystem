@@ -11,7 +11,12 @@ export const FORM_CONCEPT_IDS = [
   'groei.evaluatie',
   'kennis.bron',
   'kennis.highlight',
-  'kennis.inzicht'
+  'kennis.inzicht',
+  'lichaam.meting',
+  'lichaam.profiel',
+  'duur.training',
+  'duur.activiteit',
+  'duur.instellingen'
 ] as const;
 
 export type FormConceptId = (typeof FORM_CONCEPT_IDS)[number];
