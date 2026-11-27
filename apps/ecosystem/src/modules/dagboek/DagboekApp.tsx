@@ -37,6 +37,21 @@ import {
   type Tag
 } from './domain';
 import { databaseConfig } from './storage';
+import { readLocalValue, writeLocalValue } from '../../localValues';
+import { usePendingInput } from '../../pendingInput';
+
+/** Niet-opgeslagen invoer bij vergrendelen (ADR 0031 § 3); in de kluisbuild versleuteld bewaard. */
+const CONCEPT_KEY = 'personal-ecosystem.dagboek.concept';
+interface Concept { date: string; mood: number; energy: string; tags: Tag[]; gratitude: string[]; text: string }
+
+function readConcept(): Concept | null {
+  try {
+    const value = JSON.parse(readLocalValue(CONCEPT_KEY) ?? 'null') as Concept | null;
+    return value && typeof value.date === 'string' && typeof value.text === 'string' && Array.isArray(value.gratitude) && Array.isArray(value.tags) ? value : null;
+  } catch {
+    return null;
+  }
+}
 
 const navigation = [
   { to: '/', label: 'Overzicht', icon: '⌂' },
@@ -204,15 +219,28 @@ function WritePage({ entries, error, onSave }: { entries: JournalEntry[]; error:
   const [gratitude, setGratitude] = useState<string[]>(['', '', '']);
   const [text, setText] = useState('');
   const [formError, setFormError] = useState('');
+  const [restored, setRestored] = useState(false);
 
   useEffect(() => {
-    setMood(existing?.mood ?? 0);
-    setEnergy(existing?.energy ? String(existing.energy) : '');
-    setTags(existing?.tags ?? []);
-    setGratitude([0, 1, 2].map((index) => existing?.gratitude[index] ?? ''));
-    setText(existing?.text ?? '');
+    const concept = readConcept();
+    const source = concept && concept.date === date ? concept : null;
+    setMood(source?.mood ?? existing?.mood ?? 0);
+    setEnergy(source ? source.energy : existing?.energy ? String(existing.energy) : '');
+    setTags(source?.tags.filter(isTag) ?? existing?.tags ?? []);
+    setGratitude([0, 1, 2].map((index) => (source ? source.gratitude[index] : existing?.gratitude[index]) ?? ''));
+    setText(source?.text ?? existing?.text ?? '');
+    setRestored(source !== null);
     setFormError('');
   }, [existing, date]);
+
+  const baseline = JSON.stringify([existing?.mood ?? 0, existing?.energy ? String(existing.energy) : '', existing?.tags ?? [], [0, 1, 2].map((index) => existing?.gratitude[index] ?? ''), existing?.text ?? '']);
+  const dirty = JSON.stringify([mood, energy, tags, gratitude, text]) !== baseline;
+  usePendingInput(
+    'Dagboeknotitie',
+    dirty,
+    async () => writeLocalValue(CONCEPT_KEY, JSON.stringify({ date, mood, energy, tags, gratitude, text } satisfies Concept)),
+    () => writeLocalValue(CONCEPT_KEY, null)
+  );
 
   function toggle(tag: Tag) {
     setTags((current) => (current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag]));
@@ -225,7 +253,10 @@ function WritePage({ entries, error, onSave }: { entries: JournalEntry[]; error:
       if (!isDateKey(date)) throw new Error('Kies een geldige datum.');
       const entry = buildEntry({ date, mood, energy: energy ? Number(energy) : null, tags: tags.filter(isTag), gratitude, text });
       validateEntry(entry, today);
-      if (await onSave(entry)) navigate('/');
+      if (await onSave(entry)) {
+        writeLocalValue(CONCEPT_KEY, null);
+        navigate('/');
+      }
     } catch (cause) {
       setFormError(cause instanceof Error ? cause.message : 'De notitie bevat ongeldige gegevens.');
     }
@@ -235,6 +266,7 @@ function WritePage({ entries, error, onSave }: { entries: JournalEntry[]; error:
     <div className="stack">
       {error && <ErrorBanner message={error} />}
       <PageHeader eyebrow="Dagboek" title={existing ? 'Notitie aanpassen' : 'Schrijven'} description="Alleen je stemming is verplicht. De rest is voor jezelf." />
+      {restored && <p role="status">Niet-opgeslagen invoer van de vorige keer is teruggezet. Sla op om hem te bewaren.</p>}
       <Card>
         <form onSubmit={(event) => void submit(event)} noValidate className="stack">
           <Field label="Datum" {...(existing ? { hint: 'Er is al een notitie voor deze dag; je past die aan.' } : {})}>

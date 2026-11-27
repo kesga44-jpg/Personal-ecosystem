@@ -5,7 +5,7 @@ import type { VaultRecord } from './crypto';
 import { encryptedOpener, exportPlaintextBackup, migrateModulesToEncrypted, plaintextRecordCounts, defaultOpeners, type ModuleMigrationReport } from './encryptedModules';
 import { installLocalValueBackend } from '../localValues';
 import { loadInactivityMinutes, loadVaultRecord, openSealedValues, PERSONAL_ECOSYSTEM_DATABASE_CONFIGS, saveInactivityMinutes, saveVaultRecord, type SealedValues } from './localData';
-import { discardPendingInput, PendingInputError, savePendingInput } from './pendingInput';
+import { discardPendingInput, PendingInputError, savePendingInput } from '../pendingInput';
 import { MAX_INACTIVITY_TIMEOUT_MINUTES, MIN_INACTIVITY_TIMEOUT_MINUTES, VaultSession, type RecoveryCodeSaveMethod } from './session';
 
 /**

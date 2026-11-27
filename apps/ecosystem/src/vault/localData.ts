@@ -45,7 +45,8 @@ export const SEALABLE_LOCAL_VALUE_KEYS = [
   'personal-ecosystem.reminders.settings',
   'personal-ecosystem.kracht.concept',
   'personal-ecosystem.dashboard.layout',
-  'personal-ecosystem.dashboard.weather-location'
+  'personal-ecosystem.dashboard.weather-location',
+  'personal-ecosystem.dagboek.concept'
 ] as const;
 export const SEALED_VALUE_PREFIX = 'personal-ecosystem.sealed.';
 
@@ -302,12 +303,27 @@ export async function openSealedValues(getKey: () => CryptoKey, storage: Pick<St
 
   let pending: Promise<void> = Promise.resolve();
   let failure: unknown;
+  const written = new Set<string>();
+  /** ADR 0031 § 3: wat versleuteld is opgeslagen, wordt teruggelezen, ontsleuteld en vergeleken. */
+  const verify = async (key: string) => {
+    const expected = values.get(key) ?? null;
+    const sealed = storage.getItem(`${SEALED_VALUE_PREFIX}${key}`);
+    if (expected === null) {
+      if (sealed !== null) throw new Error(`${key} is niet verwijderd.`);
+      return;
+    }
+    if (sealed === null) throw new Error(`${key} is niet opgeslagen.`);
+    const { iv, ciphertext } = JSON.parse(sealed) as { iv: string; ciphertext: string };
+    const actual = await decryptRecord(getKey(), { module: SEALED_MODULE, itemId: key, version: 1, iv, ciphertext, deleted: false });
+    if (actual !== expected) throw new Error(`${key} wijkt af na teruglezen.`);
+  };
   return {
     get: (key) => values.get(key) ?? null,
     set: (key, value) => {
       if (!keys.has(key)) throw new Error(`Onbekende PE-waarde: ${key}.`);
       if (value === null) values.delete(key);
       else values.set(key, value);
+      written.add(key);
       pending = pending.then(() => seal(key, value)).catch((cause: unknown) => { failure = cause; });
     },
     async flush() {
@@ -316,6 +332,10 @@ export async function openSealedValues(getKey: () => CryptoKey, storage: Pick<St
         const cause = failure;
         failure = undefined;
         throw cause instanceof Error ? cause : new Error('Een instelling kon niet versleuteld worden opgeslagen.');
+      }
+      for (const key of [...written]) {
+        await verify(key);
+        written.delete(key);
       }
     }
   };

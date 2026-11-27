@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react';
+
 /**
  * Openstaande invoer bij vergrendelen (ADR 0031 § 3). Een formulier met niet-opgeslagen invoer meldt
  * zich aan met `save` (versleuteld opslaan en teruglezen) en `discard`. Vergrendelen slaagt pas als
@@ -47,4 +49,14 @@ export function discardPendingInput(): void {
 
 export function pendingInputCount(): number {
   return pending.size;
+}
+
+/** Meldt een formulier aan zolang het niet-opgeslagen invoer heeft. */
+export function usePendingInput(label: string, dirty: boolean, save: () => Promise<void>, discard: () => void): void {
+  const latest = useRef({ save, discard });
+  latest.current = { save, discard };
+  useEffect(() => {
+    if (!dirty) return;
+    return registerPendingInput({ label, save: () => latest.current.save(), discard: () => latest.current.discard() });
+  }, [label, dirty]);
 }

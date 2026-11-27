@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { hasInstalledDatabaseOpener } from '@ecosystem/storage';
 import { createVault, MIN_ITERATIONS } from './crypto';
 import { loadInactivityMinutes, loadVaultRecord, parseVaultRecord, saveInactivityMinutes, saveVaultRecord, VAULT_RECORD_KEY } from './localData';
-import { discardPendingInput, pendingInputCount, PendingInputError, registerPendingInput, savePendingInput } from './pendingInput';
+import { discardPendingInput, pendingInputCount, PendingInputError, registerPendingInput, savePendingInput } from '../pendingInput';
 import { VaultGate } from './VaultGate';
 
 const password = 'synthetisch-wachtwoord-1';
@@ -103,5 +103,19 @@ describe('kleine PE-waarden versleuteld (ADR 0031 § 1)', () => {
 
     const other = (await createVault(password)).dek;
     await expect(openSealedValues(() => other)).rejects.toThrow('ontsleuteld');
+  }, 60_000);
+});
+
+describe('teruglezen vóór vergrendelen (ADR 0031 § 3)', () => {
+  it('flush faalt als de opgeslagen versleutelde waarde niet terug te lezen is', async () => {
+    const { openSealedValues } = await import('./localData');
+    const { dek } = await createVault(password);
+    const values = await openSealedValues(() => dek);
+    values.set('personal-ecosystem.dagboek.concept', 'concept');
+    await values.flush();
+    values.set('personal-ecosystem.dagboek.concept', 'nieuwer concept');
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    localStorage.setItem('personal-ecosystem.sealed.personal-ecosystem.dagboek.concept', '{"iv":"AAAAAAAAAAAAAAAA","ciphertext":"AAAA"}');
+    await expect(values.flush()).rejects.toThrow('ontsleuteld');
   }, 60_000);
 });
