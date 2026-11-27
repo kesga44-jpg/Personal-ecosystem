@@ -139,3 +139,28 @@ test('niet-opgeslagen dagboektekst wordt bij vergrendelen versleuteld bewaard en
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Vandaag: 🙂 Goed');
   await expect.poll(() => page.evaluate(() => localStorage.getItem('personal-ecosystem.sealed.personal-ecosystem.dagboek.concept'))).toBeNull();
 });
+
+test('niet-opgeslagen invoer in een Groei-formulier wordt bij vergrendelen versleuteld bewaard en na openen teruggezet', async ({ page }) => {
+  const conceptKey = 'personal-ecosystem.sealed.personal-ecosystem.concept.groei.doel';
+  await page.goto(`${base}/groei/doelen?nieuw=1`);
+  await createVault(page);
+  await expect(page.getByRole('region', { name: 'Kluis' })).toBeVisible({ timeout: 15_000 });
+  await page.getByRole('textbox', { name: 'Titel' }).fill('Synthetisch doel: de Elfstedenroute fietsen');
+  await page.getByLabel('Omschrijving').fill('Half ingevuld');
+
+  await page.getByRole('button', { name: 'Vergrendelen' }).click();
+  await expect(page.getByRole('heading', { name: 'Kluis openen' })).toBeVisible();
+  const raw = await page.evaluate(() => JSON.stringify({ ...localStorage }));
+  expect(raw).toContain(conceptKey);
+  expect(raw).not.toContain('Elfstedenroute');
+
+  await page.getByLabel('Kluiswachtwoord').fill(password);
+  await page.getByRole('button', { name: 'Openen', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'Titel' })).toHaveValue('Synthetisch doel: de Elfstedenroute fietsen', { timeout: 15_000 });
+  await expect(page.getByLabel('Omschrijving')).toHaveValue('Half ingevuld');
+  await expect(page.getByText('Niet-opgeslagen invoer van de vorige keer is teruggezet.')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Doel opslaan' }).click();
+  await expect(page.getByText('Synthetisch doel: de Elfstedenroute fietsen').first()).toBeVisible();
+  await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), conceptKey)).toBeNull();
+});
