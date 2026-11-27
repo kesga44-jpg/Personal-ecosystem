@@ -58,6 +58,22 @@ function transactionDone(transaction: IDBTransaction): Promise<void> {
   });
 }
 
+async function readEnvelope(database: IDBDatabase, store: string, itemId: string): Promise<StoredEnvelope | undefined> {
+  const transaction = database.transaction(store, 'readonly');
+  const done = transactionDone(transaction);
+  const request = requestResult(transaction.objectStore(store).get(itemId) as IDBRequest<StoredEnvelope | undefined>);
+  const [envelope] = await Promise.all([request, done]);
+  return envelope;
+}
+
+async function countEnvelopes(database: IDBDatabase, store: string): Promise<number> {
+  const transaction = database.transaction(store, 'readonly');
+  const done = transactionDone(transaction);
+  const request = requestResult(transaction.objectStore(store).count());
+  const [count] = await Promise.all([request, done]);
+  return count;
+}
+
 async function readEnvelopes(database: IDBDatabase, store: string): Promise<StoredEnvelope[]> {
   const transaction = database.transaction(store, 'readonly');
   const done = transactionDone(transaction);
@@ -153,6 +169,7 @@ export async function openEncryptedLocalDatabase(
   let closed = false;
   database.onversionchange = () => {
     closed = true;
+    indexes.clear();
     database.close();
   };
   const assertStore = (store: string) => {
@@ -160,6 +177,25 @@ export async function openEncryptedLocalDatabase(
     if (!config.stores.includes(store)) throw new Error(`Storage "${store}" does not belong to ${config.appId}.`);
   };
   const lock = options.lock ?? browserLock;
+
+  /**
+   * Index record-ID → willekeurige opslag-ID per store, alleen in het geheugen van deze geopende database
+   * (weg bij sluiten/vergrendelen). Zonder index moet elke get/put/remove alle records van de store
+   * ontsleutelen. De index geldt alleen zolang het aantal envelopes gelijk is aan dat bij het opbouwen;
+   * een treffer wordt altijd ontsleuteld en gecontroleerd. Een herstel (ook in een ander tabblad) wist de index.
+   */
+  interface StoreIndex { count: number; itemIds: Map<string, string> }
+  const indexes = new Map<string, StoreIndex>();
+  const channel = typeof BroadcastChannel === 'function' ? new BroadcastChannel(encryptedDatabaseLockName(config.databaseName)) : null;
+  if (channel) channel.onmessage = () => indexes.clear();
+
+  function indexFrom(envelopes: readonly StoredEnvelope[], decoded: readonly { record: RecordValue }[]): StoreIndex {
+    const itemIds = new Map<string, string>();
+    decoded.forEach((item, position) => {
+      if (!itemIds.has(item.record.id)) itemIds.set(item.record.id, envelopes[position]!.itemId);
+    });
+    return { count: envelopes.length, itemIds };
+  }
 
   async function decode(store: string, envelope: StoredEnvelope): Promise<{ record: RecordValue; deleted: boolean }> {
     if (!envelopeShape(envelope, config.appId)) throw new Error('Versleutelde lokale opslag bevat ongeldige metadata.');
@@ -179,13 +215,33 @@ export async function openEncryptedLocalDatabase(
     return { record: item.value, deleted: false };
   }
 
+  /** Alleen aanroepen terwijl de databaselock vastgehouden wordt. */
   async function find(store: string, id: string): Promise<{ envelope: StoredEnvelope; deleted: boolean } | undefined> {
     options.keyProvider.getKey();
-    for (const envelope of await readEnvelopes(database, store)) {
-      const decoded = await decode(store, envelope);
-      if (decoded.record.id === id) return { envelope, deleted: decoded.deleted };
+    const index = indexes.get(store);
+    if (index && index.count === await countEnvelopes(database, store)) {
+      const itemId = index.itemIds.get(id);
+      if (itemId === undefined) return undefined;
+      const envelope = await readEnvelope(database, store, itemId);
+      if (envelope) {
+        const decoded = await decode(store, envelope);
+        if (decoded.record.id === id) return { envelope, deleted: decoded.deleted };
+      }
     }
-    return undefined;
+    const envelopes = await readEnvelopes(database, store);
+    const decoded: { record: RecordValue; deleted: boolean }[] = [];
+    for (const envelope of envelopes) decoded.push(await decode(store, envelope));
+    indexes.set(store, indexFrom(envelopes, decoded));
+    const position = decoded.findIndex((item) => item.record.id === id);
+    return position === -1 ? undefined : { envelope: envelopes[position]!, deleted: decoded[position]!.deleted };
+  }
+
+  /** Na een geslaagde nieuwe envelope (onder de lock): index bijwerken zonder opnieuw te scannen. */
+  function indexInsert(store: string, id: string, itemId: string): void {
+    const index = indexes.get(store);
+    if (!index) return;
+    index.itemIds.set(id, itemId);
+    index.count += 1;
   }
 
   async function encode(store: string, record: RecordValue, existing?: StoredEnvelope): Promise<StoredEnvelope> {
@@ -216,7 +272,9 @@ export async function openEncryptedLocalDatabase(
 
   async function listStore(store: string): Promise<RecordValue[]> {
     options.keyProvider.getKey();
-    const decoded = await Promise.all((await readEnvelopes(database, store)).map((item) => decode(store, item)));
+    const envelopes = await readEnvelopes(database, store);
+    const decoded = await Promise.all(envelopes.map((item) => decode(store, item)));
+    indexes.set(store, indexFrom(envelopes, decoded));
     return decoded.filter((item) => !item.deleted).map((item) => item.record).sort((a, b) => a.id.localeCompare(b.id));
   }
 
@@ -247,6 +305,7 @@ export async function openEncryptedLocalDatabase(
         const found = await find(store, value.id);
         const envelope = await encode(store, value, found?.envelope);
         await writeEnvelope(store, envelope);
+        if (!found) indexInsert(store, value.id, envelope.itemId);
       }));
     },
     async putIfAbsent<T extends RecordValue>(store: string, value: T): Promise<boolean> {
@@ -258,6 +317,7 @@ export async function openEncryptedLocalDatabase(
         if (found && !found.deleted) return false;
         const envelope = await encode(store, value, found?.envelope);
         await writeEnvelope(store, envelope, !found);
+        if (!found) indexInsert(store, value.id, envelope.itemId);
         return true;
       }));
     },
@@ -309,6 +369,7 @@ export async function openEncryptedLocalDatabase(
       const backup = validateLocalExport(config, input);
       await withDatabaseMutationLock(() => lock(encryptedDatabaseLockName(config.databaseName), async () => {
         if (closed) throw new Error('Versleutelde lokale database is gesloten.');
+        indexes.clear();
         const envelopes = await Promise.all(config.stores.flatMap((store) =>
           backup.stores[store]!.map(async (record) =>
             [store, await encode(store, record)] as const
@@ -320,6 +381,7 @@ export async function openEncryptedLocalDatabase(
           for (const store of config.stores) await requestResult(transaction.objectStore(store).clear());
           for (const [store, envelope] of envelopes) await requestResult(transaction.objectStore(store).put(envelope));
           await done;
+          channel?.postMessage('restored');
         } catch (cause) {
           try { transaction.abort(); } catch { /* The transaction may already have aborted. */ }
           await done.catch(() => undefined);
@@ -329,6 +391,8 @@ export async function openEncryptedLocalDatabase(
     },
     close(): void {
       closed = true;
+      indexes.clear();
+      channel?.close();
       database.close();
     }
   };
