@@ -26,6 +26,7 @@ import {
   type RecipeIngredient,
   type Unit
 } from './recipes';
+import { ConceptNotice, useFormConcept } from '../../formConcept';
 
 export type Run = (action: (db: LocalDatabase) => Promise<void>) => Promise<boolean>;
 
@@ -119,6 +120,36 @@ function RecipeForm({ recipe, run, onDone }: { recipe?: Recipe; run: Run; onDone
   const [notes, setNotes] = useState(recipe?.notes ?? '');
   const [favorite, setFavorite] = useState(recipe?.favorite ?? false);
   const [formError, setFormError] = useState('');
+  const concept = useFormConcept(
+    'voeding.recept',
+    recipe?.id ?? 'nieuw',
+    'Recept',
+    { name, description, steps, minutes, servings, category, labels, allergens, notes, favorite },
+    {
+      name: recipe?.name ?? '',
+      description: recipe?.description ?? '',
+      steps: recipe?.steps.join('\n') ?? '',
+      minutes: recipe?.prepMinutes ? String(recipe.prepMinutes) : '',
+      servings: String(recipe?.servings ?? 2),
+      category: recipe?.category ?? '',
+      labels: recipe?.labels.join(', ') ?? '',
+      allergens: recipe?.allergens.join(', ') ?? '',
+      notes: recipe?.notes ?? '',
+      favorite: recipe?.favorite ?? false
+    },
+    (value) => {
+      setName(value.name);
+      setDescription(value.description);
+      setSteps(value.steps);
+      setMinutes(value.minutes);
+      setServings(value.servings);
+      setCategory(value.category);
+      setLabels(value.labels);
+      setAllergens(value.allergens);
+      setNotes(value.notes);
+      setFavorite(value.favorite);
+    }
+  );
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -144,7 +175,10 @@ function RecipeForm({ recipe, run, onDone }: { recipe?: Recipe; run: Run; onDone
         updatedAt: now
       };
       validateRecipe(next);
-      if (await run((db) => db.put('recipes', next))) onDone(next.id);
+      if (await run((db) => db.put('recipes', next))) {
+        concept.clear();
+        onDone(next.id);
+      }
     } catch (cause) {
       setFormError(cause instanceof Error ? cause.message : 'Het recept bevat ongeldige gegevens.');
     }
@@ -153,6 +187,7 @@ function RecipeForm({ recipe, run, onDone }: { recipe?: Recipe; run: Run; onDone
   return (
     <Card title={recipe ? 'Recept aanpassen' : 'Nieuw recept'}>
       <form className="stack" noValidate onSubmit={(event) => void submit(event)}>
+        <ConceptNotice concept={concept} />
         <div className="form-grid">
           <Field label="Naam van het recept"><input maxLength={120} value={name} onChange={(event) => setName(event.target.value)} /></Field>
           <Field label="Porties"><input type="number" min={1} max={50} value={servings} onChange={(event) => setServings(event.target.value)} /></Field>

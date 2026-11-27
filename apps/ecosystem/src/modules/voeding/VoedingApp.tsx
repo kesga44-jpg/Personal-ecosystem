@@ -51,6 +51,7 @@ import { IngredientPage, NewRecipePage, RecipeDetailPage, RecipesPage, type Reci
 import type { Ingredient, Recipe, RecipeIngredient } from './recipes';
 import { PlanPage, PlansPage, ShoppingPage, type PlannerData } from './PlannerPages';
 import { AutoPlanPage } from './AutoPlanPage';
+import { ConceptNotice, useFormConcept } from '../../formConcept';
 import type { NutritionPlan, PlannedMeal } from './planner';
 
 const navigation = [
@@ -448,6 +449,12 @@ function OwnProductForm({ onDone }: { onDone: (product: FoodProduct) => void }) 
   const [values, setValues] = useState<Record<keyof Nutrients, string>>({ kcal: '', protein: '', carbs: '', fat: '' });
   const [serving, setServing] = useState('');
   const [formError, setFormError] = useState('');
+  const concept = useFormConcept('voeding.product', 'nieuw', 'Eigen product', { name, brand, values, serving }, { name: '', brand: '', values: { kcal: '', protein: '', carbs: '', fat: '' }, serving: '' }, (value) => {
+    setName(value.name);
+    setBrand(value.brand);
+    setValues(value.values);
+    setServing(value.serving);
+  });
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -464,6 +471,7 @@ function OwnProductForm({ onDone }: { onDone: (product: FoodProduct) => void }) 
       if (Number.isNaN(servingValue)) throw new Error('Portie moet een getal zijn.');
       const product: FoodProduct = { id: `eigen:${newId()}`, name: name.trim(), brand: brand.trim(), barcode: null, per100, servingGrams: servingValue, source: 'eigen', updatedAt: new Date().toISOString() };
       validateProduct(product);
+      concept.clear();
       onDone(product);
     } catch (cause) {
       setFormError(cause instanceof Error ? cause.message : 'Het product bevat ongeldige gegevens.');
@@ -472,6 +480,7 @@ function OwnProductForm({ onDone }: { onDone: (product: FoodProduct) => void }) 
 
   return (
     <form onSubmit={submit} noValidate>
+      <ConceptNotice concept={concept} />
       <div className="form-grid">
         <Field label="Naam"><input type="text" maxLength={120} value={name} onChange={(event) => setName(event.target.value)} /></Field>
         <Field label="Merk" hint="Optioneel"><input type="text" maxLength={80} value={brand} onChange={(event) => setBrand(event.target.value)} /></Field>
