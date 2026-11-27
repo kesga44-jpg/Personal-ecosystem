@@ -9,6 +9,7 @@ import { UNITS, unitLabels, validateRecipe, validateRecipeIngredient, type Unit 
 import type { Run } from './RecipePages';
 import type { LocalDatabase } from '@ecosystem/storage';
 import { GoalLinks } from '../GoalLinks';
+import { ConceptNotice, useFormConcept } from '../../formConcept';
 
 export interface PlannerData extends Library {
   plans: NutritionPlan[];
@@ -61,6 +62,32 @@ function PlanForm({ plan, run, onDone }: { plan?: NutritionPlan; run: Run; onDon
   const [fat, setFat] = useState(plan?.targets.fat ? String(plan.targets.fat) : '');
   const [mealsPerDay, setMealsPerDay] = useState(String(plan?.mealsPerDay ?? 3));
   const [formError, setFormError] = useState('');
+  const concept = useFormConcept(
+    'voeding.plan',
+    plan?.id ?? 'nieuw',
+    'Voedingsplan',
+    { name, from, to, kcal, protein, carbs, fat, mealsPerDay },
+    {
+      name: plan?.name ?? '',
+      from: plan?.from ?? today,
+      to: plan?.to ?? addDays(today, 6),
+      kcal: plan?.targets.kcal ? String(plan.targets.kcal) : '',
+      protein: plan?.targets.protein ? String(plan.targets.protein) : '',
+      carbs: plan?.targets.carbs ? String(plan.targets.carbs) : '',
+      fat: plan?.targets.fat ? String(plan.targets.fat) : '',
+      mealsPerDay: String(plan?.mealsPerDay ?? 3)
+    },
+    (value) => {
+      setName(value.name);
+      setFrom(value.from);
+      setTo(value.to);
+      setKcal(value.kcal);
+      setProtein(value.protein);
+      setCarbs(value.carbs);
+      setFat(value.fat);
+      setMealsPerDay(value.mealsPerDay);
+    }
+  );
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -80,7 +107,10 @@ function PlanForm({ plan, run, onDone }: { plan?: NutritionPlan; run: Run; onDon
         updatedAt: now
       };
       validatePlan(next);
-      if (await run((db) => db.put('nutritionPlans', next))) onDone(next.id);
+      if (await run((db) => db.put('nutritionPlans', next))) {
+        concept.clear();
+        onDone(next.id);
+      }
     } catch (cause) {
       setFormError(cause instanceof Error ? cause.message : 'Het plan bevat ongeldige gegevens.');
     }
@@ -89,6 +119,7 @@ function PlanForm({ plan, run, onDone }: { plan?: NutritionPlan; run: Run; onDon
   return (
     <Card title={plan ? 'Plan aanpassen' : 'Nieuw voedingsplan'}>
       <form className="stack" noValidate onSubmit={(event) => void submit(event)}>
+        <ConceptNotice concept={concept} />
         <div className="form-grid">
           <Field label="Naam van het plan"><input maxLength={120} value={name} onChange={(event) => setName(event.target.value)} /></Field>
           <Field label="Van"><input type="date" value={from} onChange={(event) => setFrom(event.target.value)} /></Field>
