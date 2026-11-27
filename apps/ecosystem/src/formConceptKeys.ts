@@ -24,7 +24,10 @@ export const FORM_CONCEPT_IDS = [
   'financien.manual.spaarstrategie',
   'financien.manual.notities',
   'financien.plan',
-  'financien.plannotitie'
+  'financien.plannotitie',
+  'voeding.recept',
+  'voeding.product',
+  'voeding.plan'
 ] as const;
 
 export type FormConceptId = (typeof FORM_CONCEPT_IDS)[number];
