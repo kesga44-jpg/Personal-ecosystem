@@ -42,6 +42,7 @@ import {
   type TenTenMonth
 } from './domain';
 import { databaseConfig } from './storage';
+import { ConceptNotice, useFormConcept } from '../../formConcept';
 
 const navigation = [
   { to: '/', label: 'Overzicht', icon: '⌂' },
@@ -325,6 +326,7 @@ function goalForm(goal?: Goal, parentId = ''): GoalForm {
 function GoalEditor({ data, run, goal, parentId, onDone }: { data: Data; run: Run; goal?: Goal; parentId?: string; onDone: () => void }) {
   const [form, setForm] = useState<GoalForm>(() => goalForm(goal, parentId));
   const [formError, setFormError] = useState('');
+  const concept = useFormConcept('groei.doel', goal?.id ?? `nieuw:${parentId ?? ''}`, 'Doel', form, goalForm(goal, parentId), setForm);
   const set = <K extends keyof GoalForm>(key: K, value: GoalForm[K]) => setForm((current) => ({ ...current, [key]: value }));
   const parents = data.goals.filter((candidate) => candidate.id !== goal?.id);
 
@@ -349,7 +351,10 @@ function GoalEditor({ data, run, goal, parentId, onDone }: { data: Data; run: Ru
       };
       validateGoal(next);
       if (findGoalCycle([...data.goals.filter((item) => item.id !== next.id), next])) throw new Error('Dit subdoel zou naar zichzelf terugverwijzen.');
-      if (await run((db) => db.put('goals', next))) onDone();
+      if (await run((db) => db.put('goals', next))) {
+        concept.clear();
+        onDone();
+      }
     } catch (cause) {
       setFormError(cause instanceof Error ? cause.message : 'Het doel bevat ongeldige gegevens.');
     }
@@ -358,6 +363,7 @@ function GoalEditor({ data, run, goal, parentId, onDone }: { data: Data; run: Ru
   return (
     <Card title={goal ? 'Doel aanpassen' : 'Nieuw doel'}>
       <form className="stack" noValidate onSubmit={(event) => void submit(event)}>
+        <ConceptNotice concept={concept} />
         <Field label="Titel">
           <input value={form.title} maxLength={200} onChange={(event) => set('title', event.target.value)} required />
         </Field>
@@ -571,6 +577,21 @@ function ActionEditor({ data, run, action, goalId, insightId, onDone }: { data: 
   const [dueDate, setDueDate] = useState(action?.dueDate ?? '');
   const [insight, setInsight] = useState(action?.insightId ?? insightId ?? '');
   const [formError, setFormError] = useState('');
+  const concept = useFormConcept(
+    'groei.actie',
+    action?.id ?? `nieuw:${goalId ?? ''}:${insightId ?? ''}`,
+    'Actie',
+    { title, notes, goal, skill, dueDate, insight },
+    { title: action?.title ?? '', notes: action?.notes ?? '', goal: action?.goalId ?? goalId ?? '', skill: action?.skillId ?? '', dueDate: action?.dueDate ?? '', insight: action?.insightId ?? insightId ?? '' },
+    (value) => {
+      setTitle(value.title);
+      setNotes(value.notes);
+      setGoal(value.goal);
+      setSkill(value.skill);
+      setDueDate(value.dueDate);
+      setInsight(value.insight);
+    }
+  );
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -592,7 +613,10 @@ function ActionEditor({ data, run, action, goalId, insightId, onDone }: { data: 
         updatedAt: now
       };
       validateAction(next);
-      if (await run((db) => db.put('actions', next))) onDone();
+      if (await run((db) => db.put('actions', next))) {
+        concept.clear();
+        onDone();
+      }
     } catch (cause) {
       setFormError(cause instanceof Error ? cause.message : 'De actie bevat ongeldige gegevens.');
     }
@@ -601,6 +625,7 @@ function ActionEditor({ data, run, action, goalId, insightId, onDone }: { data: 
   return (
     <Card title={action ? 'Actie aanpassen' : 'Nieuwe actie'}>
       <form className="stack" noValidate onSubmit={(event) => void submit(event)}>
+        <ConceptNotice concept={concept} />
         <Field label="Actie">
           <input value={title} maxLength={200} onChange={(event) => setTitle(event.target.value)} required />
         </Field>
@@ -720,6 +745,12 @@ function HabitsPage({ data, run }: { data: Data; run: Run }) {
   const [goalId, setGoalId] = useState('');
   const [formError, setFormError] = useState('');
   const [showArchived, setShowArchived] = useState(false);
+  const concept = useFormConcept('groei.gewoonte', 'nieuw', 'Gewoonte', { title, frequency, weeklyTarget, goalId }, { title: '', frequency: 'dagelijks' as 'dagelijks' | 'wekelijks', weeklyTarget: '3', goalId: '' }, (value) => {
+    setTitle(value.title);
+    setFrequency(value.frequency === 'wekelijks' ? 'wekelijks' : 'dagelijks');
+    setWeeklyTarget(value.weeklyTarget);
+    setGoalId(value.goalId);
+  });
 
   async function add(event: FormEvent) {
     event.preventDefault();
@@ -730,7 +761,10 @@ function HabitsPage({ data, run }: { data: Data; run: Run }) {
       validateHabit(habit);
       if (await run((db) => db.put('habits', habit))) {
         setTitle('');
+        setFrequency('dagelijks');
+        setWeeklyTarget('3');
         setGoalId('');
+        concept.clear();
       }
     } catch (cause) {
       setFormError(cause instanceof Error ? cause.message : 'De gewoonte bevat ongeldige gegevens.');
@@ -744,6 +778,7 @@ function HabitsPage({ data, run }: { data: Data; run: Run }) {
       <PageHeader eyebrow="Groei" title="Gewoontes" description="Vink af wat je vandaag deed. Groei is eigenaar van gewoontes (K-A)." />
       <Card title="Nieuwe gewoonte">
         <form className="stack" noValidate onSubmit={(event) => void add(event)}>
+          <ConceptNotice concept={concept} />
           <div className="form-grid">
             <Field label="Gewoonte">
               <input value={title} maxLength={200} onChange={(event) => setTitle(event.target.value)} required />
@@ -857,6 +892,20 @@ function SkillEditor({ data, run, skill, onDone }: { data: Data; run: Run; skill
   const [targetLevel, setTargetLevel] = useState(String(skill?.targetLevel ?? 5));
   const [goalIds, setGoalIds] = useState<string[]>(skill?.goalIds ?? []);
   const [formError, setFormError] = useState('');
+  const concept = useFormConcept(
+    'groei.vaardigheid',
+    skill?.id ?? 'nieuw',
+    'Vaardigheid',
+    { title, description, level, targetLevel, goalIds },
+    { title: skill?.title ?? '', description: skill?.description ?? '', level: String(skill?.level ?? 1), targetLevel: String(skill?.targetLevel ?? 5), goalIds: skill?.goalIds ?? [] },
+    (value) => {
+      setTitle(value.title);
+      setDescription(value.description);
+      setLevel(value.level);
+      setTargetLevel(value.targetLevel);
+      setGoalIds(value.goalIds);
+    }
+  );
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -868,7 +917,10 @@ function SkillEditor({ data, run, skill, onDone }: { data: Data; run: Run; skill
       if (await run((db) => db.put('skills', next))) {
         setTitle('');
         setDescription('');
+        setLevel('1');
+        setTargetLevel('5');
         setGoalIds([]);
+        concept.clear();
         onDone();
       }
     } catch (cause) {
@@ -879,6 +931,7 @@ function SkillEditor({ data, run, skill, onDone }: { data: Data; run: Run; skill
   return (
     <Card title={skill ? 'Vaardigheid aanpassen' : 'Nieuwe vaardigheid'}>
       <form className="stack" noValidate onSubmit={(event) => void submit(event)}>
+        <ConceptNotice concept={concept} />
         <div className="form-grid">
           <Field label="Vaardigheid">
             <input value={title} maxLength={200} onChange={(event) => setTitle(event.target.value)} required />
@@ -926,6 +979,22 @@ function EvaluationsPage({ data, run }: { data: Data; run: Run }) {
   const [score, setScore] = useState('');
   const [goalIds, setGoalIds] = useState<string[]>([]);
   const [formError, setFormError] = useState('');
+  const concept = useFormConcept(
+    'groei.evaluatie',
+    'nieuw',
+    'Evaluatie',
+    { period, periodStart, wentWell, toImprove, nextSteps, score, goalIds },
+    { period: 'week' as EvaluationPeriod, periodStart: todayKey(), wentWell: '', toImprove: '', nextSteps: '', score: '', goalIds: [] as string[] },
+    (value) => {
+      setPeriod(EVALUATION_PERIODS.includes(value.period) ? value.period : 'week');
+      setPeriodStart(value.periodStart);
+      setWentWell(value.wentWell);
+      setToImprove(value.toImprove);
+      setNextSteps(value.nextSteps);
+      setScore(value.score);
+      setGoalIds(value.goalIds);
+    }
+  );
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -940,6 +1009,9 @@ function EvaluationsPage({ data, run }: { data: Data; run: Run }) {
         setNextSteps('');
         setScore('');
         setGoalIds([]);
+        setPeriod('week');
+        setPeriodStart(todayKey());
+        concept.clear();
       }
     } catch (cause) {
       setFormError(cause instanceof Error ? cause.message : 'De evaluatie bevat ongeldige gegevens.');
@@ -951,6 +1023,7 @@ function EvaluationsPage({ data, run }: { data: Data; run: Run }) {
       <PageHeader eyebrow="Groei" title="Evaluaties" description="Kijk terug per week, maand, kwartaal of jaar." />
       <Card title="Nieuwe evaluatie">
         <form className="stack" noValidate onSubmit={(event) => void submit(event)}>
+          <ConceptNotice concept={concept} />
           <div className="form-grid">
             <Field label="Periode">
               <select value={period} onChange={(event) => setPeriod(event.target.value as EvaluationPeriod)}>

@@ -42,6 +42,7 @@ import {
   type SourceType,
   type StudyProgram
 } from './domain';
+import { ConceptNotice, useFormConcept } from '../../formConcept';
 
 const navigation = [
   { to: '/', label: 'Overzicht', icon: '⌂' },
@@ -340,6 +341,42 @@ function SourceEditor({ data, run, source, onDone }: { data: Data; run: Run; sou
   const [goalIds, setGoalIds] = useState<string[]>(source?.goalIds ?? []);
   const [skillIds, setSkillIds] = useState<string[]>(source?.skillIds ?? []);
   const [formError, setFormError] = useState('');
+  const concept = useFormConcept(
+    'kennis.bron',
+    source?.id ?? 'nieuw',
+    'Bron',
+    { title, type, category, creatorIds, labels, platform, url, status, progress, rating, summary, goalIds, skillIds },
+    {
+      title: source?.title ?? '',
+      type: source?.type ?? ('boek' as SourceType),
+      category: source?.category ?? ('algemeen' as Category),
+      creatorIds: source?.creatorIds ?? [],
+      labels: (source?.labels ?? []).join(', '),
+      platform: source?.platform ?? '',
+      url: source?.url ?? '',
+      status: source?.status ?? ('wil ik' as SourceStatus),
+      progress: String(source?.progress ?? 0),
+      rating: source?.rating ? String(source.rating) : '',
+      summary: source?.summary ?? '',
+      goalIds: source?.goalIds ?? [],
+      skillIds: source?.skillIds ?? []
+    },
+    (value) => {
+      setTitle(value.title);
+      if (SOURCE_TYPES.includes(value.type)) setType(value.type);
+      if (CATEGORIES.includes(value.category)) setCategory(value.category);
+      setCreatorIds(value.creatorIds);
+      setLabels(value.labels);
+      setPlatform(value.platform);
+      setUrl(value.url);
+      if (SOURCE_STATUSES.includes(value.status)) setStatus(value.status);
+      setProgress(value.progress);
+      setRating(value.rating);
+      setSummary(value.summary);
+      setGoalIds(value.goalIds);
+      setSkillIds(value.skillIds);
+    }
+  );
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -371,7 +408,10 @@ function SourceEditor({ data, run, source, onDone }: { data: Data; run: Run; sou
       };
       const next = status === base.status ? base : withSourceStatus(base, status, todayKey());
       validateSource(next);
-      if (await run((db) => db.put('sources', next))) onDone(next.id);
+      if (await run((db) => db.put('sources', next))) {
+        concept.clear();
+        onDone(next.id);
+      }
     } catch (cause) {
       setFormError(cause instanceof Error ? cause.message : 'De bron bevat ongeldige gegevens.');
     }
@@ -380,6 +420,7 @@ function SourceEditor({ data, run, source, onDone }: { data: Data; run: Run; sou
   return (
     <Card title={source ? 'Bron aanpassen' : 'Nieuwe bron'}>
       <form className="stack" noValidate onSubmit={(event) => void submit(event)}>
+        <ConceptNotice concept={concept} />
         <Field label="Titel">
           <input value={title} maxLength={300} onChange={(event) => setTitle(event.target.value)} required />
         </Field>
@@ -528,6 +569,10 @@ function SourcePage({ data, run }: { data: Data; run: Run }) {
   const [highlight, setHighlight] = useState('');
   const [location, setLocation] = useState('');
   const [formError, setFormError] = useState('');
+  const highlightConcept = useFormConcept('kennis.highlight', id, 'Highlight', { highlight, location }, { highlight: '', location: '' }, (value) => {
+    setHighlight(value.highlight);
+    setLocation(value.location);
+  });
   const source = data.sources.find((item) => item.id === id);
   if (!source) {
     return (
@@ -552,6 +597,7 @@ function SourcePage({ data, run }: { data: Data; run: Run }) {
       if (await run((db) => db.put('highlights', item))) {
         setHighlight('');
         setLocation('');
+        highlightConcept.clear();
       }
     } catch (cause) {
       setFormError(cause instanceof Error ? cause.message : 'Ongeldige highlight.');
@@ -594,6 +640,7 @@ function SourcePage({ data, run }: { data: Data; run: Run }) {
       <div className="grid grid-2">
         <Card title="Highlights">
           <form className="stack" noValidate onSubmit={(event) => void addHighlight(event)}>
+            <ConceptNotice concept={highlightConcept} />
             <Field label="Nieuwe highlight">
               <textarea value={highlight} onChange={(event) => setHighlight(event.target.value)} />
             </Field>
@@ -712,6 +759,31 @@ function InsightEditor({ data, run, insight, sourceId = '', highlightId = '', on
   const [goalIds, setGoalIds] = useState<string[]>(insight?.goalIds ?? []);
   const [skillIds, setSkillIds] = useState<string[]>(insight?.skillIds ?? []);
   const [formError, setFormError] = useState('');
+  const initialSource = insight?.sourceId ?? sourceId;
+  const concept = useFormConcept(
+    'kennis.inzicht',
+    insight?.id ?? `nieuw:${sourceId}:${highlightId}`,
+    'Inzicht',
+    { title, text, source, category, highlightIds, goalIds, skillIds },
+    {
+      title: insight?.title ?? '',
+      text: insight?.text ?? '',
+      source: initialSource,
+      category: insight?.category ?? data.sources.find((item) => item.id === initialSource)?.category ?? ('algemeen' as Category),
+      highlightIds: insight?.highlightIds ?? (highlightId ? [highlightId] : []),
+      goalIds: insight?.goalIds ?? [],
+      skillIds: insight?.skillIds ?? []
+    },
+    (value) => {
+      setTitle(value.title);
+      setText(value.text);
+      setSource(value.source);
+      if (CATEGORIES.includes(value.category)) setCategory(value.category);
+      setHighlightIds(value.highlightIds);
+      setGoalIds(value.goalIds);
+      setSkillIds(value.skillIds);
+    }
+  );
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -720,7 +792,10 @@ function InsightEditor({ data, run, insight, sourceId = '', highlightId = '', on
       const now = nowIso();
       const next: Insight = { ...(insight ?? {}), id: insight?.id ?? newId(), title: title.trim(), text: text.trim(), category, sourceId: source || null, highlightIds, goalIds, skillIds, createdAt: insight?.createdAt ?? now, updatedAt: now };
       validateInsight(next);
-      if (await run((db) => db.put('insights', next))) onDone();
+      if (await run((db) => db.put('insights', next))) {
+        concept.clear();
+        onDone();
+      }
     } catch (cause) {
       setFormError(cause instanceof Error ? cause.message : 'Ongeldig inzicht.');
     }
@@ -731,6 +806,7 @@ function InsightEditor({ data, run, insight, sourceId = '', highlightId = '', on
   return (
     <Card title={insight ? 'Inzicht aanpassen' : 'Nieuw inzicht'}>
       <form className="stack" noValidate onSubmit={(event) => void submit(event)}>
+        <ConceptNotice concept={concept} />
         <Field label="Inzicht">
           <input value={title} maxLength={300} onChange={(event) => setTitle(event.target.value)} required />
         </Field>

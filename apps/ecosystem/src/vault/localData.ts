@@ -19,6 +19,7 @@ import { databaseConfig as duurConfig } from '../modules/duur/storage';
 import { databaseConfig as groeiConfig } from '../modules/groei/storage';
 import { databaseConfig as financienConfig } from '../modules/financien/storage';
 import { MODULE_IDS, type BackupModuleId } from '../backup';
+import { FORM_CONCEPT_KEYS } from '../formConceptKeys';
 
 export const PERSONAL_ECOSYSTEM_DATABASE_CONFIGS: Readonly<Record<BackupModuleId, LocalDatabaseConfig>> = {
   hub: hubConfig,
@@ -46,7 +47,8 @@ export const SEALABLE_LOCAL_VALUE_KEYS = [
   'personal-ecosystem.kracht.concept',
   'personal-ecosystem.dashboard.layout',
   'personal-ecosystem.dashboard.weather-location',
-  'personal-ecosystem.dagboek.concept'
+  'personal-ecosystem.dagboek.concept',
+  ...FORM_CONCEPT_KEYS
 ] as const;
 export const SEALED_VALUE_PREFIX = 'personal-ecosystem.sealed.';
 
