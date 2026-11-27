@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type PropsWithChildren } from 'react';
 import { installDatabaseOpener } from '@ecosystem/storage';
 import { Button, Card, ErrorBanner, Field, PageHeader } from '@ecosystem/ui';
-import type { VaultRecord } from './crypto';
+import { changePassword, type VaultRecord } from './crypto';
+import { endLogoutBarrier, resumeInterruptedLogout } from './lifecycle';
 import { encryptedOpener, exportPlaintextBackup, migrateModulesToEncrypted, plaintextRecordCounts, defaultOpeners, type ModuleMigrationReport } from './encryptedModules';
 import { installLocalValueBackend } from '../localValues';
-import { loadInactivityMinutes, loadVaultRecord, openSealedValues, PERSONAL_ECOSYSTEM_DATABASE_CONFIGS, saveInactivityMinutes, saveVaultRecord, type SealedValues } from './localData';
+import { browserLogoutBarrier, defaultLocalDataDeletionAdapters, deletePersonalEcosystemLocalDataWithinLock, loadInactivityMinutes, loadVaultRecord, openSealedValues, PERSONAL_ECOSYSTEM_DATABASE_CONFIGS, saveInactivityMinutes, saveVaultRecord, type SealedValues } from './localData';
 import { discardPendingInput, PendingInputError, savePendingInput } from '../pendingInput';
 import { MAX_INACTIVITY_TIMEOUT_MINUTES, MIN_INACTIVITY_TIMEOUT_MINUTES, VaultSession, type RecoveryCodeSaveMethod } from './session';
 
@@ -19,6 +20,7 @@ import { MAX_INACTIVITY_TIMEOUT_MINUTES, MIN_INACTIVITY_TIMEOUT_MINUTES, VaultSe
  * Alleen actief in een build met `VITE_PE_VAULT=1`; productie blijft ongewijzigd tot P-6 is vrijgegeven.
  */
 type Phase =
+  | { name: 'starting' }
   | { name: 'setup' }
   | { name: 'recovery'; code: string; saved: RecoveryCodeSaveMethod | null }
   | { name: 'locked'; vault: VaultRecord }
@@ -42,10 +44,25 @@ function message(cause: unknown): string {
 }
 
 export function VaultGate({ children }: PropsWithChildren) {
-  const [phase, setPhase] = useState<Phase>(() => {
-    const vault = loadVaultRecord();
-    return vault ? { name: 'locked', vault } : { name: 'setup' };
-  });
+  const [phase, setPhase] = useState<Phase>({ name: 'starting' });
+  const [showAccount, setShowAccount] = useState(false);
+  const barrier = useMemo(() => browserLogoutBarrier(), []);
+
+  // Een afmelding die tijdens het wissen stopte, wordt eerst afgerond (P-6, ADR 0030 § 3), vóór er iets opent.
+  useEffect(() => {
+    let alive = true;
+    void resumeInterruptedLogout({
+      barrier,
+      clearLocalPersonalEcosystemCache: () => deletePersonalEcosystemLocalDataWithinLock(defaultLocalDataDeletionAdapters()).then(() => undefined)
+    })
+      .catch((cause: unknown) => { if (alive) setError(message(cause)); })
+      .finally(() => {
+        if (!alive) return;
+        const vault = loadVaultRecord();
+        setPhase(vault ? { name: 'locked', vault } : { name: 'setup' });
+      });
+    return () => { alive = false; };
+  }, [barrier]);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [lockFailure, setLockFailure] = useState('');
@@ -100,12 +117,14 @@ export function VaultGate({ children }: PropsWithChildren) {
 
   /** Na openen: alle modules op versleutelde opslag; eerst overzetten als er nog onversleutelde records zijn. */
   const opened = useCallback(async (vault: VaultRecord) => {
+    // Na een afgeronde afmelding mogen schrijven en sync pas weer na een nieuwe, geopende kluis.
+    if (barrier.read() === 'cleared') endLogoutBarrier(barrier);
     installDatabaseOpener(encryptedOpener({ getKey: () => session.getKey() }));
     sealedValues.current = await openSealedValues(() => session.getKey());
     installLocalValueBackend(sealedValues.current);
     const counts = await plaintextRecordCounts(configs);
     setPhase(totalOf(counts) > 0 ? { name: 'migrate', vault, counts, backedUp: false, reports: null } : { name: 'unlocked', vault });
-  }, [session]);
+  }, [session, barrier]);
 
   useEffect(() => {
     installLocalValueBackend(lockedValues);
@@ -143,8 +162,19 @@ export function VaultGate({ children }: PropsWithChildren) {
               {INACTIVITY_CHOICES.map((minutes) => <option key={minutes} value={minutes}>{minutes} min</option>)}
             </select>
           </label>
+          <Button variant="secondary" type="button" onClick={() => setShowAccount((value) => !value)}>{showAccount ? 'Kluisbeheer sluiten' : 'Kluis beheren'}</Button>
           <Button variant="secondary" type="button" onClick={() => void lock()}>Vergrendelen</Button>
         </div>
+        {showAccount && (
+          <VaultAccount
+            onChangePassword={async (current, next, repeat) => {
+              if (next !== repeat) throw new Error('De nieuwe wachtwoorden zijn niet gelijk.');
+              const updated = await changePassword(phase.vault, { password: current }, next);
+              saveVaultRecord(updated);
+              setPhase({ name: 'unlocked', vault: updated });
+            }}
+          />
+        )}
         {lockFailure && (
           <div role="alert" className="error-banner">
             <strong>De kluis is nog open</strong>
@@ -158,6 +188,10 @@ export function VaultGate({ children }: PropsWithChildren) {
         <div key={generation}>{children}</div>
       </>
     );
+  }
+
+  if (phase.name === 'starting') {
+    return <main className="vault-screen" style={{ maxWidth: 560, margin: '0 auto', padding: '32px 16px' }}><p role="status">Kluis voorbereiden…</p>{error && <ErrorBanner message={error} />}</main>;
   }
 
   return (
@@ -382,5 +416,49 @@ function MigrationStep({ phase, busy, error, onBackup, onMigrate, onContinue, on
         )}
       </Card>
     </>
+  );
+}
+
+function VaultAccount({ onChangePassword }: { onChangePassword(current: string, next: string, repeat: string): Promise<void> }) {
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [repeat, setRepeat] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState('');
+  const [error, setError] = useState('');
+  return (
+    <section aria-label="Kluisbeheer" style={{ maxWidth: 640, margin: '0 auto', padding: '16px' }}>
+      <Card title="Kluiswachtwoord wijzigen">
+        <form onSubmit={(event: FormEvent) => {
+          event.preventDefault();
+          setBusy(true);
+          setError('');
+          setStatus('');
+          onChangePassword(current, next, repeat)
+            .then(() => { setStatus('Kluiswachtwoord gewijzigd. Je herstelcode blijft geldig.'); setCurrent(''); setNext(''); setRepeat(''); })
+            .catch((cause: unknown) => setError(message(cause)))
+            .finally(() => setBusy(false));
+        }}>
+          <Field label="Huidig kluiswachtwoord"><input type="password" autoComplete="current-password" value={current} onChange={(event) => setCurrent(event.target.value)} /></Field>
+          <Field label="Nieuw kluiswachtwoord" hint="Minimaal 12 tekens."><input type="password" autoComplete="new-password" value={next} onChange={(event) => setNext(event.target.value)} /></Field>
+          <Field label="Herhaal nieuw kluiswachtwoord"><input type="password" autoComplete="new-password" value={repeat} onChange={(event) => setRepeat(event.target.value)} /></Field>
+          {error && <ErrorBanner message={error} />}
+          {status && <p role="status">{status}</p>}
+          <Button type="submit" disabled={busy || !current || !next}>{busy ? 'Bezig…' : 'Wachtwoord wijzigen'}</Button>
+        </form>
+      </Card>
+      <Card title="Gegevens meenemen">
+        <p>Een export bevat al je PE-gegevens <strong>onversleuteld</strong>. Bewaar het bestand veilig.</p>
+        <p><a href="/back-up">Naar Back-up en export</a></p>
+      </Card>
+      <Card title="Afmelden">
+        <p>
+          Afmelden wist de gegevens op dit apparaat. Dat kan pas als je account en synchronisatie actief zijn en de server
+          al je wijzigingen heeft bevestigd; anders zou je gegevens kwijtraken. Tot die tijd blijft afmelden uitgeschakeld.
+          Gebruik <em>Vergrendelen</em> om de kluis te sluiten.
+        </p>
+        <Button type="button" variant="secondary" disabled>Afmelden (nog niet beschikbaar)</Button>
+      </Card>
+    </section>
   );
 }

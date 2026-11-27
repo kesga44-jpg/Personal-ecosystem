@@ -107,7 +107,7 @@ test('een lopende krachttraining (concept) staat versleuteld in de browser en is
   await expect.poll(() => page.evaluate(() => localStorage.getItem('personal-ecosystem.sealed.personal-ecosystem.kracht.concept'))).not.toBeNull();
   const raw = await page.evaluate(() => JSON.stringify({ ...localStorage }));
   expect(raw).not.toContain('Squat');
-  expect(raw).not.toContain('77');
+  expect(raw).not.toContain('77,5'); // base64 bevat geen komma, dus geen toevallige treffer
 
   await page.getByRole('button', { name: 'Vergrendelen' }).click();
   await page.getByLabel('Kluiswachtwoord').fill(password);

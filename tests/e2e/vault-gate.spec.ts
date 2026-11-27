@@ -104,3 +104,49 @@ test('een te kort of ongelijk wachtwoord wordt geweigerd', async ({ page }) => {
   await page.getByRole('button', { name: 'Kluis aanmaken' }).click();
   await expect(page.getByRole('alert')).toContainText('niet gelijk');
 });
+
+test('kluiswachtwoord wijzigen; na herladen opent alleen het nieuwe wachtwoord, afmelden blijft uit tot sync actief is', async ({ page }) => {
+  await createVault(page);
+  await page.getByRole('button', { name: 'Kluis beheren' }).click();
+  await expect(page.getByRole('button', { name: 'Afmelden (nog niet beschikbaar)' })).toBeDisabled();
+  await page.getByLabel('Huidig kluiswachtwoord').fill(password);
+  await page.getByLabel(/^Nieuw kluiswachtwoord/).fill('nieuw-synthetisch-ww-2');
+  await page.getByLabel('Herhaal nieuw kluiswachtwoord').fill('nieuw-synthetisch-ww-2');
+  await page.getByRole('button', { name: 'Wachtwoord wijzigen' }).click();
+  await expect(page.getByText(/Kluiswachtwoord gewijzigd/)).toBeVisible({ timeout: 15_000 });
+
+  await page.reload();
+  await page.getByLabel('Kluiswachtwoord').fill(password);
+  await page.getByRole('button', { name: 'Openen', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('Onjuist kluiswachtwoord', { timeout: 15_000 });
+  await page.getByLabel('Kluiswachtwoord').fill('nieuw-synthetisch-ww-2');
+  await page.getByRole('button', { name: 'Openen', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Kluis' })).toBeVisible({ timeout: 15_000 });
+});
+
+test('een afmelding die tijdens het wissen stopte, wordt bij het opstarten afgerond', async ({ page }) => {
+  await createVault(page);
+  // Synthetische toestand: afmelden had de markering gezet en was daarna onderbroken.
+  await page.evaluate(() => {
+    localStorage.setItem('personal-ecosystem.logout.barrier', JSON.stringify({ phase: 'clearing', startedAt: new Date().toISOString() }));
+  });
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Kluis aanmaken' })).toBeVisible({ timeout: 15_000 });
+  const state = await page.evaluate(() => ({
+    marker: localStorage.getItem('personal-ecosystem.logout.barrier'),
+    record: localStorage.getItem('personal-ecosystem.vault.record')
+  }));
+  expect(state.record).toBeNull();
+  expect(state.marker).toContain('"phase":"cleared"');
+
+  // Een nieuwe kluis heft de barrière op.
+  await page.getByLabel(/^Kluiswachtwoord/).fill(password);
+  await page.getByLabel('Herhaal kluiswachtwoord').fill(password);
+  await page.getByRole('button', { name: 'Kluis aanmaken' }).click();
+  const code = (await page.getByLabel('Herstelcode', { exact: true }).textContent({ timeout: 15_000 }))!.trim();
+  await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Downloaden' }).click()]);
+  await page.getByLabel(/^Typ de herstelcode ter controle/).fill(code);
+  await page.getByRole('button', { name: 'Kluis activeren' }).click();
+  await expect(page.getByRole('region', { name: 'Kluis' })).toBeVisible({ timeout: 15_000 });
+  expect(await page.evaluate(() => localStorage.getItem('personal-ecosystem.logout.barrier'))).toBeNull();
+});

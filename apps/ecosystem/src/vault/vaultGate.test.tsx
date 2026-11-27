@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { hasInstalledDatabaseOpener } from '@ecosystem/storage';
 import { createVault, MIN_ITERATIONS } from './crypto';
@@ -9,7 +9,10 @@ import { VaultGate } from './VaultGate';
 const password = 'synthetisch-wachtwoord-1';
 
 beforeEach(() => localStorage.clear());
-afterEach(() => discardPendingInput());
+afterEach(() => {
+  cleanup();
+  discardPendingInput();
+});
 
 describe('kluisrecord op dit apparaat', () => {
   it('bewaart alleen een geldig record zonder geheimen en weigert een beschadigd record', async () => {
@@ -52,12 +55,31 @@ describe('openstaande invoer bij vergrendelen (ADR 0031 § 3)', () => {
 });
 
 describe('VaultGate', () => {
+  it('wijzigt het kluiswachtwoord: daarna opent alleen het nieuwe wachtwoord de kluis', async () => {
+    await unlocked();
+    fireEvent.click(screen.getByRole('button', { name: 'Kluis beheren' }));
+    fireEvent.change(screen.getByLabelText('Huidig kluiswachtwoord'), { target: { value: password } });
+    fireEvent.change(screen.getByLabelText(/^Nieuw kluiswachtwoord/), { target: { value: 'nieuw-synthetisch-ww-2' } });
+    fireEvent.change(screen.getByLabelText('Herhaal nieuw kluiswachtwoord'), { target: { value: 'nieuw-synthetisch-ww-2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Wachtwoord wijzigen' }));
+    await screen.findByText(/Kluiswachtwoord gewijzigd/, undefined, { timeout: 30_000 });
+    expect((screen.getByRole('button', { name: 'Afmelden (nog niet beschikbaar)' }) as HTMLButtonElement).disabled).toBe(true);
+
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Vergrendelen' })); });
+    fireEvent.change(await screen.findByLabelText('Kluiswachtwoord'), { target: { value: password } });
+    fireEvent.click(screen.getByRole('button', { name: 'Openen' }));
+    expect(await screen.findByText('Onjuist kluiswachtwoord.', undefined, { timeout: 20_000 })).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Kluiswachtwoord'), { target: { value: 'nieuw-synthetisch-ww-2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Openen' }));
+    await screen.findByText('Module-inhoud', undefined, { timeout: 20_000 });
+  }, 120_000);
+
   async function unlocked() {
     const { vault } = await createVault(password);
     saveVaultRecord(vault);
     render(<VaultGate><p>Module-inhoud</p></VaultGate>);
     expect(screen.queryByText('Module-inhoud')).toBeNull();
-    fireEvent.change(screen.getByLabelText('Kluiswachtwoord'), { target: { value: password } });
+    fireEvent.change(await screen.findByLabelText('Kluiswachtwoord'), { target: { value: password } });
     fireEvent.click(screen.getByRole('button', { name: 'Openen' }));
     await screen.findByText('Module-inhoud', undefined, { timeout: 20_000 });
     expect(hasInstalledDatabaseOpener()).toBe(true);
