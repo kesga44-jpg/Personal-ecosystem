@@ -20,7 +20,7 @@ import { databaseConfig as groeiConfig } from '../modules/groei/storage';
 import { databaseConfig as financienConfig } from '../modules/financien/storage';
 import { MODULE_IDS, type BackupModuleId } from '../backup';
 
-const databaseConfigs: Record<BackupModuleId, LocalDatabaseConfig> = {
+export const PERSONAL_ECOSYSTEM_DATABASE_CONFIGS: Readonly<Record<BackupModuleId, LocalDatabaseConfig>> = {
   hub: hubConfig,
   sport: sportConfig,
   sidequest: sidequestConfig,
@@ -34,7 +34,7 @@ const databaseConfigs: Record<BackupModuleId, LocalDatabaseConfig> = {
 };
 
 export const PERSONAL_ECOSYSTEM_DATABASE_NAMES = MODULE_IDS.flatMap((id) => {
-  const name = databaseConfigs[id].databaseName;
+  const name = PERSONAL_ECOSYSTEM_DATABASE_CONFIGS[id].databaseName;
   return [name, encryptedDatabaseName(name)];
 });
 

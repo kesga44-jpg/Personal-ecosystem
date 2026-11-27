@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { hasInstalledDatabaseOpener } from '@ecosystem/storage';
 import { createVault, MIN_ITERATIONS } from './crypto';
 import { loadInactivityMinutes, loadVaultRecord, parseVaultRecord, saveInactivityMinutes, saveVaultRecord, VAULT_RECORD_KEY } from './localData';
 import { discardPendingInput, pendingInputCount, PendingInputError, registerPendingInput, savePendingInput } from './pendingInput';
@@ -59,6 +60,7 @@ describe('VaultGate', () => {
     fireEvent.change(screen.getByLabelText('Kluiswachtwoord'), { target: { value: password } });
     fireEvent.click(screen.getByRole('button', { name: 'Openen' }));
     await screen.findByText('Module-inhoud', undefined, { timeout: 20_000 });
+    expect(hasInstalledDatabaseOpener()).toBe(true);
   }
 
   it('blijft open als openstaande invoer niet kan worden opgeslagen, en vergrendelt pas na bewust weggooien', async () => {
@@ -71,5 +73,7 @@ describe('VaultGate', () => {
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Invoer weggooien en vergrendelen' })); });
     await waitFor(() => expect(screen.queryByText('Module-inhoud')).toBeNull());
     expect(screen.getByRole('heading', { name: 'Kluis openen' })).toBeTruthy();
+    // Na vergrendelen opent geen module meer de versleutelde opslag.
+    expect(hasInstalledDatabaseOpener()).toBe(false);
   }, 40_000);
 });
