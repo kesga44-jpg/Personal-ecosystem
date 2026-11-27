@@ -64,6 +64,7 @@ import {
 } from './domain';
 import { databaseConfig } from './storage';
 import { GoalLinks } from '../GoalLinks';
+import { ConceptNotice, useFormConcept } from '../../formConcept';
 
 const navigation = [
   { to: '/', label: 'Overzicht', icon: '⌂' },
@@ -338,6 +339,34 @@ function TransactionEditor({ data, run, transaction, onDone }: { data: Data; run
   const [potId, setPotId] = useState(transaction?.potId ?? '');
   const [formError, setFormError] = useState('');
   const categories = data.categories.filter((c) => c.direction === direction && (!c.archived || c.id === categoryId));
+  const concept = useFormConcept(
+    'financien.transactie',
+    transaction?.id ?? 'nieuw',
+    'Transactie',
+    { date, amount, direction, kind, categoryId, counterparty, description, sourceId, potId },
+    {
+      date: transaction?.date ?? todayKey(),
+      amount: transaction ? centsToInput(transaction.amountCents) : '',
+      direction: transaction?.direction ?? ('out' as Direction),
+      kind: transaction?.kind ?? ('actual' as TransactionKind),
+      categoryId: transaction?.categoryId ?? '',
+      counterparty: transaction?.counterparty ?? '',
+      description: transaction?.description ?? '',
+      sourceId: transaction?.sourceId ?? '',
+      potId: transaction?.potId ?? ''
+    },
+    (value) => {
+      setDate(value.date);
+      setAmount(value.amount);
+      setDirection(value.direction);
+      setKind(value.kind);
+      setCategoryId(value.categoryId);
+      setCounterparty(value.counterparty);
+      setDescription(value.description);
+      setSourceId(value.sourceId);
+      setPotId(value.potId);
+    }
+  );
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -363,7 +392,10 @@ function TransactionEditor({ data, run, transaction, onDone }: { data: Data; run
         updatedAt: now
       };
       validateTransaction(next);
-      if (await run((db) => db.put('transactions', next))) onDone();
+      if (await run((db) => db.put('transactions', next))) {
+        concept.clear();
+        onDone();
+      }
     } catch (cause) {
       setFormError(cause instanceof Error ? cause.message : 'De transactie bevat ongeldige gegevens.');
     }
@@ -372,6 +404,7 @@ function TransactionEditor({ data, run, transaction, onDone }: { data: Data; run
   return (
     <Card title={transaction ? 'Transactie aanpassen' : 'Nieuwe transactie'}>
       <form className="stack" noValidate onSubmit={(event) => void submit(event)}>
+        <ConceptNotice concept={concept} />
         <div className="form-grid">
           <Field label="Soort">
             <select value={direction} onChange={(event) => { setDirection(event.target.value as Direction); setCategoryId(''); }}>
@@ -616,6 +649,20 @@ function PotsPage({ data, run, database }: { data: Data; run: Run; database: Loc
     setNote(editing?.note ?? '');
   }, [editing]);
 
+  const concept = useFormConcept(
+    'financien.spaarpot',
+    editing?.id ?? 'nieuw',
+    'Spaarpot',
+    { name, target, targetDate, note },
+    { name: editing?.name ?? '', target: editing ? centsToInput(editing.targetCents) : '', targetDate: editing?.targetDate ?? '', note: editing?.note ?? '' },
+    (value) => {
+      setName(value.name);
+      setTarget(value.target);
+      setTargetDate(value.targetDate);
+      setNote(value.note);
+    }
+  );
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     setFormError('');
@@ -624,6 +671,7 @@ function PotsPage({ data, run, database }: { data: Data; run: Run; database: Loc
       const pot: Pot = { id: editing?.id ?? newId(), name: name.trim(), targetCents: parseEuros(target), targetDate: targetDate || null, note: note.trim(), archived: editing?.archived ?? false, createdAt: editing?.createdAt ?? now, updatedAt: now };
       validatePot(pot);
       if (await run((db) => db.put('pots', pot))) {
+        concept.clear();
         setEditingId(null);
         setName('');
         setTarget('');
@@ -640,6 +688,7 @@ function PotsPage({ data, run, database }: { data: Data; run: Run; database: Loc
       <PageHeader eyebrow="Financiën" title="Spaarpotten" description="Een doelbedrag per pot. Stortingen en opnames boek je als transactie met de pot erbij." />
       <Card title={editing ? 'Spaarpot aanpassen' : 'Nieuwe spaarpot'}>
         <form className="stack" noValidate onSubmit={(event) => void submit(event)}>
+          <ConceptNotice concept={concept} />
           <div className="form-grid">
             <Field label="Naam">
               <input value={name} maxLength={200} onChange={(event) => setName(event.target.value)} />
@@ -797,14 +846,19 @@ function ManualSectionCard({ id, section, run }: { id: ManualSectionId; section:
   const [value, setValue] = useState(section?.text ?? '');
   const [saved, setSaved] = useState('');
   useEffect(() => setValue(section?.text ?? ''), [section]);
+  const concept = useFormConcept(`financien.manual.${id}`, id, SECTION_LABEL[id], { text: value }, { text: section?.text ?? '' }, (restored) => setValue(restored.text));
   async function save() {
     const now = nowIso();
     const next: ManualSection = { ...section, id, text: value, ...(!section ? { createdAt: now } : {}), updatedAt: now };
     validateManualSection(next);
-    if (await run((db) => db.put('manual', next))) setSaved('Opgeslagen.');
+    if (await run((db) => db.put('manual', next))) {
+      concept.clear();
+      setSaved('Opgeslagen.');
+    }
   }
   return (
     <Card title={SECTION_LABEL[id]}>
+      <ConceptNotice concept={concept} />
       <Field label={SECTION_LABEL[id]} {...(section ? { hint: `Laatst bijgewerkt ${formatDate(section.updatedAt.slice(0, 10))}` } : {})}>
         <textarea value={value} onChange={(event) => { setValue(event.target.value); setSaved(''); }} />
       </Field>
@@ -918,6 +972,40 @@ function PlanEditor({ plan, run, onDone }: { plan?: InvestmentPlan; run: Run; on
   const [frequency, setFrequency] = useState<Frequency>(plan?.frequency ?? 'maand');
   const [startDate, setStartDate] = useState(plan?.startDate ?? todayKey());
   const [formError, setFormError] = useState('');
+  const concept = useFormConcept(
+    'financien.plan',
+    plan?.id ?? 'nieuw',
+    'Beleggingsplan',
+    { name, status, goal, strategy, principles, target, horizon, risk, rows, contribution, frequency, startDate },
+    {
+      name: plan?.name ?? '',
+      status: plan?.status ?? ('concept' as PlanStatus),
+      goal: plan?.goal ?? '',
+      strategy: plan?.strategy ?? '',
+      principles: plan?.principles ?? '',
+      target: plan?.targetCents !== null && plan?.targetCents !== undefined ? centsToInput(plan.targetCents) : '',
+      horizon: String(plan?.horizonYear ?? Number(todayKey().slice(0, 4)) + 10),
+      risk: plan?.riskProfile ?? ('neutraal' as RiskProfile),
+      rows: plan?.allocation.map((a) => ({ assetClass: a.assetClass, targetPct: String(a.targetPct) })) ?? [{ assetClass: '', targetPct: '' }],
+      contribution: plan ? centsToInput(plan.contributionCents) : '',
+      frequency: plan?.frequency ?? ('maand' as Frequency),
+      startDate: plan?.startDate ?? todayKey()
+    },
+    (value) => {
+      setName(value.name);
+      if (PLAN_STATUSES.includes(value.status)) setStatus(value.status);
+      setGoal(value.goal);
+      setStrategy(value.strategy);
+      setPrinciples(value.principles);
+      setTarget(value.target);
+      setHorizon(value.horizon);
+      if (RISK_PROFILES.includes(value.risk)) setRisk(value.risk);
+      setRows(value.rows);
+      setContribution(value.contribution);
+      if (FREQUENCIES.includes(value.frequency)) setFrequency(value.frequency);
+      setStartDate(value.startDate);
+    }
+  );
   const allocation: AllocationItem[] = rows.filter((r) => r.assetClass.trim() || r.targetPct).map((r) => ({ assetClass: r.assetClass.trim(), targetPct: Number(r.targetPct) }));
   const sum = allocationTotal(allocation.filter((a) => Number.isFinite(a.targetPct)));
 
@@ -944,7 +1032,10 @@ function PlanEditor({ plan, run, onDone }: { plan?: InvestmentPlan; run: Run; on
         updatedAt: now
       };
       validateInvestmentPlan(next);
-      if (await run((db) => db.put('investmentPlans', next))) onDone(next.id);
+      if (await run((db) => db.put('investmentPlans', next))) {
+        concept.clear();
+        onDone(next.id);
+      }
     } catch (cause) {
       setFormError(cause instanceof Error ? cause.message : 'Het plan bevat ongeldige gegevens.');
     }
@@ -953,6 +1044,7 @@ function PlanEditor({ plan, run, onDone }: { plan?: InvestmentPlan; run: Run; on
   return (
     <Card title={plan ? 'Plan aanpassen' : 'Nieuw plan'}>
       <form className="stack" noValidate onSubmit={(event) => void submit(event)}>
+        <ConceptNotice concept={concept} />
         <div className="form-grid">
           <Field label="Naam van het plan">
             <input value={name} maxLength={200} onChange={(event) => setName(event.target.value)} />
@@ -1223,6 +1315,14 @@ function NotesCard({ plan, notes, run }: { plan: InvestmentPlan; notes: PlanNote
   const [text, setText] = useState('');
   const [onTrack, setOnTrack] = useState<OnTrack | ''>('op koers');
   const [formError, setFormError] = useState('');
+  // Alleen onderwerp en toelichting tellen als openstaande invoer; soort, datum en oordeel blijven na opslaan staan.
+  const concept = useFormConcept('financien.plannotitie', plan.id, 'Plannotitie', { kind, date, onTrack, title, text }, { kind, date, onTrack, title: '', text: '' }, (value) => {
+    if (NOTE_KINDS.includes(value.kind)) setKind(value.kind);
+    setDate(value.date);
+    if (value.onTrack === '' || ON_TRACK.includes(value.onTrack)) setOnTrack(value.onTrack);
+    setTitle(value.title);
+    setText(value.text);
+  });
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -1234,6 +1334,7 @@ function NotesCard({ plan, notes, run }: { plan: InvestmentPlan; notes: PlanNote
       if (await run((db) => db.put('planNotes', note))) {
         setTitle('');
         setText('');
+        concept.clear();
       }
     } catch (cause) {
       setFormError(cause instanceof Error ? cause.message : 'Ongeldige notitie.');
@@ -1243,6 +1344,7 @@ function NotesCard({ plan, notes, run }: { plan: InvestmentPlan; notes: PlanNote
   return (
     <Card title="Beslissingen en evaluaties">
       <form className="stack" noValidate onSubmit={(event) => void submit(event)}>
+        <ConceptNotice concept={concept} />
         <div className="form-grid">
           <Field label="Soort notitie">
             <select value={kind} onChange={(event) => setKind(event.target.value as NoteKind)}>
