@@ -94,3 +94,23 @@ test('nieuwe invoer in de kluisbuild wordt versleuteld opgeslagen', async ({ pag
   for (const [name, content] of Object.entries(raw)) expect(content, name).not.toContain('IJsselmeer');
   expect(raw['personal-ecosystem-dagboek'] ?? '[[]]').toBe('[[]]');
 });
+
+test('een lopende krachttraining (concept) staat versleuteld in de browser en is na vergrendelen en openen terug', async ({ page }) => {
+  await page.goto(`${base}/kracht/training`);
+  await createVault(page);
+  await expect(page.getByRole('region', { name: 'Kluis' })).toBeVisible({ timeout: 15_000 });
+  await page.getByLabel('Oefening kiezen').selectOption({ label: 'Squat' });
+  await page.getByRole('button', { name: 'Toevoegen' }).click();
+  await page.getByLabel('Squat set 1 gewicht').fill('77,5');
+  await page.getByLabel('Squat set 1 gewicht').blur();
+
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('personal-ecosystem.sealed.personal-ecosystem.kracht.concept'))).not.toBeNull();
+  const raw = await page.evaluate(() => JSON.stringify({ ...localStorage }));
+  expect(raw).not.toContain('Squat');
+  expect(raw).not.toContain('77');
+
+  await page.getByRole('button', { name: 'Vergrendelen' }).click();
+  await page.getByLabel('Kluiswachtwoord').fill(password);
+  await page.getByRole('button', { name: 'Openen', exact: true }).click();
+  await expect(page.getByLabel('Squat set 1 gewicht')).toHaveValue('77,5', { timeout: 15_000 });
+});

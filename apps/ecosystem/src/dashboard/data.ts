@@ -23,6 +23,7 @@ import { databaseConfig as financienConfig } from '../modules/financien/storage'
 import { financienSummary, type Budget, type Category, type InvestmentPlan, type Transaction } from '../modules/financien/domain';
 import type { NutritionPlan, PlannedMeal } from '../modules/voeding/planner';
 import { plannedTodaySummary } from '../modules/voeding/mealplan';
+import { readLocalValue } from '../localValues';
 
 export interface DashboardData {
   activities: Activity[];
@@ -61,7 +62,7 @@ export const emptyData: DashboardData = { activities: [], habits: [], checks: []
 
 export function lastBackup(): string {
   try {
-    return localStorage.getItem('personal-ecosystem.backup.last-export') ?? '';
+    return readLocalValue('personal-ecosystem.backup.last-export') ?? '';
   } catch {
     return '';
   }

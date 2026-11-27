@@ -5,6 +5,7 @@
  * Bewaard per apparaat: alleen welke soorten aan staan en wat je vandaag hebt verborgen.
  */
 import { currentPeriodChecks, type Habit, type HabitCheck, type Quest } from '@ecosystem/sidequest/domain';
+import { readLocalValue, writeLocalValue } from '../localValues';
 
 export const REMINDER_KINDS = ['habits', 'weekly-habits', 'quest-deadlines', 'dagboek', 'lichaam', 'voeding', 'backup'] as const;
 export type ReminderKind = (typeof REMINDER_KINDS)[number];
@@ -191,7 +192,7 @@ const storageKey = 'personal-ecosystem.reminders.settings';
 
 export function readReminderSettings(): ReminderSettings {
   try {
-    return normalizeReminderSettings(JSON.parse(localStorage.getItem(storageKey) ?? 'null'));
+    return normalizeReminderSettings(JSON.parse(readLocalValue(storageKey) ?? 'null'));
   } catch {
     return normalizeReminderSettings(null);
   }
@@ -201,7 +202,7 @@ export function writeReminderSettings(settings: ReminderSettings): void {
   try {
     // Bewaart welke soorten aan staan en per soort de datum van "Vandaag verborgen".
     // Een oudere datum heeft geen effect meer (alleen de datum van vandaag telt) en wordt bij de volgende keer verbergen overschreven.
-    localStorage.setItem(storageKey, JSON.stringify(settings));
+    writeLocalValue(storageKey, JSON.stringify(settings));
   } catch {
     // Alleen een voorkeur; zonder opslag staan alle herinneringen aan.
   }

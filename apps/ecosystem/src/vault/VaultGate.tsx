@@ -3,7 +3,8 @@ import { installDatabaseOpener } from '@ecosystem/storage';
 import { Button, Card, ErrorBanner, Field, PageHeader } from '@ecosystem/ui';
 import type { VaultRecord } from './crypto';
 import { encryptedOpener, exportPlaintextBackup, migrateModulesToEncrypted, plaintextRecordCounts, defaultOpeners, type ModuleMigrationReport } from './encryptedModules';
-import { loadInactivityMinutes, loadVaultRecord, PERSONAL_ECOSYSTEM_DATABASE_CONFIGS, saveInactivityMinutes, saveVaultRecord } from './localData';
+import { installLocalValueBackend } from '../localValues';
+import { loadInactivityMinutes, loadVaultRecord, openSealedValues, PERSONAL_ECOSYSTEM_DATABASE_CONFIGS, saveInactivityMinutes, saveVaultRecord, type SealedValues } from './localData';
 import { discardPendingInput, PendingInputError, savePendingInput } from './pendingInput';
 import { MAX_INACTIVITY_TIMEOUT_MINUTES, MIN_INACTIVITY_TIMEOUT_MINUTES, VaultSession, type RecoveryCodeSaveMethod } from './session';
 
@@ -27,6 +28,12 @@ type Phase =
 const configs = Object.values(PERSONAL_ECOSYSTEM_DATABASE_CONFIGS);
 const totalOf = (counts: Record<string, number>) => Object.values(counts).reduce((sum, count) => sum + count, 0);
 
+/** Zolang de kluis dicht is, valt er niets te lezen of te schrijven (geen onversleutelde terugval). */
+const lockedValues = {
+  get: () => null,
+  set: () => { throw new Error('De kluis is vergrendeld.'); }
+};
+
 const INACTIVITY_CHOICES = [5, 10, 15, 30, 45, 60].filter((minutes) => minutes >= MIN_INACTIVITY_TIMEOUT_MINUTES && minutes <= MAX_INACTIVITY_TIMEOUT_MINUTES);
 
 function message(cause: unknown): string {
@@ -44,13 +51,19 @@ export function VaultGate({ children }: PropsWithChildren) {
   const [lockFailure, setLockFailure] = useState('');
   const [generation, setGeneration] = useState(0);
   const pendingVault = useRef<VaultRecord | null>(null);
+  const sealedValues = useRef<SealedValues | null>(null);
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
 
   const session = useMemo(() => new VaultSession({
-    prepareToLock: () => savePendingInput(),
+    prepareToLock: async () => {
+      await savePendingInput();
+      await sealedValues.current?.flush();
+    },
     clearDecryptedState: () => {
       installDatabaseOpener(null);
+      installLocalValueBackend(lockedValues);
+      sealedValues.current = null;
       const current = phaseRef.current;
       if (current.name === 'unlocked' || current.name === 'migrate') setPhase({ name: 'locked', vault: current.vault });
       setGeneration((value) => value + 1);
@@ -88,11 +101,19 @@ export function VaultGate({ children }: PropsWithChildren) {
   /** Na openen: alle modules op versleutelde opslag; eerst overzetten als er nog onversleutelde records zijn. */
   const opened = useCallback(async (vault: VaultRecord) => {
     installDatabaseOpener(encryptedOpener({ getKey: () => session.getKey() }));
+    sealedValues.current = await openSealedValues(() => session.getKey());
+    installLocalValueBackend(sealedValues.current);
     const counts = await plaintextRecordCounts(configs);
     setPhase(totalOf(counts) > 0 ? { name: 'migrate', vault, counts, backedUp: false, reports: null } : { name: 'unlocked', vault });
   }, [session]);
 
-  useEffect(() => () => installDatabaseOpener(null), []);
+  useEffect(() => {
+    installLocalValueBackend(lockedValues);
+    return () => {
+      installDatabaseOpener(null);
+      installLocalValueBackend(null);
+    };
+  }, []);
 
   const lock = useCallback(async () => {
     setLockFailure('');

@@ -13,6 +13,7 @@ import { reminderInput } from '../reminders/input';
 import { checkHeatmap, dagboekWrittenToday, daysSince, duurWeekTotals, krachtSessionsThisWeek, greeting, habitsToday, lichaamFilledToday, localDateKey, pointsPerDay, sportWeek, topStreaks, voedingLoggedToday } from './summary';
 import { moveWidget, readLayout, toggleWidget, widgetLabels, writeLayout, type WidgetId, type WidgetLayout } from './widgets';
 import { describeWeather, forecastUrl, geocodingUrl, parseForecast, parseGeocoding, readLocation, trainingAdvice, writeLocation, type WeatherLocation, type WeatherNow } from './weather';
+import { readLocalValue } from '../localValues';
 
 const externalApps = [
   { title: 'Samen Thuis', url: 'https://kesga44-jpg.github.io/Samen-thuis/' },
@@ -21,7 +22,7 @@ const externalApps = [
 
 function displayName(): string {
   try {
-    const raw = JSON.parse(localStorage.getItem('personal-ecosystem.hub.preferences') ?? '{}') as { displayName?: unknown };
+    const raw = JSON.parse(readLocalValue('personal-ecosystem.hub.preferences') ?? '{}') as { displayName?: unknown };
     return typeof raw.displayName === 'string' ? raw.displayName.trim().slice(0, 60) : '';
   } catch {
     return '';

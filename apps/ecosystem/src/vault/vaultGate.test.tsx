@@ -77,3 +77,31 @@ describe('VaultGate', () => {
     expect(hasInstalledDatabaseOpener()).toBe(false);
   }, 40_000);
 });
+
+describe('kleine PE-waarden versleuteld (ADR 0031 § 1)', () => {
+  it('versleutelt bestaande onversleutelde waarden, bewaart nieuwe versleuteld en leest ze na opnieuw openen terug', async () => {
+    const { openSealedValues } = await import('./localData');
+    const { dek } = await createVault(password);
+    localStorage.setItem('personal-ecosystem.kracht.concept', '{"name":"Synthetische beentraining"}');
+    localStorage.setItem('ander.programma', 'blijft staan');
+
+    const values = await openSealedValues(() => dek);
+    expect(values.get('personal-ecosystem.kracht.concept')).toBe('{"name":"Synthetische beentraining"}');
+    expect(localStorage.getItem('personal-ecosystem.kracht.concept')).toBeNull();
+    values.set('personal-ecosystem.dashboard.weather-location', '{"name":"Synthetisch dorp"}');
+    await values.flush();
+    const raw = JSON.stringify({ ...localStorage });
+    expect(raw).not.toMatch(/beentraining|Synthetisch dorp/);
+    expect(localStorage.getItem('ander.programma')).toBe('blijft staan');
+    expect(() => values.set('niet.van.pe', 'x')).toThrow('Onbekende PE-waarde');
+
+    const reopened = await openSealedValues(() => dek);
+    expect(reopened.get('personal-ecosystem.dashboard.weather-location')).toBe('{"name":"Synthetisch dorp"}');
+    reopened.set('personal-ecosystem.kracht.concept', null);
+    await reopened.flush();
+    expect(localStorage.getItem('personal-ecosystem.sealed.personal-ecosystem.kracht.concept')).toBeNull();
+
+    const other = (await createVault(password)).dek;
+    await expect(openSealedValues(() => other)).rejects.toThrow('ontsleuteld');
+  }, 60_000);
+});

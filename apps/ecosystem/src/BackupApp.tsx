@@ -34,6 +34,7 @@ import {
   type BackupModuleId,
   type RestorePlan
 } from './backup';
+import { readLocalValue, writeLocalValue } from './localValues';
 
 const configs = { hub: hubConfig, sport: sportConfig, sidequest: questConfig, lichaam: lichaamConfig, dagboek: dagboekConfig, voeding: voedingConfig, kracht: krachtConfig, duur: duurConfig, groei: groeiConfig, financien: financienConfig } as const;
 const domainValidators: Record<BackupModuleId, (data: unknown) => void> = {
@@ -53,7 +54,7 @@ const navigation = [{ to: '/', label: 'Back-up', icon: '⇩' }];
 
 function readLastExport(): string {
   try {
-    return localStorage.getItem(lastExportKey) ?? '';
+    return readLocalValue(lastExportKey) ?? '';
   } catch {
     return '';
   }
@@ -61,7 +62,7 @@ function readLastExport(): string {
 
 function writeLastExport(value: string): void {
   try {
-    localStorage.setItem(lastExportKey, value);
+    writeLocalValue(lastExportKey, value);
   } catch {
     // Alleen een geheugensteun; zonder opslag werkt de back-up gewoon.
   }

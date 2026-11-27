@@ -9,7 +9,7 @@ import {
   type LocalDatabaseConfig
 } from '@ecosystem/storage';
 import type { LogoutBarrier, LogoutBarrierPhase } from './lifecycle';
-import { MIN_ITERATIONS, type VaultRecord, type WrappedKey } from './crypto';
+import { decryptRecord, encryptRecord, MIN_ITERATIONS, type VaultRecord, type WrappedKey } from './crypto';
 import { DEFAULT_INACTIVITY_TIMEOUT_MINUTES, MAX_INACTIVITY_TIMEOUT_MINUTES, MIN_INACTIVITY_TIMEOUT_MINUTES } from './session';
 import { databaseConfig as lichaamConfig } from '../modules/lichaam/storage';
 import { databaseConfig as dagboekConfig } from '../modules/dagboek/storage';
@@ -38,13 +38,20 @@ export const PERSONAL_ECOSYSTEM_DATABASE_NAMES = MODULE_IDS.flatMap((id) => {
   return [name, encryptedDatabaseName(name)];
 });
 
-export const PERSONAL_ECOSYSTEM_LOCAL_STORAGE_KEYS = [
+/** PE-waarden die in de kluisbuild versleuteld worden bewaard (zie `../localValues.ts`). */
+export const SEALABLE_LOCAL_VALUE_KEYS = [
   'personal-ecosystem.hub.preferences',
   'personal-ecosystem.backup.last-export',
   'personal-ecosystem.reminders.settings',
   'personal-ecosystem.kracht.concept',
   'personal-ecosystem.dashboard.layout',
-  'personal-ecosystem.dashboard.weather-location',
+  'personal-ecosystem.dashboard.weather-location'
+] as const;
+export const SEALED_VALUE_PREFIX = 'personal-ecosystem.sealed.';
+
+export const PERSONAL_ECOSYSTEM_LOCAL_STORAGE_KEYS = [
+  ...SEALABLE_LOCAL_VALUE_KEYS,
+  ...SEALABLE_LOCAL_VALUE_KEYS.map((key) => `${SEALED_VALUE_PREFIX}${key}`),
   'personal-ecosystem.vault.record',
   'personal-ecosystem.vault.settings'
 ] as const;
@@ -246,4 +253,70 @@ export function loadInactivityMinutes(storage: Pick<Storage, 'getItem'> = global
 
 export function saveInactivityMinutes(minutes: number, storage: Pick<Storage, 'setItem'> = globalThis.localStorage): void {
   storage.setItem(VAULT_SETTINGS_KEY, JSON.stringify({ inactivityMinutes: minutes }));
+}
+
+/* ---------- Versleutelde kleine waarden (ADR 0031 § 1) ---------- */
+
+const SEALED_MODULE = 'local-values';
+
+export interface SealedValues {
+  get(key: string): string | null;
+  set(key: string, value: string | null): void;
+  /** Wacht tot alle versleutelde writes klaar zijn; gooit als er één mislukte. */
+  flush(): Promise<void>;
+}
+
+/**
+ * Ontsleutelt de versleutelde PE-waarden naar het geheugen en versleutelt eerst nog onversleutelde
+ * waarden (daarna wordt de onversleutelde kopie verwijderd). Schrijven werkt het geheugen direct bij en
+ * versleutelt op de achtergrond, met een nieuwe IV per write; `flush` wacht daarop vóór vergrendelen.
+ */
+export async function openSealedValues(getKey: () => CryptoKey, storage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> = globalThis.localStorage): Promise<SealedValues> {
+  const values = new Map<string, string>();
+  const keys = new Set<string>(SEALABLE_LOCAL_VALUE_KEYS);
+  const seal = async (key: string, value: string | null) => {
+    if (value === null) {
+      storage.removeItem(`${SEALED_VALUE_PREFIX}${key}`);
+      return;
+    }
+    const { iv, ciphertext } = await encryptRecord(getKey(), SEALED_MODULE, key, 1, value);
+    storage.setItem(`${SEALED_VALUE_PREFIX}${key}`, JSON.stringify({ iv, ciphertext }));
+  };
+
+  for (const key of keys) {
+    const sealed = storage.getItem(`${SEALED_VALUE_PREFIX}${key}`);
+    if (sealed !== null) {
+      const { iv, ciphertext } = JSON.parse(sealed) as { iv: string; ciphertext: string };
+      const value = await decryptRecord(getKey(), { module: SEALED_MODULE, itemId: key, version: 1, iv, ciphertext, deleted: false });
+      if (typeof value === 'string') values.set(key, value);
+      storage.removeItem(key);
+      continue;
+    }
+    const plain = storage.getItem(key);
+    if (plain !== null) {
+      await seal(key, plain);
+      values.set(key, plain);
+      storage.removeItem(key);
+    }
+  }
+
+  let pending: Promise<void> = Promise.resolve();
+  let failure: unknown;
+  return {
+    get: (key) => values.get(key) ?? null,
+    set: (key, value) => {
+      if (!keys.has(key)) throw new Error(`Onbekende PE-waarde: ${key}.`);
+      if (value === null) values.delete(key);
+      else values.set(key, value);
+      pending = pending.then(() => seal(key, value)).catch((cause: unknown) => { failure = cause; });
+    },
+    async flush() {
+      await pending;
+      if (failure) {
+        const cause = failure;
+        failure = undefined;
+        throw cause instanceof Error ? cause : new Error('Een instelling kon niet versleuteld worden opgeslagen.');
+      }
+    }
+  };
 }

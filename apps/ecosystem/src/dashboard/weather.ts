@@ -1,3 +1,4 @@
+import { readLocalValue, writeLocalValue } from '../localValues';
 /**
  * Weer via Open-Meteo (gratis, niet-commercieel, CC BY 4.0; https://open-meteo.com/en/terms).
  * Privacy: we sturen alleen een tot 2 decimalen afgeronde locatie (ca. 1 km) mee, nooit andere gegevens.
@@ -101,7 +102,7 @@ export function trainingAdvice(weather: WeatherNow): string {
 
 export function readLocation(): WeatherLocation | null {
   try {
-    const raw = JSON.parse(localStorage.getItem(storageKey) ?? 'null') as Partial<WeatherLocation> | null;
+    const raw = JSON.parse(readLocalValue(storageKey) ?? 'null') as Partial<WeatherLocation> | null;
     if (!raw || typeof raw.name !== 'string' || finite(raw.latitude) === null || finite(raw.longitude) === null) return null;
     return { name: raw.name.slice(0, 120), latitude: roundCoordinate(raw.latitude!), longitude: roundCoordinate(raw.longitude!) };
   } catch {
@@ -111,8 +112,7 @@ export function readLocation(): WeatherLocation | null {
 
 export function writeLocation(location: WeatherLocation | null): void {
   try {
-    if (location) localStorage.setItem(storageKey, JSON.stringify(location));
-    else localStorage.removeItem(storageKey);
+    writeLocalValue(storageKey, location ? JSON.stringify(location) : null);
   } catch {
     // Alleen een voorkeur.
   }

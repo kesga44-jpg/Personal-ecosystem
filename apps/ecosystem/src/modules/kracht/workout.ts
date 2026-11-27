@@ -1,6 +1,7 @@
 /** Een lopende training (concept): invoer als tekst, pas bij opslaan omgezet en gecontroleerd. */
 import { lastWeight, plannedSets, type Session, type SessionExercise, type SetEntry, type TemplateItem } from './domain';
 import type { Exercise, Kind } from './exercises';
+import { readLocalValue, writeLocalValue } from '../../localValues';
 
 /** Een lopende training staat tijdelijk in de browser, zodat hij een herlaadactie overleeft. Niet in de back-up. */
 export const DRAFT_KEY = 'personal-ecosystem.kracht.concept';
@@ -37,7 +38,7 @@ export interface Draft {
 
 export function readDraft(): Draft | null {
   try {
-    const raw = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null') as Draft | null;
+    const raw = JSON.parse(readLocalValue(DRAFT_KEY) ?? 'null') as Draft | null;
     return raw && typeof raw.startedAt === 'string' && Array.isArray(raw.exercises) ? raw : null;
   } catch {
     return null;
@@ -46,8 +47,7 @@ export function readDraft(): Draft | null {
 
 export function writeDraft(draft: Draft | null) {
   try {
-    if (draft) localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-    else localStorage.removeItem(DRAFT_KEY);
+    writeLocalValue(DRAFT_KEY, draft ? JSON.stringify(draft) : null);
   } catch {
     // Opslag niet beschikbaar (privévenster): de training blijft alleen in het geheugen.
   }
